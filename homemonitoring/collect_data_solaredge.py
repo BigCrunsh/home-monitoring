@@ -31,9 +31,9 @@ def run(args):
         meta['location']['timeZone'],
         get_latest_timestamp_influxdb(measurement_name, ifclient, meta['installationDate']),
     )
-    logger.info(f'collect data for {start_dates[0]}-{end_dates[-1]}')
     num_points = 0
     for s, e in zip(start_dates, end_dates):
+        logger.info(f'collect data for {s}-{e}')
         response = api.get_power_details(
             site_id=meta['id'], start_time=s, end_time=e
         )
@@ -50,9 +50,9 @@ def run(args):
         meta['location']['timeZone'],
         get_latest_timestamp_influxdb(measurement_name, ifclient, meta['installationDate']),
     )
-    logger.info(f'collect data for {start_dates[0]}-{end_dates[-1]}')
     num_points = 0
     for s, e in zip(start_dates, end_dates):
+        logger.info(f'collect data for {s}-{e}')
         response = api.get_energy_details(
             site_id=meta['id'], start_time=s, end_time=e,
             time_unit='QUARTER_OF_AN_HOUR'
