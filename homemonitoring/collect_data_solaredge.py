@@ -35,7 +35,7 @@ def run(args):
     num_points = 0
     for s, e in zip(start_dates, end_dates):
         response = api.get_power_details(
-            site_id=meta['id'], start_time=s.replace(tzinfo=None), end_time=e.replace(tzinfo=None)
+            site_id=meta['id'], start_time=s, end_time=e
         )
         points = SolarEdgeResponseMapper.to_influxdb_point(
             response, meta['location']['timeZone'], measurement_name
@@ -54,7 +54,7 @@ def run(args):
     num_points = 0
     for s, e in zip(start_dates, end_dates):
         response = api.get_energy_details(
-            site_id=meta['id'], start_time=s.replace(tzinfo=None), end_time=e.replace(tzinfo=None),
+            site_id=meta['id'], start_time=s, end_time=e,
             time_unit='QUARTER_OF_AN_HOUR'
         )
         points = SolarEdgeResponseMapper.to_influxdb_point(
