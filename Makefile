@@ -25,4 +25,4 @@ init-docker:
 start-docker:
 	docker run -d --name=influxdb --net=host --restart=always -v influxdb-storage:/data hypriot/rpi-influxdb
 	docker run -d --name=grafana --net=host -v grafana-storage:/var/lib/grafana grafana/grafana
-	docker run -d --name telegraf --net=host -v /home/pi/backups/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro telegraf
+	docker run -d --name telegraf --net=host -v conf/telegraf.conf:/etc/telegraf/telegraf.conf:ro telegraf
