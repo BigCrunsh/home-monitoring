@@ -13,8 +13,8 @@ def get_date_ranges(time_zone, start_datetime, end_datetime=None):
     tz = pytz.timezone(time_zone)
     if end_datetime is None:
         end_datetime = datetime.datetime.now(tz)
-    assert end_datetime.tzinfo is None or end_datetime.tzinfo == tz, f"time zone of end date ({end_datetime.tzinfo}) does not match {time_zone}"  # noqa
-    assert start_datetime.tzinfo is None or start_datetime.tzinfo == tz, f"time zone of start date ({start_datetime.tzinfo}) does not match {time_zone}"  # noqa
+    assert end_datetime.tzinfo is None or end_datetime.tzinfo.zone == time_zone, f"time zone of end date ({end_datetime.tzinfo.zone}) does not match {time_zone}"  # noqa
+    assert start_datetime.tzinfo is None or start_datetime.tzinfo.zone == time_zone, f"time zone of start date ({start_datetime.tzinfo.zone}) does not match {time_zone}"  # noqa
 
     # ignore ms and tzinfo
     start_datetime = start_datetime.replace(microsecond=0).replace(tzinfo=None)
