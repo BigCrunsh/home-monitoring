@@ -13,8 +13,12 @@ def get_date_ranges(time_zone, start_datetime, end_datetime=None):
     tz = pytz.timezone(time_zone)
     if end_datetime is None:
         end_datetime = datetime.datetime.now(tz)
-    assert end_datetime.tzinfo is None or end_datetime.tzinfo.zone == time_zone, f"time zone of end date ({end_datetime.tzinfo.zone}) does not match {time_zone}"  # noqa
-    assert start_datetime.tzinfo is None or start_datetime.tzinfo.zone == time_zone, f"time zone of start date ({start_datetime.tzinfo.zone}) does not match {time_zone}"  # noqa
+
+    # convert to same time zone
+    assert end_datetime.tzinfo is not None
+    assert start_datetime.tzinfo is not None
+    end_datetime = end_datetime.astimezone(tz)
+    start_datetime = start_datetime.astimezone(tz)
 
     # ignore ms and tzinfo
     start_datetime = start_datetime.replace(microsecond=0).replace(tzinfo=None)
@@ -41,7 +45,7 @@ def get_latest_timestamp_influxdb(measurement_name, ifclient, default):
     assert len(points) < 2
     if len(points) == 0:
         return default
-    return datetime.datetime.fromisoformat(points[0]['time'][:-1])
+    return pytz.utc.localize(datetime.datetime.fromisoformat(points[0]['time'][:-1]))
 
 
 class LoggerConfig(object):
