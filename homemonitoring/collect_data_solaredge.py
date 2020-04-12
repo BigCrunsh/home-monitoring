@@ -47,8 +47,8 @@ def run(args):
     measurement_name = 'electricity_energy_watthour'
     logger.info(f'{measurement_name}')
     start_dates, end_dates = get_date_ranges(
+        meta['location']['timeZone'],
         get_latest_timestamp_influxdb(measurement_name, ifclient, meta['installationDate']),
-        meta['location']['timeZone']
     )
     logger.info(f'collect data for {start_dates[0]}-{end_dates[-1]}')
     num_points = 0
