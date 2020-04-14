@@ -39,15 +39,6 @@ def get_date_ranges(time_zone, start_datetime, end_datetime=None):
     return start_dates, end_dates
 
 
-def get_latest_timestamp_influxdb(measurement_name, ifclient, default):
-    res = ifclient.query(f"SELECT * from {measurement_name} ORDER BY DESC LIMIT 1")
-    points = list(res.get_points(measurement=measurement_name))
-    assert len(points) < 2
-    if len(points) == 0:
-        return default
-    return pytz.utc.localize(datetime.datetime.fromisoformat(points[0]['time'][:-1]))
-
-
 class LoggerConfig(object):
     VERBOSE = False
 
