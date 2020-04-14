@@ -5,10 +5,10 @@ import argparse
 import sys
 
 import solaredge
-from influxdb import InfluxDBClient
 
 from homemonitoring.response_mappers import SolarEdgeResponseMapper
-from homemonitoring.util import get_latest_timestamp_influxdb, get_date_ranges, LoggerConfig
+from homemonitoring.util import get_date_ranges, LoggerConfig
+from homemonitoring.influxdb import InfluxDBClient
 
 
 def run(args):
@@ -29,7 +29,7 @@ def run(args):
     logger.info(f'{measurement_name}')
     start_dates, end_dates = get_date_ranges(
         meta['location']['timeZone'],
-        get_latest_timestamp_influxdb(measurement_name, ifclient, meta['installationDate']),
+        ifclient.get_latest_timestamp(measurement_name) or meta['installationDate']
     )
     num_points = 0
     for s, e in zip(start_dates, end_dates):
@@ -48,7 +48,7 @@ def run(args):
     logger.info(f'{measurement_name}')
     start_dates, end_dates = get_date_ranges(
         meta['location']['timeZone'],
-        get_latest_timestamp_influxdb(measurement_name, ifclient, meta['installationDate']),
+        ifclient.get_latest_timestamp(measurement_name) or meta['installationDate']
     )
     num_points = 0
     for s, e in zip(start_dates, end_dates):
