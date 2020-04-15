@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/BigCrunsh/home-monitoring.svg?branch=master)](https://travis-ci.com/BigCrunsh/home-monitoring)
+
 # Home Monitoring
 
 The project consolidates different scripts and configuration to collect home
