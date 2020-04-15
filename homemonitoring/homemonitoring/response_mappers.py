@@ -1,20 +1,56 @@
+"""The module contains response mappers that convert API responses to InfluxDB point format."""
+
 from abc import ABC, abstractmethod
 
 import pandas as pd
 
 
 class InfluxDBResponseMapper(ABC):
-    """
-    Maps API Responses to InfluxDB point format
+    """InfluxDBResponseMapper is an interface to map API responses to InfluxDB point format.
+
+    Concrete instantiation must implement a `to_influxdb_point` function that take a json response
+    and a measurement name to create a point structure that can be written to InfluxDB
+
+    Example:
+        ifclient = InfluxDBClient(**credentials)
+        api = SomeApi(api_key)
+        response = api.get_data()
+        points = SomeInfluxDBResponseMapper.to_influxdb_point(response, 'measure1')
+        ifclient.write_points(points)
     """
 
     @staticmethod
     @abstractmethod
     def to_influxdb_point(response_endpoint_json, measurement_name):
+        """Converts json response to InfluxDB point format.
+
+        Converts a API response json to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface. The `measurement_name` is added
+        to the field `measurement` in the struct.
+
+        Args:
+            response_endpoint_json (json): API response to be mapped.
+            measurement_name (str): Name of the measurement added to the result.
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
         pass
 
 
 class SolarEdgeResponseMapper(InfluxDBResponseMapper):
+    """SolarEdgeResponseMapper maps Solaredge responses to InfluxDB point format.
+
+    The SolarEdgeResponseMapper takes the response of the Solaredge API and returns
+    a list of dicts that can be written to InfluxDB.
+
+    Example:
+        ifclient = InfluxDBClient(**credentials)
+        api = Solaredge(api_key)
+        response = api.get_power_details()
+        points = SolarEdgeResponseMapper.to_influxdb_point(response, 'electricity_power_watt')
+        ifclient.write_points(points)
+    """
 
     @staticmethod
     def convert_local_to_utc(series, time_zone):
@@ -44,7 +80,6 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         df.name = measurement_name
         if not df.empty:
             df.index = SolarEdgeResponseMapper.convert_local_to_utc(df.index, time_zone)
-
         return df
 
     @staticmethod
@@ -76,7 +111,6 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
                     "brand": station_map[station_id],
                     "station_id": station_id,
                 }
-
             }
             for station_id, ps in response_json['prices'].items() if ps['status'] == 'open'
         ]
