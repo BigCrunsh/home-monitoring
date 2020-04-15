@@ -66,7 +66,7 @@ class Solaredge(solaredge.Solaredge):
         end_dates = pd.date_range(
             start_datetime, end_datetime, freq='M', normalize=True
         ).to_pydatetime()
-        start_dates = end_dates+datetime.timedelta(days=1)
+        start_dates = end_dates + datetime.timedelta(days=1)
         if start_datetime <= end_datetime:
             end_dates = np.append(end_dates, end_datetime)
             start_dates = np.append(start_datetime, start_dates)
@@ -94,6 +94,20 @@ class Solaredge(solaredge.Solaredge):
         return datetime.astimezone(tz).replace(microsecond=0).replace(tzinfo=None)
 
     def _init_start_date(self, start_time):
+        """Initialize start time.
+
+        Initializes `start_time` for API call. Specifically,
+        - timezone is converted to time zone of system location
+        - time zone info and microseconds are removed (API fails otherwise)
+        - round to next 15 mins (time unit of API is quarter of an hour)
+
+        Args:
+            start_time (datetime.datetime): start datetime;
+                default: installation date (based on solaredge meta data)
+
+        Returns:
+            datetime.datetime: normalized start date
+        """
         meta = self.get_meta()
         s = self._normalize_date(
             start_time or meta['installationDate']
@@ -104,6 +118,19 @@ class Solaredge(solaredge.Solaredge):
         return s
 
     def _init_end_date(self, end_time):
+        """Initialize end time.
+
+        Initializes `end_time` for API call. Specifically,
+        - timezone is converted to time zone of system location
+        - time zone info and microseconds are removed (API fails otherwise)
+
+        Args:
+            end_time (datetime.datetime): end datetime;
+                default: current timestamp
+
+        Returns:
+            datetime.datetime: normalized end date
+        """
         meta = self.get_meta()
         tz = pytz.timezone(meta['location']['timeZone'])
         return self._normalize_date(
