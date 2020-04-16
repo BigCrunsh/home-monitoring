@@ -24,7 +24,7 @@ class InfluxDBResponseMapper(ABC):
     def to_influxdb_point(response_endpoint_json, measurement_name):
         """Converts json response to InfluxDB point format.
 
-        Converts a API response json to a list of dicts that is compatible to with
+        Converts an API response json to a list of dicts that is compatible to with
         the `InfluxDB.write_points` interface. The `measurement_name` is added
         to the field `measurement` in the struct.
 
@@ -76,7 +76,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
     def to_pandas_df(response_json, time_zone=None, measurement_name=None):
         """Converts json response to pandas dataframe.
 
-        Converts a API response json to a pandas dataframe. The index is based on the time
+        Converts an API response json to a pandas dataframe. The index is based on the time
         stamps converted to UTC. The `measurement_name` is added
         as name.
 
@@ -117,7 +117,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
     def to_influxdb_point(response_json, time_zone=None, measurement_name=None):
         """Converts json response to InfluxDB point format.
 
-        Converts a API response json to a list of dicts that is compatible to with
+        Converts an API response json to a list of dicts that is compatible to with
         the `InfluxDB.write_points` interface. Times are mapped to UTC.
         The `measurement_name` is added to the field `measurement` in the struct.
 
@@ -146,10 +146,41 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
 
 
 class TankerKoenigResponseMapper(InfluxDBResponseMapper):
+    """TankerKoenigResponseMapper maps TankerKoenig responses to InfluxDB point format.
+
+    The TankerKoenigResponseMapper takes the response of the TankerKoenig API and returns
+    a list of dicts that can be written to InfluxDB.
+
+    Example:
+        ifclient = InfluxDBClient(**credentials)
+        station_map = {
+            "51d4b477-a095-1aa0-e100-80009459e03a": "Jet",
+        }
+        api = TankerKoenigHandler(api_key)
+        response = api.get_prices()
+        time = datetime.datetime.utcnow()
+        points = TankerKoenigResponseMapper.to_influxdb_point(time, response, station_map)
+        ifclient.write_points(points)
+    """
+
     MEASUREMENT_NAME = 'gas_prices_euro'
 
     @staticmethod
     def to_influxdb_point(time, response_json, station_map):
+        """Converts json response to InfluxDB point format.
+
+        Converts an API response json to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface. The `time` is added to the field `time`
+        in the struct.
+
+        Args:
+            time (datetime): Time added to the result
+            response_endpoint_json (json): API response to be mapped.
+            station_map (dict): mapping from station id to brand name.
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
         return [
             {
                 "measurement": TankerKoenigResponseMapper.MEASUREMENT_NAME,
@@ -165,6 +196,20 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
 
 
 class NetatmoResponseMapper(InfluxDBResponseMapper):
+    """NetatmoResponseMapper maps Netatmo responses to InfluxDB point format.
+
+    The NetatmoResponseMapper takes the response of the Netamo API and returns
+    a list of dicts that can be written to InfluxDB.
+
+    Example:
+        ifclient = InfluxDBClient(**credentials)
+        api = netatmo.WeatherStation(secrets)
+        api.get_data()
+        time = datetime.datetime.utcnow()
+        points = NetatmoResponseMapper.to_influxdb_point(api.devices, time)
+        ifclient.write_points(points)
+    """
+
     # [data_type][measurement][unit]
     measurement_map = {
         'Temperature': {
@@ -196,6 +241,20 @@ class NetatmoResponseMapper(InfluxDBResponseMapper):
 
     @staticmethod
     def to_influxdb_point(response_json, time, measurement_map=measurement_map):
+        """Converts json response to InfluxDB point format.
+
+        Converts an API response json to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface. The `time` is added to the field `time`
+        in the struct.
+
+        Args:
+            time (datetime): Time added to the result
+            response_endpoint_json (json): API response to be mapped.
+            measurement_map (dict): mapping data_type to measurement to unit
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
         module_names = NetatmoResponseMapper._get_module_names(response_json)
         return [
             {
@@ -234,6 +293,16 @@ class NetatmoResponseMapper(InfluxDBResponseMapper):
 
     @staticmethod
     def _get_module_names(response_json):
+        """Extracts module names from API response.
+
+        Extracts module name from json response.
+
+        Args:
+            response_json (json): API response.
+
+        Returns:
+            list[string]: list of module names
+        """
         return [response_json[0]['module_name']] + list(map(
             lambda m: m['module_name'],
             response_json[0]['modules']
@@ -241,6 +310,20 @@ class NetatmoResponseMapper(InfluxDBResponseMapper):
 
     @staticmethod
     def _get_data(response_json, module_name):
+        """Extracts module data from API response.
+
+        Extracts module data from API response of a given module name.
+
+        Args:
+            response_json (json): API response.
+            module_name (string): module name for requested data.
+
+        Raises:
+            AssertionError: if module name not found
+
+        Returns:
+            dict: module data
+        """
         if module_name == response_json[0]['module_name']:
             return response_json[0]
         module = list(filter(
