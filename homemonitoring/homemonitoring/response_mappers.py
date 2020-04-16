@@ -53,13 +53,44 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
     """
 
     @staticmethod
-    def convert_local_to_utc(series, time_zone):
-        s = pd.to_datetime(series).tz_localize(tz=time_zone, ambiguous='NaT')
-        return s.tz_convert(tz=None).tz_localize(None)  # convert time stamp to UTC
-        # check out date frame: 2019-10-27 02:00:00
+    def convert_local_to_utc(arg, time_zone):
+        """Converts argument datetime in UTC.
+
+        The given argument is converted to a tz-aware datetime for the given `time_zone`.
+        The time is than transformed to UTC.
+
+        Args:
+            arg (list): List of strings converted to datetimes.
+            time_zone (string/tzinfo): time zone of the datetime represented by args.
+
+        Note:
+            There is an issues with daylight saving time, e.g., 2019-10-27 02:00:00
+
+        Returns:
+            pandas.Series: Series of datetimes in UTC.
+        """
+        s = pd.to_datetime(arg).tz_localize(tz=time_zone, ambiguous='NaT')
+        return s.tz_convert(tz=None).tz_localize(None)  # convert time
 
     @staticmethod
     def to_pandas_df(response_json, time_zone=None, measurement_name=None):
+        """Converts json response to pandas dataframe.
+
+        Converts a API response json to a pandas dataframe. The index is based on the time
+        stamps converted to UTC. The `measurement_name` is added
+        as name.
+
+        Args:
+            response_endpoint_json (json): API response to be mapped.
+            time_zone (string/tzinfo): time zone of the datetime of response.
+            measurement_name (str): Name of the measurement added to the result.
+
+        Raises:
+            AssertionError: response_json contains more than one element (multiple endpoints)
+
+        Returns:
+            pandas.DataFrame: formated response
+        """
         assert len(response_json) == 1, "results from more than one endpoint"
         endpoint, response_endpoint_json = response_json.popitem()
         measurement_name = measurement_name or endpoint
@@ -84,6 +115,23 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
 
     @staticmethod
     def to_influxdb_point(response_json, time_zone=None, measurement_name=None):
+        """Converts json response to InfluxDB point format.
+
+        Converts a API response json to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface. Times are mapped to UTC.
+        The `measurement_name` is added to the field `measurement` in the struct.
+
+        Args:
+            response_endpoint_json (json): API response to be mapped.
+            time_zone (string/tzinfo): time zone of the datetime of response.
+            measurement_name (str): Name of the measurement added to the result.
+
+        Raises:
+            AssertionError: response_json contains more than one element (multiple endpoints)
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
         assert len(response_json) == 1, "results from more than one endpoint"
         endpoint, response_endpoint_json = response_json.popitem()
         df = SolarEdgeResponseMapper.to_pandas_df({endpoint: response_endpoint_json}, time_zone)
