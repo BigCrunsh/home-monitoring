@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 
+"""Collect weather station data and ingest in Influx DB."""
+
 import os
 import argparse
 import sys
@@ -13,6 +15,7 @@ from homemonitoring.util import LoggerConfig
 
 
 def run(args):
+    """Query Netatmo API to collect weather data and ingest in influx DB."""
     LoggerConfig.set_verbose(args.verbose)
     logger = LoggerConfig.get_logger(__name__)
 
@@ -45,6 +48,7 @@ def run(args):
 
 
 def cfg():
+    """Configuration of argument parser."""
     parser = argparse.ArgumentParser(
         description="Crawl Netatmo API and stores results in InfluxDB",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

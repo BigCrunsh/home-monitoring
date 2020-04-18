@@ -1,5 +1,7 @@
 #! /usr/bin/env python3
 
+"""Collect gas statio prices and ingest in Influx DB."""
+
 import os
 import argparse
 import sys
@@ -16,7 +18,9 @@ DEFAULT_STATION_IDS = {
     "005056ba-7cb6-1ed2-bceb-8e5fec1a0d35": "Star"
 }
 
+
 def run(args):
+    """Query Tanker Koenig API to retrieve gas station prices and ingest in influx DB."""
     LoggerConfig.set_verbose(args.verbose)
     logger = LoggerConfig.get_logger(__name__)
 
@@ -36,6 +40,7 @@ def run(args):
 
 
 def cfg():
+    """Configuration of argument parser."""
     parser = argparse.ArgumentParser(
         description="Crawl TankerKoenig API and stores results in InfluxDB",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
