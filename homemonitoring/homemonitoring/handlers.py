@@ -13,15 +13,11 @@ class TankerKoenigAPI:
     """
 
     DEFAULT_URL = 'https://creativecommons.tankerkoenig.de'
-    DEFAULT_STATION_IDS = {
-        "51d4b477-a095-1aa0-e100-80009459e03a": "Jet",
-        "005056ba-7cb6-1ed2-bceb-8e5fec1a0d35": "Star"
-    }
 
     def __init__(self, api_key):
         self.api_key = api_key
 
-    def get_prices(self, station_ids=DEFAULT_STATION_IDS.keys()):
+    def get_prices(self, station_ids):
         """Returns gas prices for given station station ids.
 
         Queries the Tankerkoenig API to return current gas station prices for given station ids.
