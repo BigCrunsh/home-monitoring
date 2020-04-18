@@ -114,7 +114,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         return df
 
     @staticmethod
-    def to_influxdb_point(response_json, time_zone=None, measurement_name=None):
+    def _to_influxdb_point(response_json, time_zone=None, measurement_name=None):
         """Converts json response to InfluxDB point format.
 
         Converts an API response json to a list of dicts that is compatible to with
@@ -122,7 +122,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         The `measurement_name` is added to the field `measurement` in the struct.
 
         Args:
-            response_endpoint_json (json): API response to be mapped.
+            response_json (json): API response to be mapped.
             time_zone (string/tzinfo): time zone of the datetime of response.
             measurement_name (str): Name of the measurement added to the result.
 
@@ -143,6 +143,35 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
             }
             for t, ms in df.T.to_dict().items() if len(ms) > 0
         ]
+
+    @staticmethod
+    def to_influxdb_point(responses_json, time_zone=None, measurement_name=None):
+        """Converts list of json responses to InfluxDB point format.
+
+        Solaredge in the homemonitoring package returns a list of API responses due to
+        date time range limit. Converts this list of API responses to a list of dicts
+        that is compatible to with the `InfluxDB.write_points` interface. Times are mapped to UTC.
+        The `measurement_name` is added to the field `measurement` in the struct.
+
+        Args:
+            responses_json (list): List of API responses to be mapped.
+            time_zone (string/tzinfo): time zone of the datetime of response.
+            measurement_name (str): Name of the measurement added to the result.
+
+        Raises:
+            AssertionError: response_json (element of responses_json) contains more
+            than one element (multiple endpoints)
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
+        return sum(
+            map(
+                lambda r: SolarEdgeResponseMapper._to_influxdb_point(
+                    r, time_zone, measurement_name
+                ), responses_json
+            ), []
+        )
 
 
 class TankerKoenigResponseMapper(InfluxDBResponseMapper):
