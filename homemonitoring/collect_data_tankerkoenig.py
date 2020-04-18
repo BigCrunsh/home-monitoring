@@ -6,7 +6,7 @@ import sys
 import datetime
 from influxdb import InfluxDBClient
 
-from homemonitoring.handlers import TankerKoenigHandler
+from homemonitoring.tankerkoenig import TankerKoenig
 from homemonitoring.response_mappers import TankerKoenigResponseMapper
 from homemonitoring.util import LoggerConfig
 
@@ -25,7 +25,7 @@ def run(args):
         args.influxdb_user, args.influxdb_pass,
         args.influxdb_db
     )
-    handler = TankerKoenigHandler(api_key=args.api_key)
+    handler = TankerKoenig(api_key=args.api_key)
 
     time = datetime.datetime.utcnow()
     response = handler.get_prices(DEFAULT_STATION_IDS.keys())

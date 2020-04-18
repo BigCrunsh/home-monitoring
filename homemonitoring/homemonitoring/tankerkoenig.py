@@ -3,10 +3,10 @@
 import requests
 
 
-class TankerKoenigAPI:
-    """TankerKoenigAPI returns gas station prices.
+class TankerKoenig:
+    """TankerKoenig returns gas station prices.
 
-    TankerKoenigAPI queries the API to return gas station prices.
+    TankerKoenig queries the API to return gas station prices.
 
     Args:
         site_token(string): api key
