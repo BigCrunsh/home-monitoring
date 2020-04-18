@@ -4,10 +4,9 @@ import os
 import argparse
 import sys
 
-import solaredge
-
+from homemonitoring.solaredge import Solaredge
 from homemonitoring.response_mappers import SolarEdgeResponseMapper
-from homemonitoring.util import get_date_ranges, LoggerConfig
+from homemonitoring.util import LoggerConfig
 from homemonitoring.influxdb import InfluxDBClient
 
 
@@ -21,48 +20,20 @@ def run(args):
         args.influxdb_db
     )
 
-    api = solaredge.Solaredge(args.api_key)
-    meta = api.get_list()['sites']['site'][0]
+    api = Solaredge(args.api_key)
+    meta = api.get_meta()
     logger.info(meta)
 
-    measurement_name = 'electricity_power_watt'
-    logger.info(f'{measurement_name}')
-    start_dates, end_dates = get_date_ranges(
-        meta['location']['timeZone'],
-        ifclient.get_latest_timestamp(measurement_name) or meta['installationDate']
-    )
-    num_points = 0
-    for s, e in zip(start_dates, end_dates):
-        logger.info(f'collect data for {s}-{e}')
-        response = api.get_power_details(
-            site_id=meta['id'], start_time=s, end_time=e
+    for measurement_name in ['electricity_power_watt', 'electricity_energy_watthour']:
+        logger.info(f'{measurement_name}')
+        responses = api.get_power_details(
+            start_time=ifclient.get_latest_timestamp(measurement_name)
         )
         points = SolarEdgeResponseMapper.to_influxdb_point(
-            response, meta['location']['timeZone'], measurement_name
+            responses, meta['location']['timeZone'], measurement_name
         )
+        logger.info(f'data points added: {len(points)}')
         ifclient.write_points(points)
-        num_points += len(points)
-    logger.info(f'data points added: {num_points}')
-
-    measurement_name = 'electricity_energy_watthour'
-    logger.info(f'{measurement_name}')
-    start_dates, end_dates = get_date_ranges(
-        meta['location']['timeZone'],
-        ifclient.get_latest_timestamp(measurement_name) or meta['installationDate']
-    )
-    num_points = 0
-    for s, e in zip(start_dates, end_dates):
-        logger.info(f'collect data for {s}-{e}')
-        response = api.get_energy_details(
-            site_id=meta['id'], start_time=s, end_time=e,
-            time_unit='QUARTER_OF_AN_HOUR'
-        )
-        points = SolarEdgeResponseMapper.to_influxdb_point(
-            response, meta['location']['timeZone'], measurement_name
-        )
-        ifclient.write_points(points)
-        num_points += len(points)
-    logger.info(f'data points added: {num_points}')
 
 
 def cfg():
