@@ -1,3 +1,5 @@
+"""The module contains test functions to test response mappers."""
+
 import datetime
 
 from unittest import TestCase
@@ -6,15 +8,19 @@ from homemonitoring.response_mappers import SolarEdgeResponseMapper
 
 
 class TestSolarEdgeResponseMapper(TestCase):
+    """TestSolarEdgeResponseMapper contains the test cases for the SolarEdgeResponseMapper class."""
 
     def setUp(self):
+        """Sets common params for each test function."""
         self.measurement_name = 'electricity_power_watt'
         self.time_zone = 'Europe/Berlin'
 
     def test_convert_local_to_utc(self):
+        """Checks conversation of local time to utc."""
         pass
 
     def test_to_influxdb_point_empty_response(self):
+        """Checks conversion to influxdb for empty response."""
         response_json = {
             'powerDetails': {
                 'timeUnit': 'QUARTER_OF_AN_HOUR',
@@ -31,6 +37,7 @@ class TestSolarEdgeResponseMapper(TestCase):
         self.assertListEqual(got, [])
 
     def test_to_influxdb_point_normal_response(self):
+        """Checks conversion to influxdb for regular response."""
         response_json = {
             'powerDetails': {
                 'timeUnit': 'QUARTER_OF_AN_HOUR',
