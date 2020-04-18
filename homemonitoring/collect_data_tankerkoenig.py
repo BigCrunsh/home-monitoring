@@ -11,6 +11,11 @@ from homemonitoring.response_mappers import TankerKoenigResponseMapper
 from homemonitoring.util import LoggerConfig
 
 
+DEFAULT_STATION_IDS = {
+    "51d4b477-a095-1aa0-e100-80009459e03a": "Jet",
+    "005056ba-7cb6-1ed2-bceb-8e5fec1a0d35": "Star"
+}
+
 def run(args):
     LoggerConfig.set_verbose(args.verbose)
     logger = LoggerConfig.get_logger(__name__)
@@ -23,7 +28,7 @@ def run(args):
     handler = TankerKoenigHandler(api_key=args.api_key)
 
     time = datetime.datetime.utcnow()
-    response = handler.get_prices()
+    response = handler.get_prices(DEFAULT_STATION_IDS.keys())
     prices = TankerKoenigResponseMapper.to_influxdb_point(time, response, DEFAULT_STATION_IDS)
 
     ifclient.write_points(prices)
