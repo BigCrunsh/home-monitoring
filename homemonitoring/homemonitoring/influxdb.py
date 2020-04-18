@@ -14,7 +14,7 @@ class InfluxDBClient(influxdb.InfluxDBClient):
     """
 
     def get_latest_timestamp(self, measurement_name):
-        """Returns timestamp of a latest measurement.
+        """Returns timestamp of latest measurement.
 
         args:
             measurement_name (string): name of the measurement in InfluxDB
