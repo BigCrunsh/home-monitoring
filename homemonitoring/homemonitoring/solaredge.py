@@ -63,10 +63,12 @@ class Solaredge(solaredge.Solaredge):
         Returns:
             zip: list of start and end dates by months
         """
-        end_dates = pd.date_range(
-            start_datetime, end_datetime, freq='M', normalize=True
-        ).to_pydatetime()
-        start_dates = end_dates + datetime.timedelta(days=1)
+        end_dates = np.array(list(map(
+            lambda d: d.replace(hour=23, minute=59, second=59),
+            pd.date_range(start_datetime, end_datetime, freq='M', normalize=False).to_pydatetime()
+        )))
+
+        start_dates = end_dates + datetime.timedelta(seconds=1)
         if start_datetime <= end_datetime:
             end_dates = np.append(end_dates, end_datetime)
             start_dates = np.append(start_datetime, start_dates)
@@ -109,9 +111,10 @@ class Solaredge(solaredge.Solaredge):
             datetime.datetime: normalized start date
         """
         meta = self.get_meta()
-        s = self._normalize_date(
-            start_time or meta['installationDate']
-        )
+        if start_time is None:
+            s = datetime.datetime.fromisoformat(meta['installationDate'])
+        else:
+            s = self._normalize_date(start_time)
         # round to next 15 mins
         s += datetime.timedelta(minutes=15 - s.minute % 15)
         s -= datetime.timedelta(seconds=s.second)
