@@ -27,11 +27,14 @@ def run(args):
     meta = api.get_meta()
     logger.info(meta)
 
-    for measurement_name in ['electricity_power_watt', 'electricity_energy_watthour']:
+    measurements = [
+        (api.get_power_details, 'electricity_power_watt'),
+        (api.get_energy_details, 'electricity_energy_watthour'),
+    ]
+
+    for get, measurement_name in measurements:
         logger.info(f'{measurement_name}')
-        responses = api.get_power_details(
-            start_time=ifclient.get_latest_timestamp(measurement_name)
-        )
+        responses = get(start_time=ifclient.get_latest_timestamp(measurement_name))
         points = SolarEdgeResponseMapper.to_influxdb_point(
             responses, meta['location']['timeZone'], measurement_name
         )
