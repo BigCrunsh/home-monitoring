@@ -2,7 +2,6 @@
 
 import datetime
 import pandas as pd
-import numpy as np
 
 from unittest import TestCase
 
@@ -50,18 +49,19 @@ class TestSolarEdgeResponseMapper(TestCase):
         pd.testing.assert_index_equal(got, expected)
 
     def test_to_pandas_df(self):
-        """Checks conversion to pandas."""
+        """Checks conversion to pandas dataframe."""
         response_json = {
             'powerDetails': {
                 'timeUnit': 'QUARTER_OF_AN_HOUR',
                 'unit': 'W',
                 'meters': [
                     {'type': 'Consumption', 'values': [
-                        {'date': '2020-04-14 09:45:00', 'value': 296.30615},
-                        {'date': '2020-04-14 10:00:00', 'value': 100.0}
+                        {'date': '2020-04-14 09:45:00', 'value': 1.0},
+                        {'date': '2020-04-14 10:00:00', 'value': 2.0}
                     ]},
                     {'type': 'Purchased', 'values': [
-                        {'date': '2020-04-14 09:45:00', 'value': 0.0}
+                        {'date': '2020-04-14 09:45:00', 'value': 3.0},
+                        {'date': '2020-04-14 10:00:00', 'value': 4.0}
                     ]}
                 ]
             }
@@ -71,27 +71,27 @@ class TestSolarEdgeResponseMapper(TestCase):
         )
         expected = pd.DataFrame({
             'Consumption': {
-                datetime.datetime(2020, 4, 14, 7, 45): 296.30615,
-                datetime.datetime(2020, 4, 14, 8, 0): 100.0
+                datetime.datetime(2020, 4, 14, 7, 45): 1.0,
+                datetime.datetime(2020, 4, 14, 8, 0): 2.0
             },
             'Purchased': {
-                datetime.datetime(2020, 4, 14, 7, 45): 0.0,
-                datetime.datetime(2020, 4, 14, 8, 0): np.nan
+                datetime.datetime(2020, 4, 14, 7, 45): 3.0,
+                datetime.datetime(2020, 4, 14, 8, 0): 4.0
             }
         })
         expected.index.name = 'date'
         pd.testing.assert_frame_equal(got, expected)
 
     def test_to_pandas_df_dst(self):
-        """Checks conversion to pandas in case of daylight saving time."""
+        """Checks conversion to pandas dataframe in case of daylight saving time."""
         response_json = {
             'powerDetails': {
                 'timeUnit': 'QUARTER_OF_AN_HOUR',
                 'unit': 'W',
                 'meters': [
                     {'type': 'Consumption', 'values': [
-                        {'date': '2020-03-29 01:45:00', 'value': 296.30615},
-                        {'date': '2020-03-29 02:00:00', 'value': 100.0}
+                        {'date': '2020-03-29 01:45:00', 'value': 1.0},
+                        {'date': '2020-03-29 02:00:00', 'value': 2.0}
                     ]}
                 ]
             }
@@ -101,7 +101,46 @@ class TestSolarEdgeResponseMapper(TestCase):
         )
         expected = pd.DataFrame({
             'Consumption': {
-                datetime.datetime(2020, 3, 29, 0, 45): 296.30615
+                datetime.datetime(2020, 3, 29, 0, 45): 1.0
+            }
+        })
+        expected.index.name = 'date'
+        print(got)
+        pd.testing.assert_frame_equal(got, expected)
+
+    def test_to_pandas_df_missing_values_in_between(self):
+        """Checks conversion to pandas dataframe for response with missing values in between.
+
+        If data is missing in between for any field in the metrics the remaining values
+        have to be filtered out.
+        """
+        response_json = {
+            'powerDetails': {
+                'timeUnit': 'QUARTER_OF_AN_HOUR',
+                'unit': 'W',
+                'meters': [
+                    {'type': 'Production', 'values': [
+                        {'date': '2020-03-30 19:45:00', 'value': 1.0},
+                        {'date': '2020-03-30 20:00:00'},
+                        {'date': '2020-03-30 20:15:00', 'value': 2.0},
+                    ]},
+                    {'type': 'FeedIn', 'values': [
+                        {'date': '2020-03-30 19:45:00', 'value': 3.0},
+                        {'date': '2020-03-30 20:00:00', 'value': 4.0},
+                        {'date': '2020-03-30 20:15:00', 'value': 5.0},
+                    ]},
+                ]
+            }
+        }
+        got = SolarEdgeResponseMapper._to_pandas_df(
+            response_json, time_zone=self.time_zone, measurement_name=self.measurement_name
+        )
+        expected = pd.DataFrame({
+            'Production': {
+                datetime.datetime(2020, 3, 30, 17, 45): 1.0
+            },
+            'FeedIn': {
+                datetime.datetime(2020, 3, 30, 17, 45): 3.0
             }
         })
         expected.index.name = 'date'
@@ -132,12 +171,12 @@ class TestSolarEdgeResponseMapper(TestCase):
                 'unit': 'W',
                 'meters': [
                     {'type': 'Consumption', 'values': [
-                        {'date': '2020-04-14 09:30:00', 'value': 316.1671},
-                        {'date': '2020-04-14 09:45:00', 'value': 296.30615}
+                        {'date': '2020-04-14 09:30:00', 'value': 1.0},
+                        {'date': '2020-04-14 09:45:00', 'value': 2.0}
                     ]},
                     {'type': 'Purchased', 'values': [
-                        {'date': '2020-04-14 09:30:00', 'value': 0.0},
-                        {'date': '2020-04-14 09:45:00', 'value': 0.0}
+                        {'date': '2020-04-14 09:30:00', 'value': 3.0},
+                        {'date': '2020-04-14 09:45:00', 'value': 4.0}
                     ]}
                 ]
             }
@@ -149,12 +188,12 @@ class TestSolarEdgeResponseMapper(TestCase):
             {
                 'measurement': self.measurement_name,
                 'time': datetime.datetime(2020, 4, 14, 7, 30),
-                'fields': {'Consumption': 316.1671, 'Purchased': 0.0},
+                'fields': {'Consumption': 1.0, 'Purchased': 3.0},
             },
             {
                 'measurement': self.measurement_name,
                 'time': datetime.datetime(2020, 4, 14, 7, 45),
-                'fields': {'Consumption': 296.30615, 'Purchased': 0.0},
+                'fields': {'Consumption': 2.0, 'Purchased': 4.0},
             }
         ]
         self.assertListEqual(got, expected)
@@ -167,12 +206,12 @@ class TestSolarEdgeResponseMapper(TestCase):
                 'unit': 'W',
                 'meters': [
                     {'type': 'Production', 'values': [
-                        {'date': '2020-03-30 19:45:00', 'value': 0.0},
+                        {'date': '2020-03-30 19:45:00', 'value': 1.0},
                         {'date': '2020-03-30 20:00:00'},
                     ]},
                     {'type': 'FeedIn', 'values': [
-                        {'date': '2020-03-30 19:45:00', 'value': 0.0},
-                        {'date': '2020-03-30 20:00:00', 'value': 0.0},
+                        {'date': '2020-03-30 19:45:00', 'value': 3.0},
+                        {'date': '2020-03-30 20:00:00', 'value': 4.0},
                     ]},
                 ]
             }
@@ -184,12 +223,43 @@ class TestSolarEdgeResponseMapper(TestCase):
             {
                 'measurement': self.measurement_name,
                 'time': datetime.datetime(2020, 3, 30, 17, 45),
-                'fields': {'Production': 0.0, 'FeedIn': 0.0}
-            },
+                'fields': {'Production': 1.0, 'FeedIn': 3.0}
+            }
+        ]
+        self.assertListEqual(got, expected)
+
+    def test_to_influxdb_point_missing_values_in_between(self):
+        """Checks conversion to influxdb for response with missing values in between.
+
+        If data is missing in between for any field in the metrics the remaining values
+        have to be filtered out.
+        """
+        response_json = {
+            'powerDetails': {
+                'timeUnit': 'QUARTER_OF_AN_HOUR',
+                'unit': 'W',
+                'meters': [
+                    {'type': 'Production', 'values': [
+                        {'date': '2020-03-30 19:45:00', 'value': 1.0},
+                        {'date': '2020-03-30 20:00:00'},
+                        {'date': '2020-03-30 20:15:00', 'value': 2.0},
+                    ]},
+                    {'type': 'FeedIn', 'values': [
+                        {'date': '2020-03-30 19:45:00', 'value': 3.0},
+                        {'date': '2020-03-30 20:00:00', 'value': 4.0},
+                        {'date': '2020-03-30 20:15:00', 'value': 5.0},
+                    ]},
+                ]
+            }
+        }
+        got = SolarEdgeResponseMapper._to_influxdb_point(
+            response_json, time_zone=self.time_zone, measurement_name=self.measurement_name
+        )
+        expected = [
             {
                 'measurement': self.measurement_name,
-                'time': datetime.datetime(2020, 3, 30, 18, 0),
-                'fields': {'Production': 0.0, 'FeedIn': 0.0}
+                'time': datetime.datetime(2020, 3, 30, 17, 45),
+                'fields': {'Production': 1.0, 'FeedIn': 3.0}
             }
         ]
         self.assertListEqual(got, expected)
@@ -203,10 +273,10 @@ class TestSolarEdgeResponseMapper(TestCase):
                     'unit': 'W',
                     'meters': [
                         {'type': 'Consumption', 'values': [
-                            {'date': '2020-04-14 09:30:00', 'value': 316.1671},
+                            {'date': '2020-04-14 09:30:00', 'value': 1.0},
                         ]},
                         {'type': 'Purchased', 'values': [
-                            {'date': '2020-04-14 09:30:00', 'value': 0.0},
+                            {'date': '2020-04-14 09:30:00', 'value': 2.0},
                         ]}
                     ]
                 }
@@ -217,10 +287,10 @@ class TestSolarEdgeResponseMapper(TestCase):
                     'unit': 'W',
                     'meters': [
                         {'type': 'Consumption', 'values': [
-                            {'date': '2020-04-14 09:45:00', 'value': 296.30615}
+                            {'date': '2020-04-14 09:45:00', 'value': 3.0}
                         ]},
                         {'type': 'Purchased', 'values': [
-                            {'date': '2020-04-14 09:45:00', 'value': 0.0}
+                            {'date': '2020-04-14 09:45:00', 'value': 4.0}
                         ]}
                     ]
                 }
@@ -233,12 +303,12 @@ class TestSolarEdgeResponseMapper(TestCase):
             {
                 'measurement': self.measurement_name,
                 'time': datetime.datetime(2020, 4, 14, 7, 30),
-                'fields': {'Consumption': 316.1671, 'Purchased': 0.0},
+                'fields': {'Consumption': 1.0, 'Purchased': 2.0},
             },
             {
                 'measurement': self.measurement_name,
                 'time': datetime.datetime(2020, 4, 14, 7, 45),
-                'fields': {'Consumption': 296.30615, 'Purchased': 0.0},
+                'fields': {'Consumption': 3.0, 'Purchased': 4.0},
             }
         ]
         self.assertListEqual(got, expected)
