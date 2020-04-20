@@ -69,7 +69,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         Returns:
             pandas.Series: Series of datetimes in UTC.
         """
-        s = pd.to_datetime(arg).tz_localize(tz=time_zone, ambiguous='NaT')
+        s = pd.to_datetime(arg).tz_localize(tz=time_zone, ambiguous='NaT', nonexistent='NaT')
         return s.tz_convert(tz=None).tz_localize(None)  # convert time
 
     @staticmethod
