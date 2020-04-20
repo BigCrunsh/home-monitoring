@@ -91,14 +91,9 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         Returns:
             pandas.DataFrame: formated response
         """
-        assert len(response_json) == 1, "results from more than one endpoint"
-        endpoint, response_endpoint_json = response_json.popitem()
+        assert len(response_json) < 2, "results from more than one endpoint"
+        endpoint, response_endpoint_json = response_json.copy().popitem()
         measurement_name = measurement_name or endpoint
-
-        if len(response_endpoint_json) == 0:
-            df = pd.DataFrame()
-            df.name = measurement_name
-            return df
 
         df = pd.concat([
             pd.DataFrame
@@ -112,20 +107,9 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         if not df.empty:
             df.index = SolarEdgeResponseMapper.convert_local_to_utc(df.index, time_zone)
 
-        # filter all null index
-        df = df[df.index.notnull()]
-
-        # filter all records after any date with missing measurement
-        has_missing_records = df.isnull().any(axis=1)
-        if has_missing_records.any():
-            first_date_missing = df[has_missing_records].index.min()
-            print(df)
-            print(has_missing_records)
-            print('---')
-            print(first_date_missing)
-            print('---')
-            df = df[df.index < first_date_missing]
-        return df
+        df = df[df.index.notnull()]  # filter all null index (dst)
+        df = df[~df.isnull().all(axis=1)]  # filter out all missing measurements
+        return df.fillna(0.0)
 
     @staticmethod
     def _to_influxdb_point(response_json, time_zone=None, measurement_name=None):
@@ -146,9 +130,9 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         Returns:
             list[dict]: Responses mapped to InfluxDB point format.
         """
-        assert len(response_json) == 1, "results from more than one endpoint"
-        endpoint, response_endpoint_json = response_json.popitem()
-        df = SolarEdgeResponseMapper._to_pandas_df({endpoint: response_endpoint_json}, time_zone)
+        assert len(response_json) < 2, "results from more than one endpoint"
+        endpoint, response_endpoint_json = response_json.copy().popitem()
+        df = SolarEdgeResponseMapper._to_pandas_df(response_json, time_zone)
         return [
             {
                 "measurement": measurement_name or endpoint,
