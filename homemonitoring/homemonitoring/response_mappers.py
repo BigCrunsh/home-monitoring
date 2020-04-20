@@ -104,7 +104,6 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
             pd.DataFrame
             .from_dict(response_endpoint_json['meters'][i]['values'])
             .set_index('date')
-            .fillna(0.0)  # TODO: remove that
             .rename({"value": response_endpoint_json['meters'][i]['type']}, axis=1)
             for i in range(len(response_endpoint_json['meters']))
         ], axis=1, sort=True)
@@ -112,7 +111,21 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         df.name = measurement_name
         if not df.empty:
             df.index = SolarEdgeResponseMapper.convert_local_to_utc(df.index, time_zone)
-        return df[df.index.notnull()]
+
+        # filter all null index
+        df = df[df.index.notnull()]
+
+        # filter all records after any date with missing measurement
+        has_missing_records = df.isnull().any(axis=1)
+        if has_missing_records.any():
+            first_date_missing = df[has_missing_records].index.min()
+            print(df)
+            print(has_missing_records)
+            print('---')
+            print(first_date_missing)
+            print('---')
+            df = df[df.index < first_date_missing]
+        return df
 
     @staticmethod
     def _to_influxdb_point(response_json, time_zone=None, measurement_name=None):
