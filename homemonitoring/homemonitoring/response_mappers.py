@@ -73,7 +73,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         return s.tz_convert(tz=None).tz_localize(None)  # convert time
 
     @staticmethod
-    def to_pandas_df(response_json, time_zone=None, measurement_name=None):
+    def _to_pandas_df(response_json, time_zone=None, measurement_name=None):
         """Converts json response to pandas dataframe.
 
         Converts an API response json to a pandas dataframe. The index is based on the time
@@ -104,14 +104,15 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
             pd.DataFrame
             .from_dict(response_endpoint_json['meters'][i]['values'])
             .set_index('date')
-            .fillna(0.0)
+            .fillna(0.0)  # TODO: remove that
             .rename({"value": response_endpoint_json['meters'][i]['type']}, axis=1)
             for i in range(len(response_endpoint_json['meters']))
-        ], axis=1)
+        ], axis=1, sort=True)
+        df.index.name = 'date'  # https://github.com/pandas-dev/pandas/issues/21629
         df.name = measurement_name
         if not df.empty:
             df.index = SolarEdgeResponseMapper.convert_local_to_utc(df.index, time_zone)
-        return df
+        return df[df.index.notnull()]
 
     @staticmethod
     def _to_influxdb_point(response_json, time_zone=None, measurement_name=None):
@@ -134,7 +135,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         """
         assert len(response_json) == 1, "results from more than one endpoint"
         endpoint, response_endpoint_json = response_json.popitem()
-        df = SolarEdgeResponseMapper.to_pandas_df({endpoint: response_endpoint_json}, time_zone)
+        df = SolarEdgeResponseMapper._to_pandas_df({endpoint: response_endpoint_json}, time_zone)
         return [
             {
                 "measurement": measurement_name or endpoint,
