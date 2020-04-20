@@ -19,12 +19,34 @@ class TestSolarEdgeResponseMapper(TestCase):
     def test_convert_local_to_utc(self):
         """Checks conversation of local time to utc."""
         time_zone = 'Europe/Berlin'
-        series = pd.to_datetime([
-            '2020-03-01 01:45:00', '2020-03-01 02:00:00',
-            '2020-03-01 02:15:00', '2020-03-01 02:30:00', '2020-03-01 02:45:00',
-            '2020-03-01 03:00:00', '2020-03-01 03:15:00'
+        series = [
+            '2020-03-01 01:45:00', '2020-03-01 02:00:00', '2020-03-01 02:15:00',
+            '2020-03-01 02:30:00', '2020-03-01 02:45:00', '2020-03-01 03:00:00',
+            '2020-03-01 03:15:00'
+        ]
+        expected = pd.DatetimeIndex([
+            '2020-03-01 00:45:00', '2020-03-01 01:00:00', '2020-03-01 01:15:00',
+            '2020-03-01 01:30:00', '2020-03-01 01:45:00', '2020-03-01 02:00:00',
+            '2020-03-01 02:15:00'
         ])
-        SolarEdgeResponseMapper.convert_local_to_utc(series, time_zone)
+        got = SolarEdgeResponseMapper.convert_local_to_utc(series, time_zone)
+        pd.testing.assert_index_equal(got, expected)
+
+    def test_convert_local_to_utc_dst(self):
+        """Checks conversation of local time to utc with daylight saving time."""
+        time_zone = 'Europe/Berlin'
+        series = [
+            '2020-03-29 01:45:00', '2020-03-29 02:00:00', '2020-03-29 02:15:00',
+            '2020-03-29 02:30:00', '2020-03-29 02:45:00', '2020-03-29 03:00:00',
+            '2020-03-29 03:15:00'
+        ]
+        expected = pd.DatetimeIndex([
+            '2020-03-29 00:45:00', pd.NaT, pd.NaT,
+            pd.NaT, pd.NaT, '2020-03-29 01:00:00',
+            '2020-03-29 01:15:00'
+        ])
+        got = SolarEdgeResponseMapper.convert_local_to_utc(series, time_zone)
+        pd.testing.assert_index_equal(got, expected)
 
     def test_to_influxdb_point_empty_response(self):
         """Checks conversion to influxdb for empty response."""
