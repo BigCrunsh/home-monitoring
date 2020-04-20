@@ -91,7 +91,8 @@ class TestSolarEdgeResponseMapper(TestCase):
                 'meters': [
                     {'type': 'Consumption', 'values': [
                         {'date': '2020-03-29 01:45:00', 'value': 1.0},
-                        {'date': '2020-03-29 02:00:00', 'value': 2.0}
+                        {'date': '2020-03-29 02:00:00', 'value': 2.0},
+                        {'date': '2020-03-29 04:00:00', 'value': 3.0}
                     ]}
                 ]
             }
@@ -101,11 +102,11 @@ class TestSolarEdgeResponseMapper(TestCase):
         )
         expected = pd.DataFrame({
             'Consumption': {
-                datetime.datetime(2020, 3, 29, 0, 45): 1.0
+                datetime.datetime(2020, 3, 29, 0, 45): 1.0,
+                datetime.datetime(2020, 3, 29, 2, 0): 3.0,
             }
         })
         expected.index.name = 'date'
-        print(got)
         pd.testing.assert_frame_equal(got, expected)
 
     def test_to_pandas_df_missing_values_in_between(self):
