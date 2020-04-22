@@ -48,6 +48,30 @@ class Solaredge(solaredge.Solaredge):
         """
         return self.get_meta()['id']
 
+    def get_installation_date(self):
+        """Returns the installation date of the photovoltaic system.
+
+        Queries list end point of API. The call is cached it will return
+        the same result when called twice.
+
+        Returns:
+            datetime.datetime: installation date (localized)
+        """
+        return self.get_tz().localize(
+            datetime.datetime.fromisoformat(self.get_meta()['installationDate'])
+        )
+
+    def get_tz(self):
+        """Returns time zone.
+
+        Queries list end point of API. The call is cached it will return
+        the same result when called twice.
+
+        Returns:
+            pytz.timezone: system time zone
+        """
+        return pytz.timezone(self.get_meta()['location']['timeZone'])
+
     @staticmethod
     def _get_date_ranges(start_datetime, end_datetime):
         """Split date range by months.
@@ -57,8 +81,8 @@ class Solaredge(solaredge.Solaredge):
         chunks by months.
 
         Args:
-            start_datetime (datetime.datetime): start datetime of range
-            end_datetime (datetime.datetime): end datetime of range
+            start_datetime (datetime.datetime): localized start datetime of range
+            end_datetime (datetime.datetime): localized end datetime of range
 
         Returns:
             zip: list of start and end dates by months
@@ -90,61 +114,30 @@ class Solaredge(solaredge.Solaredge):
         Returns:
             datetime.datetime: datetime normalized for solaredge API call
         """
-        assert datetime.tzinfo is not None
-        meta = self.get_meta()
-        tz = pytz.timezone(meta['location']['timeZone'])
-        return datetime.astimezone(tz).replace(microsecond=0).replace(tzinfo=None)
-
-    def _init_start_date(self, start_time):
-        """Initialize start time.
-
-        Initializes `start_time` for API call. Specifically,
-        - timezone is converted to time zone of system location
-        - time zone info and microseconds are removed (API fails otherwise)
-        - round to next 15 mins (time unit of API is quarter of an hour)
-
-        Args:
-            start_time (datetime.datetime): start datetime;
-                default: installation date (based on solaredge meta data)
-
-        Returns:
-            datetime.datetime: normalized start date
-        """
-        meta = self.get_meta()
-        if start_time is None:
-            s = datetime.datetime.fromisoformat(meta['installationDate'])
-        else:
-            s = self._normalize_date(start_time)
-        # round to next 15 mins
-        s += datetime.timedelta(minutes=15 - s.minute % 15)
-        s -= datetime.timedelta(seconds=s.second)
-        return s
-
-    def _init_end_date(self, end_time):
-        """Initialize end time.
-
-        Initializes `end_time` for API call. Specifically,
-        - timezone is converted to time zone of system location
-        - time zone info and microseconds are removed (API fails otherwise)
-
-        Args:
-            end_time (datetime.datetime): end datetime;
-                default: current timestamp
-
-        Returns:
-            datetime.datetime: normalized end date
-        """
-        meta = self.get_meta()
-        tz = pytz.timezone(meta['location']['timeZone'])
-        return self._normalize_date(
-            end_time or datetime.datetime.now(tz)
-        )
+        assert datetime.tzinfo is not None, "dates are expected to be localized"
+        return datetime.astimezone(self.get_tz()).replace(microsecond=0).replace(tzinfo=None)
 
     def get_power_details(self, start_time=None, end_time=None):
         """Returns power details.
 
         Calls `powerDetails` endpoint of SolarEdge API. The parameters are not
-        limited to one-month period.
+        limited to one-month period. The first data point returned is the `start_time`
+        rounded down to the full quarter of an hour. The last data point returned is the
+        `end_time` of the last (not equal) full quarter of an hour. The last available data point
+        might change until the next quarter of the hour.
+
+        Example:
+            self.get_power_details(
+                start_time=datetime.datetime(2020, 4, 21, 20, 55),
+                end_time=datetime.datetime(2020, 4, 21, 21, 0)
+            )
+            # returns data for '2020-04-21 20:45:00'
+
+            self.get_power_details(
+                start_time=datetime.datetime(2020, 4, 21, 20, 55),
+                end_time=datetime.datetime(2020, 4, 21, 21, 1)
+            )
+            # returns data for '2020-04-21 20:45:00' and '2020-04-21 21:00:00'
 
         Args:
             start_time (datetime.datetime): start datetime of range;
@@ -155,21 +148,40 @@ class Solaredge(solaredge.Solaredge):
         Returns:
             dict: response
         """
+        start_time = self._normalize_date(
+            start_time or self.get_installation_date()
+        )
+        end_time = self._normalize_date(
+            end_time or datetime.datetime.now(self.get_tz())
+        )
         return [
             super(Solaredge, self).get_power_details(
                 site_id=self.get_site_id(), start_time=s, end_time=e
             )
-            for s, e in self._get_date_ranges(
-                self._init_start_date(start_time),
-                self._init_end_date(end_time)
-            )
+            for s, e in self._get_date_ranges(start_time, end_time)
         ]
 
     def get_energy_details(self, start_time=None, end_time=None):
         """Returns energy details.
 
         Calls `energyDetails` endpoint of SolarEdge API. The parameters are not
-        limited to one-month period.
+        limited to one-month period. The first data point returned is the `start_time`
+        rounded down to the full quarter of an hour. The last data point returned is the
+        `end_time` of the last (not equal) full quarter of an hour. The last available data point
+        might change until the next quarter of the hour.
+
+        Example:
+            self.get_power_details(
+                start_time=datetime.datetime(2020, 4, 21, 20, 55),
+                end_time=datetime.datetime(2020, 4, 21, 21, 0)
+            )
+            # returns data for '2020-04-21 20:45:00'
+
+            self.get_power_details(
+                start_time=datetime.datetime(2020, 4, 21, 20, 55),
+                end_time=datetime.datetime(2020, 4, 21, 21, 1)
+            )
+            # returns data for '2020-04-21 20:45:00' and '2020-04-21 21:00:00'
 
         Args:
             start_time (datetime.datetime): start datetime of range;
@@ -180,12 +192,15 @@ class Solaredge(solaredge.Solaredge):
         Returns:
             dict: response
         """
+        start_time = self._normalize_date(
+            start_time or self.get_installation_date()
+        )
+        end_time = self._normalize_date(
+            end_time or datetime.datetime.now(self.get_tz())
+        )
         return [
             super(Solaredge, self).get_energy_details(
                 site_id=self.get_site_id(), start_time=s, end_time=e, time_unit='QUARTER_OF_AN_HOUR'
             )
-            for s, e in self._get_date_ranges(
-                self._init_start_date(start_time),
-                self._init_end_date(end_time)
-            )
+            for s, e in self._get_date_ranges(start_time, end_time)
         ]

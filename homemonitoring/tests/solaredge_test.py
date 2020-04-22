@@ -1,6 +1,7 @@
 """The module contains test functions to test Solaredge API wrapper."""
 
 from unittest import TestCase
+from unittest.mock import MagicMock, patch
 
 import datetime
 import pytz
@@ -14,13 +15,27 @@ class TestSolaredge(TestCase):
     def setUp(self):
         """Sets common params for each test function."""
         self.time_zone = 'Europe/Berlin'
+        self.site_id = 123
+        self.installation_date = datetime.datetime(2019, 9, 6)
+        self.meta = {
+            'sites': {
+                'count': 1,
+                'site': [{
+                    'id': self.site_id,
+                    'installationDate': self.installation_date.strftime('%Y-%m-%d'),
+                    'location': {
+                        'country': 'Germany',
+                        'timeZone': self.time_zone
+                    }
+                }]
+            }
+        }
         self.tz = pytz.timezone(self.time_zone)
         self.start_datetime = self.tz.localize(datetime.datetime(2020, 4, 11, 11, 58, 10))
+        self.api = Solaredge('api-key')
+        self.api.get_list = MagicMock(return_value=self.meta)
 
-    def test_init_start_date(self):
-        """Checks iniatialization of start date."""
-        # TODO: Check that installation date is properly parsed.
-        pass
+    # _get_date_ranges
 
     def test_get_date_ranges_start_after_end(self):
         """Checks date range if start and end in same quarter of hour."""
@@ -52,3 +67,70 @@ class TestSolaredge(TestCase):
             (self.start_datetime, self.tz.localize(datetime.datetime(2020, 4, 30, 23, 59, 59))),
             (self.tz.localize(datetime.datetime(2020, 5, 1)), end_datetime)
         ])
+
+    # get meta data
+
+    def test_get_meta(self):
+        """Checks retrieval of meta data."""
+        got = self.api.get_meta()
+        self.assertDictEqual(got, self.meta['sites']['site'][0])
+
+    def test_get_meta_cached(self):
+        """Checks retrieval of cached meta data."""
+        value = 1
+        self.api.meta = value
+        got = self.api.get_meta()
+        self.assertEqual(got, value)
+
+    def test_get_site_id(self):
+        """Checks retrieval of meta data (site id)."""
+        got = self.api.get_site_id()
+        self.assertEqual(got, self.site_id)
+
+    def test_get_installation_date(self):
+        """Checks retrieval of meta data (installation date)."""
+        got = self.api.get_installation_date()
+        expected = self.tz.localize(self.installation_date)
+        self.assertEqual(got, expected)
+
+    def test_get_tz(self):
+        """Checks retrieval of meta data (time zone)."""
+        got = self.api.get_tz()
+        self.assertEqual(got, self.tz)
+
+    # _normalize_date
+
+    def test_normalize_date(self):
+        """Checks date normalization function."""
+        date = pytz.utc.localize(datetime.datetime(2020, 4, 11, 11, 58, 10, 1))
+        got = self.api._normalize_date(date)
+        expected = datetime.datetime(2020, 4, 11, 13, 58, 10)
+        self.assertEqual(got, expected)
+
+    def test_normalize_date_not_localized_input(self):
+        """Checks date normalization function with non localized input."""
+        with self.assertRaises(AssertionError):
+            self.api._normalize_date(self.installation_date)
+
+    # api calls
+
+    @patch("solaredge.Solaredge.get_power_details")
+    def test_get_power_details(self, mock):
+        """Checks get power details call."""
+        self.api.get_power_details(self.start_datetime, self.start_datetime)
+        mock.assert_called_once_with(
+            site_id=self.site_id,
+            start_time=datetime.datetime(2020, 4, 11, 11, 58, 10),
+            end_time=datetime.datetime(2020, 4, 11, 11, 58, 10),
+        )
+
+    @patch("solaredge.Solaredge.get_energy_details")
+    def test_get_energy_details(self, mock):
+        """Checks get energy details call."""
+        self.api.get_energy_details(self.start_datetime, self.start_datetime)
+        mock.assert_called_once_with(
+            site_id=self.site_id,
+            start_time=datetime.datetime(2020, 4, 11, 11, 58, 10),
+            end_time=datetime.datetime(2020, 4, 11, 11, 58, 10),
+            time_unit='QUARTER_OF_AN_HOUR'
+        )
