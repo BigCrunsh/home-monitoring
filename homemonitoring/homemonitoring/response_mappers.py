@@ -361,3 +361,132 @@ class NetatmoResponseMapper(InfluxDBResponseMapper):
             len(module), module_name
         )
         return module[0]
+
+
+class GardenaResponseMapper(InfluxDBResponseMapper):
+    """GardenaResponseMapper maps Gardena device attributes to InfluxDB point format.
+
+    The GardenaResponseMapper takes a device object and returns
+    a list of dicts that can be written to InfluxDB.
+
+    Example:
+        ifclient = InfluxDBClient(**credentials)
+        ...
+        time = datetime.datetime.utcnow()
+        points = NetatmoResponseMapper.to_influxdb_point(api.devices, time)
+        ifclient.write_points(points)
+    """
+
+    @staticmethod
+    def control_data_to_influxdb_point(control, time):
+        """Reads irrigation control data and formates to InfluxDB point format.
+
+        Parses device attributes to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface. The `time` is added to the field `time`
+        in the struct.
+
+        Args:
+            device (gardena.base_device.BaseDevice): device object holding state
+            time (datetime): Time added to the result
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
+        return [
+            {
+                "measurement": 'garden_valves_activity',
+                "time": time,
+                "fields": {
+                    'state': v['activity']
+                },
+                "tags": {
+                    "name": control.name,
+                    "id": control.id,
+                    "type": control.type,
+                    "valve_name": v['name'],
+                    "valve_id": v['id'],
+                }
+            }
+            for v in control.valves.values()
+        ]
+
+    @staticmethod
+    def sensor_data_to_influxdb_point(sensor, time):
+        """Reads sensor data and formates to InfluxDB point format.
+
+        Parses device attributes to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface. The `time` is added to the field `time`
+        in the struct.
+
+        Args:
+            device (gardena.base_device.BaseDevice): device object holding state
+            time (datetime): Time added to the result
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
+        return [
+            {
+                "measurement": 'garden_system_battery_percentage',
+                "time": time,
+                "fields": {
+                    'battery': sensor.battery_level
+                },
+                "tags": {
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            },
+            {
+                "measurement": 'garden_temperature_celsius',
+                "time": time,
+                "fields": {
+                    'temperature': sensor.soil_temperature
+                },
+                "tags": {
+                    "environment": 'soil',
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            },
+            {
+                "measurement": 'garden_temperature_celsius',
+                "time": time,
+                "fields": {
+                    'temperature': sensor.ambient_temperature
+                },
+                "tags": {
+                    "environment": 'ambient',
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            },
+            {
+                "measurement": 'garden_humidity_percentage',
+                "time": time,
+                "fields": {
+                    'humidity': sensor.soil_humidity
+                },
+                "tags": {
+                    "environment": 'soil',
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            },
+            {
+                "measurement": 'garden_light_intensity_lux',
+                "time": time,
+                "fields": {
+                    'light_intensity': sensor.light_intensity
+                },
+                "tags": {
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            },
+        ]
