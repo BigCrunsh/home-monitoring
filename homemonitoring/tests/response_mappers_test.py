@@ -5,7 +5,13 @@ import pandas as pd
 
 from unittest import TestCase
 
+from gardena.smart_system import SmartSystem
+from gardena.devices.sensor import Sensor
+from gardena.devices.smart_irrigation_control import SmartIrrigationControl
+
 from homemonitoring.response_mappers import SolarEdgeResponseMapper
+from homemonitoring.response_mappers import GardenaResponseMapper
+from .fixtures import sensor_fixture, smart_irrigation_fixture
 
 
 class TestSolarEdgeResponseMapper(TestCase):
@@ -369,6 +375,86 @@ class TestSolarEdgeResponseMapper(TestCase):
                 'measurement': self.measurement_name,
                 'time': datetime.datetime(2020, 4, 14, 7, 45),
                 'fields': {'Consumption': 3.0, 'Purchased': 4.0},
+            }
+        ]
+        self.assertListEqual(got, expected)
+
+
+class TestGardenaResponseMapper(TestCase):
+    """TestGardenaResponseMapper contains the test cases for the GardenaResponseMapper class."""
+
+    def setUp(self):
+        """Prepare test fixtures."""
+        self.sm = SmartSystem(email="login", password="password", client_id="client_id")
+
+    def test_control_data_to_influxdb_point(self):
+        """Checks conversion to influxdb for irrigation control device."""
+        control = SmartIrrigationControl(self.sm, smart_irrigation_fixture)
+        time = 3
+        got = GardenaResponseMapper.control_data_to_influxdb_point(control, time)
+        print(got)
+        tags = {
+            'name': "Irrigation Control",
+            'id': "28c26146-d4c1-42d7-964a-89f5237550ce",
+            'type': 'SMART_IRRIGATION_CONTROL'
+        }
+        expected = [
+            {
+                "measurement": 'garden_valves_activity',
+                "time": time,
+                "fields": {
+                    'state': 'CLOSED'
+                },
+                "tags": {
+                    **tags,
+                    "valve_name": f'Valve {i}',
+                    "valve_id": f'28c26146-d4c1-42d7-964a-89f5237550ce:{i}',
+                }
+            }
+            for i in range(1, 7)
+        ]
+        self.assertListEqual(got, expected)
+
+    def test_sensor_data_to_influxdb_point(self):
+        """Checks conversion to influxdb for sensor device."""
+        sensor = Sensor(self.sm, sensor_fixture)
+        time = 3
+        got = GardenaResponseMapper.sensor_data_to_influxdb_point(sensor, time)
+        tags = {
+            'name': "Sensor",
+            'id': "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+            'type': 'SENSOR'
+        }
+        expected = [
+            {
+                'measurement': 'garden_system_battery_percentage',
+                'time': time,
+                'fields': {'battery': 93},
+                'tags': tags
+            },
+            {
+                'measurement': 'garden_temperature_celsius',
+                'time': time,
+                'fields': {'temperature': 22},
+                'tags': {**tags, 'environment': 'soil'}
+            },
+            {
+                'measurement': 'garden_temperature_celsius',
+                'time': time,
+                'fields': {'temperature': 21},
+                'tags': {**tags, 'environment': 'ambient'}
+            },
+            {
+                'measurement': 'garden_humidity_percentage',
+                'time': time,
+                'fields': {'humidity': 0},
+                'tags': {**tags, 'environment': 'soil'}
+            },
+            {
+                'measurement': 'garden_light_intensity_lux',
+                'time': time,
+                'fields': {'light_intensity': 15},
+                'tags': tags
             }
         ]
         self.assertListEqual(got, expected)

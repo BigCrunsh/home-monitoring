@@ -4,3 +4,4 @@ influxdb==5.2.3
 netatmo==1.0.1
 pandas==0.24.0
 solaredge==0.0.3
+py-smart-gardena==0.6.16
