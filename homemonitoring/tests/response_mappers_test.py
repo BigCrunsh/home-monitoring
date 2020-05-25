@@ -392,7 +392,6 @@ class TestGardenaResponseMapper(TestCase):
         control = SmartIrrigationControl(self.sm, smart_irrigation_fixture)
         time = 3
         got = GardenaResponseMapper.control_data_to_influxdb_point(control, time)
-        print(got)
         tags = {
             'name': "Irrigation Control",
             'id': "28c26146-d4c1-42d7-964a-89f5237550ce",
@@ -403,14 +402,16 @@ class TestGardenaResponseMapper(TestCase):
                 "measurement": 'garden_valves_activity',
                 "time": time,
                 "fields": {
-                    'state': 'CLOSED'
+                    'state': (activity == 'CLOSED') * 1
                 },
                 "tags": {
                     **tags,
+                    "activity": activity,
                     "valve_name": f'Valve {i}',
                     "valve_id": f'28c26146-d4c1-42d7-964a-89f5237550ce:{i}',
                 }
             }
+            for activity in GardenaResponseMapper.VALVE_ACTIVITY
             for i in range(1, 7)
         ]
         self.assertListEqual(got, expected)
