@@ -402,7 +402,7 @@ class TestGardenaResponseMapper(TestCase):
                 "measurement": 'garden_valves_activity',
                 "time": time,
                 "fields": {
-                    'state': (activity == 'CLOSED') * 1
+                    'state': int(activity == 'CLOSED')
                 },
                 "tags": {
                     **tags,

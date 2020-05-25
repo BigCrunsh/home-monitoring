@@ -398,7 +398,7 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                 "measurement": 'garden_valves_activity',
                 "time": time,
                 "fields": {
-                    "state": (v['activity'] == activity)
+                    "state": int(v['activity'] == activity)
                 },
                 "tags": {
                     "activity": activity,
