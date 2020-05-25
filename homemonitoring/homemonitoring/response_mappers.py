@@ -376,6 +376,7 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
         points = NetatmoResponseMapper.to_influxdb_point(api.devices, time)
         ifclient.write_points(points)
     """
+    VALVE_ACTIVITY = ['CLOSED', 'MANUAL_WATERING', 'SCHEDULED_WATERING']
 
     @staticmethod
     def control_data_to_influxdb_point(control, time):
@@ -397,9 +398,10 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                 "measurement": 'garden_valves_activity',
                 "time": time,
                 "fields": {
-                    'state': v['activity']
+                    "state": (v['activity'] == activity)
                 },
                 "tags": {
+                    "activity": activity,
                     "name": control.name,
                     "id": control.id,
                     "type": control.type,
@@ -407,6 +409,7 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                     "valve_id": v['id'],
                 }
             }
+            for activity in GardenaResponseMapper.VALVE_ACTIVITY
             for v in control.valves.values()
         ]
 
