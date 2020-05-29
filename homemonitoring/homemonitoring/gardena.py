@@ -1,30 +1,12 @@
 """The module contains a wrapper of the SmartSystem API with additional functionality."""
 
+import logging
 import time
 import json
 import websocket
 from threading import Thread
 
 from gardena import smart_system
-
-
-class Client(smart_system.Client):
-    """Client encapsulate websocket app response logic.
-
-    This is a copy from the (py-smart-gardena)[https://github.com/grm/py-smart-gardena/blob/master/src/gardena/smart_system.py], # noqa
-    but adding a sleep to make the restart succesful.
-    """
-    def on_close(self):
-        """Method to be called when connection gets closed."""
-        self.live = False
-        self.logger.info("Connection close to gardena API")
-        if not self.should_stop:
-            i = 1
-            while not self.live:
-                self.logger.info(f"Restarting websocket (attempt {i})")
-                self.smart_system.start_ws(self.location)
-                time.sleep(5)
-                i += 1
 
 
 class SmartSystem(smart_system.SmartSystem):
@@ -37,6 +19,12 @@ class SmartSystem(smart_system.SmartSystem):
         password (string): gardena account password
         client_id (string): gardena application id
     """
+
+    def __init__(self, *args, **kwargs):
+        super(SmartSystem, self).__init__(*args, **kwargs)
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(self.level)
+
 
     def connect(self):
         """Starts web socket.
@@ -53,14 +41,26 @@ class SmartSystem(smart_system.SmartSystem):
         self.update_devices(self.location)
         self.start_ws(self.location)
 
-    def start_ws(self, location):
-        """Start websocket app.
 
-        This is a copy from the (py-smart-gardena)[https://github.com/grm/py-smart-gardena/blob/master/src/gardena/smart_system.py], # noqa
-        but to call an on close function with delay.
+    def on_error(tself, error):
+        self.logger.error(f"error : {error}")
 
-        Arguments:
-            location (gardena.location.Location): Keep information about gardena location and devices
+
+    def on_close(self):
+        self.logger.info("Connection close to gardena API")
+
+
+    def on_open(self):
+        self.logger.info("Connected to Gardena API")
+
+
+    def create_websocket(self, location):
+        """Create a new WebSocket endpoint.
+
+        Call gardena websocket endpoint to create new websocket endpoint to retrieve realtime events.
+
+        Returns:
+           string: websocket endpoint
         """
         args = {
             "data": {
@@ -75,19 +75,29 @@ class SmartSystem(smart_system.SmartSystem):
             data=json.dumps(args, ensure_ascii=False),
         )
         r.raise_for_status()
-        response = r.json()
-        ws_url = response["data"]["attributes"]["url"]
-        if self.client is None:
-            self.client = Client(self, level=self.level, location=location)
-        self.ws = websocket.WebSocketApp(
-            ws_url,
-            on_message=self.client.on_message,
-            on_error=self.client.on_error,
-            on_close=self.client.on_close,
-            on_open=self.client.on_open,
-        )
-        wst = Thread(
-            target=self.ws.run_forever, kwargs={"ping_interval": 60, "ping_timeout": 5}
-        )
-        wst.daemon = True
-        wst.start()
+        return r.json()["data"]["attributes"]["url"]
+
+    def start_ws(self, location):
+        """Start websocket app.
+
+        This is a copy from the (py-smart-gardena)[https://github.com/grm/py-smart-gardena/blob/master/src/gardena/smart_system.py], # noqa
+        but restarts the socket after error (e.g., expired authentification).
+
+        Arguments:
+            location (gardena.location.Location): Keep information about gardena location and devices
+        """
+        while True:
+            ws = websocket.WebSocketApp(
+                self.create_websocket(location),
+                on_message=self.on_message,
+                on_error=self.on_error,
+                on_close=self.on_close,
+                on_open=self.on_open,
+            )
+            wst = Thread(
+                target=ws.run_forever, kwargs={"ping_interval": 60, "ping_timeout": 5}
+            )
+            wst.daemon = True
+            wst.start()
+            wst.join()
+            time.sleep(10)
