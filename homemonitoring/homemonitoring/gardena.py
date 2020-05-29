@@ -19,9 +19,12 @@ class Client(smart_system.Client):
         self.live = False
         self.logger.info("Connection close to gardena API")
         if not self.should_stop:
-            time.sleep(5)
-            self.logger.info("Restarting websocket")
-            self.smart_system.start_ws(self.location)
+            i = 1
+            while not self.live:
+                self.logger.info(f"Restarting websocket (attempt {i})")
+                self.smart_system.start_ws(self.location)
+                time.sleep(5)
+                i += 1
 
 
 class SmartSystem(smart_system.SmartSystem):
