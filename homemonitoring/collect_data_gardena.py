@@ -5,6 +5,7 @@
 import os
 import argparse
 import sys
+import time
 import datetime
 
 from homemonitoring.gardena import SmartSystem
@@ -42,16 +43,15 @@ def run(args):
         client_id=args.gardena_application_id
     )
     logger.info("Start web socket")
-    smart_system.connect()
-    # call backs are triggered for all devices
-    smart_system.location.find_device_by_type('SENSOR')[0].add_callback(
-        lambda d: ingest_data(d, ifclient)
-    )
-
-    input("Press any key to quit: ")
-
-    logger.info("Quit web socket")
-    smart_system.quit()
+    while True:
+        smart_system.connect()
+        # call backs are triggered for all devices
+        smart_system.location.find_device_by_type('SENSOR')[0].add_callback(
+            lambda d: ingest_data(d, ifclient)
+        )
+        smart_system.wst.join()
+        time.sleep(10)
+        logger.info("Restart web socket")
 
 
 def cfg():

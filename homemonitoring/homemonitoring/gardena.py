@@ -1,7 +1,6 @@
 """The module contains a wrapper of the SmartSystem API with additional functionality."""
 
 import logging
-import time
 import json
 import websocket
 from threading import Thread
@@ -77,6 +76,7 @@ class SmartSystem(smart_system.SmartSystem):
         r.raise_for_status()
         return r.json()["data"]["attributes"]["url"]
 
+
     def start_ws(self, location):
         """Start websocket app.
 
@@ -86,18 +86,15 @@ class SmartSystem(smart_system.SmartSystem):
         Arguments:
             location (gardena.location.Location): Keep information about gardena location and devices
         """
-        while True:
-            ws = websocket.WebSocketApp(
-                self.create_websocket(location),
-                on_message=self.on_message,
-                on_error=self.on_error,
-                on_close=self.on_close,
-                on_open=self.on_open,
-            )
-            wst = Thread(
-                target=ws.run_forever, kwargs={"ping_interval": 60, "ping_timeout": 5}
-            )
-            wst.daemon = True
-            wst.start()
-            wst.join()
-            time.sleep(10)
+        ws = websocket.WebSocketApp(
+            self.create_websocket(location),
+            on_message=self.on_message,
+            on_error=self.on_error,
+            on_close=self.on_close,
+            on_open=self.on_open,
+        )
+        self.wst = Thread(
+            target=ws.run_forever, kwargs={"ping_interval": 60, "ping_timeout": 5}
+        )
+        self.wst.daemon = True
+        self.wst.start()
