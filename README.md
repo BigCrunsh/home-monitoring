@@ -1,6 +1,9 @@
 [![Build Status](https://travis-ci.com/BigCrunsh/home-monitoring.svg?branch=master)](https://travis-ci.com/BigCrunsh/home-monitoring)
 
+![Example Dashboard](static/grafana.png)
+
 # Home Monitoring
+Different smart home application typically come with their own interfaces. As a user I want to have a central place to monitor the central metrics recorded by the different systems.
 
 The project consolidates different scripts and configuration to collect home
 montitoring metrics on a Raspberry PI 4; we use an influxDB to store and grafana to visualize the measurements.
