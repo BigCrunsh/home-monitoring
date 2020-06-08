@@ -27,9 +27,9 @@ def cfg():
         description="Crawl SolarEdge and stores results in InfluxDB",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--dnsexit_host', required=False, default=os.getenv('DNSEXIT_HOST'), help="Host to update IP")  # noqa
-    parser.add_argument('--dnsexit_login', required=False, default=os.getenv('DNSEXIT_LOGIN'), help="dnsexit login.")  # noqa
-    parser.add_argument('--dnsexit_password', required=False, default=os.getenv('DNSEXIT_PASSWORD'), help="dnsexit password")  # noqa
+    parser.add_argument('--dnsexit-host', required=False, default=os.getenv('DNSEXIT_HOST'), help="Host to update IP")  # noqa
+    parser.add_argument('--dnsexit-login', required=False, default=os.getenv('DNSEXIT_LOGIN'), help="dnsexit login.")  # noqa
+    parser.add_argument('--dnsexit-password', required=False, default=os.getenv('DNSEXIT_PASSWORD'), help="dnsexit password")  # noqa
     parser.add_argument('-v', '--verbose', action='store_true')
     return parser.parse_args()
 
