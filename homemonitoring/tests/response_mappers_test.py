@@ -456,6 +456,12 @@ class TestGardenaResponseMapper(TestCase):
                 'time': time,
                 'fields': {'light_intensity': 15},
                 'tags': tags
+            },
+            {
+                'measurement': 'garden_rf_link_level_percentage',
+                'time': time,
+                'fields': {'rf_link_level': 70},
+                'tags': tags
             }
         ]
         self.assertListEqual(got, expected)

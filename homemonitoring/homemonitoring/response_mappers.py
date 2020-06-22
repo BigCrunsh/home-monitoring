@@ -492,4 +492,16 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                     "type": sensor.type
                 }
             },
+            {
+                "measurement": 'garden_rf_link_level_percentage',
+                "time": time,
+                "fields": {
+                    'rf_link_level': sensor.rf_link_level
+                },
+                "tags": {
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            },
         ]
