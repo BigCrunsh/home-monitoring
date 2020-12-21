@@ -24,7 +24,7 @@ def run(args):
 def cfg():
     """Configuration of argument parser."""
     parser = argparse.ArgumentParser(
-        description="Crawl SolarEdge and stores results in InfluxDB",
+        description="Update DynDNS at dnsexit.com",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument('--dnsexit-host', required=False, default=os.getenv('DNSEXIT_HOST'), help="Host to update IP")  # noqa
