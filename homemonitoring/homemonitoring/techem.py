@@ -14,3 +14,14 @@ class TechemDecoder:
 
     def __init__(self, data):
         self.data = data
+
+    def __get_byte(self, offset):
+        """Return byte pair ignoring the first 'b' of data paket.
+
+        Args:
+            offset(int): offset of byte pairs
+        """
+        pos = offset * 2 + 1
+        assert offset >= 0, "Offset must be non-negative"
+        assert len(self.data) > pos, "Pair offset must be smaller than half data length"
+        return self.data[pos:pos + 2]
