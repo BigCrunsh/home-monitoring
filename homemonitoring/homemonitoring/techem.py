@@ -25,3 +25,9 @@ class TechemDecoder:
         assert offset >= 0, "Offset must be non-negative"
         assert len(self.data) > pos, "Pair offset must be smaller than half data length"
         return self.data[pos:pos + 2]
+
+    def get_meter_id(self):
+        """Return id of heat meter."""
+        return int(
+            self.__get_byte(7) + self.__get_byte(6) + self.__get_byte(5) + self.__get_byte(4)
+        )
