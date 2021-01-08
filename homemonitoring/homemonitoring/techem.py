@@ -19,6 +19,9 @@ class TechemDecoder:
     Args:
         data(string): byte string received
     """
+    BYTE_POS = {
+        'id': [4, 5, 6, 7],
+    }
 
     def __init__(self, data):
         self.data = data
@@ -28,14 +31,32 @@ class TechemDecoder:
 
         Args:
             offset(int): offset of byte pairs
+
+        Returns:
+            string: byte pair
         """
         pos = offset * 2 + 1
         assert offset >= 0, "Offset must be non-negative"
         assert len(self.data) > pos, "Pair offset must be smaller than half data length"
         return self.data[pos:pos + 2]
 
+    def __get_byte_by_category(self, cat):
+        """Return bytes for each category of information.
+
+        Args:
+            cat(string): name of encoded category
+
+        Returns:
+            string: bytes for category
+        """
+        return ''.join(map(self.__get_byte, self.BYTE_POS[cat][::-1]))
+
     def get_meter_id(self):
-        """Return id of heat meter."""
+        """Return id of heat meter.
+
+        Returns:
+            string: heat meter id
+        """
         return int(
-            self.__get_byte(7) + self.__get_byte(6) + self.__get_byte(5) + self.__get_byte(4)
+            self.__get_byte_by_category('id')
         )
