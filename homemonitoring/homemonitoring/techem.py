@@ -21,6 +21,8 @@ class TechemDecoder:
     """
     BYTE_POS = {
         'id': [4, 5, 6, 7],
+        'value_last_period': [16, 17, 18],
+        'value_current_period': [20, 21, 22]
     }
 
     def __init__(self, data):
@@ -55,8 +57,30 @@ class TechemDecoder:
         """Return id of heat meter.
 
         Returns:
-            string: heat meter id
+            int: heat meter id
         """
-        return int(
-            self.__get_byte_by_category('id')
-        )
+        return int(self.__get_byte_by_category('id'))
+
+    def get_consumption_til_last_cutoff(self):
+        """Return heat consumption of the last billing period.
+
+        Returns:
+            int: heat consumption in kWh
+        """
+        return int(self.__get_byte_by_category('value_last_period'), 16)
+
+    def get_consumption_since_last_cutoff(self):
+        """Return heat consumption of the current billing period.
+
+        Returns:
+            int: heat consumption in kWh
+        """
+        return int(self.__get_byte_by_category('value_current_period'), 16)
+
+    def get_total_consumption(self):
+        """Return total heat consumption.
+
+        Returns:
+            int: heat consumption in kWh
+        """
+        return self.get_consumption_til_last_cutoff() + self.get_consumption_since_last_cutoff()
