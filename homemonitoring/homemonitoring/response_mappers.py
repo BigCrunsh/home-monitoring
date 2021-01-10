@@ -535,5 +535,8 @@ class TechemResponseMapper(InfluxDBResponseMapper):
                 "fields": {
                     'Total_Consumption': decoder.get_total_consumption() * 1000
                 },
-            }
+                "tags": {
+                    "id": decoder.get_meter_id()
+                }
+            },
         ]
