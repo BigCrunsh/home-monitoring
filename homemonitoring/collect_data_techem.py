@@ -25,12 +25,16 @@ def run(args):
         args.influxdb_db
     )
 
-    ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.timeout)
-
-    logger.info('Listen to port %s', args.serial_port)
-    response = ser.readline()
     time = datetime.datetime.utcnow()
-    points = TechemResponseMapper.to_influxdb_point(time, response)
+    ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.timeout)
+    logger.info('Listen to port %s', args.serial_port)
+    responses = set(
+        ser.readline()
+        for _ in range(args.serial_num_pakets)
+    )
+    logger.info('Received %i distinct messages', len(responses))
+
+    points = TechemResponseMapper.to_influxdb_point(time, responses)
     try:
         ifclient.write_points(points)
     except Exception as e:
@@ -49,6 +53,7 @@ def cfg():
     )
     parser.add_argument('--serial-port', required=False, default='/dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0', help="Serial port listen to receive heat meter data")  # noqa
     parser.add_argument('--serial-baudrate', required=False, type=int, default=38400, help="Baudrate of serial port")  # noqa
+    parser.add_argument('--serial-num-packets', required=False, type=int, default=5, help="Number of data packets; should be larger than number of receivable IDs")  # noqa
     parser.add_argument('--serial-timeout', required=False, type=int, default=300, help="Timeout waiting for the serial port in seconds")  # noqa
     parser.add_argument('--influxdb-host', required=False, default=os.getenv('INFLUXDB_HOST'), help="influx db host")  # noqa
     parser.add_argument('--influxdb-port', required=False, type=int, default=os.getenv('INFLUXDB_PORT'), help="influx db port")  # noqa
