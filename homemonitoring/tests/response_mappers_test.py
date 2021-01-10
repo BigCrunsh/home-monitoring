@@ -9,8 +9,9 @@ from gardena.smart_system import SmartSystem
 from gardena.devices.sensor import Sensor
 from gardena.devices.smart_irrigation_control import SmartIrrigationControl
 
-from homemonitoring.response_mappers import SolarEdgeResponseMapper
-from homemonitoring.response_mappers import GardenaResponseMapper
+from homemonitoring.response_mappers import (
+    SolarEdgeResponseMapper, GardenaResponseMapper, TechemResponseMapper
+)
 from .fixtures import sensor_fixture, smart_irrigation_fixture
 
 
@@ -462,6 +463,25 @@ class TestGardenaResponseMapper(TestCase):
                 'time': time,
                 'fields': {'rf_link_level': 70},
                 'tags': tags
+            }
+        ]
+        self.assertListEqual(got, expected)
+
+
+class TestTechemResponseMapper(TestCase):
+    """TestTechemResponseMapper contains the test cases for the TechemResponseMapper class."""
+
+    def test_to_influxdb_point(self):
+        """Checks conversion to influxdb."""
+        response = 'b36446850452301534543CDF7A1009F297C9600881F010080F391ACB2A45C76AA24655A05E5C928932C028921917C0A79E24F460585C59A7DE245F86791B00C'  # noqa
+        time = datetime.datetime(2020, 3, 30, 17, 45),
+        got = TechemResponseMapper.to_influxdb_point(time, response)
+
+        expected = [
+            {
+                'measurement': 'heat_energy_watthours',
+                'time': time,
+                'fields': {'Total_Consumption': 38811000},
             }
         ]
         self.assertListEqual(got, expected)
