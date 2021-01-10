@@ -473,7 +473,7 @@ class TestTechemResponseMapper(TestCase):
 
     def test_to_influxdb_point(self):
         """Checks conversion to influxdb."""
-        response = 'b36446850452301534543CDF7A1009F297C9600881F010080F391ACB2A45C76AA24655A05E5C928932C028921917C0A79E24F460585C59A7DE245F86791B00C'  # noqa
+        response = b'b36446850452301534543CDF7A1009F297C9600881F010080F391ACB2A45C76AA24655A05E5C928932C028921917C0A79E24F460585C59A7DE245F86791B00C'  # noqa
         time = datetime.datetime(2020, 3, 30, 17, 45),
         got = TechemResponseMapper.to_influxdb_point(time, response)
 
