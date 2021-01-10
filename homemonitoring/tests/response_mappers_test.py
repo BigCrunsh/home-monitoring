@@ -482,6 +482,7 @@ class TestTechemResponseMapper(TestCase):
                 'measurement': 'heat_energy_watthours',
                 'time': time,
                 'fields': {'Total_Consumption': 38811000},
+                'tags': {'id': 53012345}
             }
         ]
         self.assertListEqual(got, expected)
