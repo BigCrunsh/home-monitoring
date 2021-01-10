@@ -26,7 +26,7 @@ def run(args):
     )
 
     time = datetime.datetime.utcnow()
-    ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.timeout)
+    ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.serial_timeout)
     logger.info('Listen to port %s', args.serial_port)
     responses = set(
         ser.readline()
