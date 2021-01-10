@@ -27,7 +27,7 @@ def run(args):
 
     ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.timeout)
 
-    logger.info('Listen to port', args.serial_port)
+    logger.info('Listen to port %s', args.serial_port)
     response = ser.readline()
     time = datetime.datetime.utcnow()
     points = TechemResponseMapper.to_influxdb_point(time, response)
