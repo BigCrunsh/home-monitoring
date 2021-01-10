@@ -522,21 +522,22 @@ class TechemResponseMapper(InfluxDBResponseMapper):
 
         Args:
             time (datetime): Time added to the result
-            data (byte): Techem energy meter format.
+            data (set[byte]): Techem energy meter format.
 
         Returns:
             list[dict]: Responses mapped to InfluxDB point format.
         """
-        decoder = TechemDecoder(data.decode('utf-8'))
+        decoders = map(lambda p: TechemDecoder(p.decode('utf-8')), data)
         return [
             {
                 "measurement": 'heat_energy_watthours',
                 "time": time,
                 "fields": {
-                    'Total_Consumption': decoder.get_total_consumption() * 1000
+                    'Total_Consumption': d.get_total_consumption() * 1000
                 },
                 "tags": {
-                    "id": decoder.get_meter_id()
+                    "id": d.get_meter_id()
                 }
-            },
+            }
+            for d in decoders
         ]
