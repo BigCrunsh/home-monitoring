@@ -30,7 +30,7 @@ def run(args):
     logger.info('Listen to port %s', args.serial_port)
     responses = set(
         ser.readline()
-        for _ in range(args.serial_num_pakets)
+        for _ in range(args.serial_num_packets)
     )
     logger.info('Received %i distinct messages', len(responses))
 
