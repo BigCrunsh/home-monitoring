@@ -25,7 +25,7 @@ def run(args):
         args.influxdb_db
     )
 
-    ser = serial.Serial(args.serial_port, args.serial_baudrate)
+    ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.timeout)
 
     logger.info('Listen to port', args.serial_port)
     response = ser.readline()
@@ -48,7 +48,8 @@ def cfg():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument('--serial-port', required=False, default='/dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0', help="Serial port listen to receive heat meter data")  # noqa
-    parser.add_argument('--serial-baudrate', required=False, default=38400, help="Baudrate of serial port")  # noqa
+    parser.add_argument('--serial-baudrate', required=False, type=int, default=38400, help="Baudrate of serial port")  # noqa
+    parser.add_argument('--serial-timeout', required=False, type=int, default=300, help="Timeout waiting for the serial port in seconds")  # noqa
     parser.add_argument('--influxdb-host', required=False, default=os.getenv('INFLUXDB_HOST'), help="influx db host")  # noqa
     parser.add_argument('--influxdb-port', required=False, type=int, default=os.getenv('INFLUXDB_PORT'), help="influx db port")  # noqa
     parser.add_argument('--influxdb-user', required=False, default=os.getenv('INFLUXDB_USER'), help="influx db user")  # noqa
