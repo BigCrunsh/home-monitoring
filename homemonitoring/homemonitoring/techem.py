@@ -5,7 +5,7 @@ class TechemDecoder:
     """TechemDecoder decodes data received from the techem energy meter.
 
     TechemDecoder implements functionality to decode the wireless M-Bus data
-    of the TECHEM heat meter Compat V. This code is motivated by
+    of the TECHEM energy meter Compat V. This code is motivated by
     https://github.com/fhem/fhem-mirror/blob/master/fhem/FHEM/32_TechemWZ.pm
 
     The string 'b3644685045230153...' is a pairwise byte encoding as little endian as follows:
