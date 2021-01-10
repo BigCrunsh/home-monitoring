@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
+from homemonitoring.techem import TechemDecoder
+
 
 class InfluxDBResponseMapper(ABC):
     """InfluxDBResponseMapper is an interface to map API responses to InfluxDB point format.
@@ -504,4 +506,34 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                     "type": sensor.type
                 }
             },
+        ]
+
+
+class TechemResponseMapper(InfluxDBResponseMapper):
+    """TechemResponseMapper maps and decodes Techem responses to InfluxDB point format.
+
+    The TechemResponseMapper decodes the wireless M-Bus data
+    of the TECHEM energy meter Compat V and returns a list of dicts that can be written to InfluxDB.
+    """
+
+    @staticmethod
+    def to_influxdb_point(time, data):
+        """Converts hexadecial encoded data from Techem to InfluxDB point format.
+
+        Args:
+            time (datetime): Time added to the result
+            data (binary): Techem energy meter format.
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
+        decoder = TechemDecoder(data)
+        return [
+            {
+                "measurement": 'heat_energy_watthours',
+                "time": time,
+                "fields": {
+                    'Total_Consumption': decoder.get_total_consumption() * 1000
+                },
+            }
         ]
