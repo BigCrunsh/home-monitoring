@@ -478,20 +478,23 @@ class TestTechemResponseMapper(TestCase):
             b'b36446850462301534543CDF7A1009F297C9700881F010080F391ACB2A45C76AA24655A05E5C928932C028921917C0A79E24F460585C59A7DE245F86791B00C'  # noqa
         ])
         time = datetime.datetime(2020, 3, 30, 17, 45),
-        got = TechemResponseMapper.to_influxdb_point(time, response)
+        got = sorted(
+            TechemResponseMapper.to_influxdb_point(time, response),
+            key=lambda m: m['tags']['id']
+        )
 
         expected = [
             {
                 'measurement': 'heat_energy_watthours',
                 'time': time,
-                'fields': {'Total_Consumption': 39067000},
-                'tags': {'id': 53012346}
+                'fields': {'Total_Consumption': 38811000},
+                'tags': {'id': 53012345}
             },
             {
                 'measurement': 'heat_energy_watthours',
                 'time': time,
-                'fields': {'Total_Consumption': 38811000},
-                'tags': {'id': 53012345}
+                'fields': {'Total_Consumption': 39067000},
+                'tags': {'id': 53012346}
             }
         ]
         self.assertListEqual(got, expected)
