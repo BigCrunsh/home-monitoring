@@ -1,5 +1,7 @@
 """Decoder for data packets from the wireless M-Bus of the TECHEM heat meter Compat V."""
 
+import re
+
 
 class TechemDecoder:
     """TechemDecoder decodes data received from the techem energy meter.
@@ -19,6 +21,8 @@ class TechemDecoder:
     Args:
         data(string): byte string received
     """
+    BYTE_FORMAT = re.compile(r'^b..446850[\d]{8}..(43|62|72)')
+
     BYTE_POS = {
         'id': [4, 5, 6, 7],
         'value_last_period': [16, 17, 18],
@@ -26,6 +30,7 @@ class TechemDecoder:
     }
 
     def __init__(self, data):
+        assert self.BYTE_FORMAT.match(data), "No valid Techem WM-Bus data"
         self.data = data
 
     def __get_byte(self, offset):
