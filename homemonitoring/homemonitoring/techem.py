@@ -89,3 +89,14 @@ class TechemDecoder:
             int: heat consumption in kWh
         """
         return self.get_consumption_til_last_cutoff() + self.get_consumption_since_last_cutoff()
+
+    def get_current_day(self):
+        """Return reading date day.
+
+        Returns:
+            int: reading date day
+        """
+        day = max(int(self.__get_byte(24)[1]) * 2, 1)
+        if int(self.__get_byte(23)[0]) == 8:
+            day += 1
+        return day
