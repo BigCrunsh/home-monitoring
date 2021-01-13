@@ -13,6 +13,7 @@ class TestTechemDecoder(TestCase):
         self.id = 53012345
         self.consumption_before_cutoff = 38524
         self.consumption_since_cutoff = 287
+        self.current_day = 7
         self.total_consumption = 38811
         self.decoder = TechemDecoder('b36446850452301534543CDF7A1009F297C9600881F010080F391ACB2A45C76AA24655A05E5C928932C028921917C0A79E24F460585C59A7DE245F86791B00C')  # noqa
 
@@ -52,4 +53,10 @@ class TestTechemDecoder(TestCase):
         """Checks get_total_consumption."""
         self.assertEqual(
             self.decoder.get_total_consumption(), self.total_consumption
+        )
+
+    def test_get_current_day(self):
+        """Checks get_current_day."""
+        self.assertEqual(
+            self.decoder.get_current_day(), self.current_day
         )
