@@ -13,6 +13,7 @@ Systems to Monitor:
 - [SolarEdge](https://www.solaredge.com/) is a solar
 	inverter and monitoring systems for photovoltaic arrays
 - [Tankerkoenig](https://creativecommons.tankerkoenig.de/) provides gas station prices
+- Techem Compat V energy meter is monitored via a nanoCUL USB Stick (FTDI CC1101 868MHz FW 1.67 FHEM).
 
 ## Setup Monitoring
 The different components run as [docker](https://www.docker.com/) containers.
