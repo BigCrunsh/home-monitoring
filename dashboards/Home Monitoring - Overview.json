@@ -102,7 +102,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -203,7 +203,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -303,7 +303,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -415,7 +415,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -522,7 +522,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -662,7 +662,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -819,7 +819,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -928,7 +928,7 @@
             },
             {
               "params": [
-                "null"
+                "none"
               ],
               "type": "fill"
             }
@@ -1070,7 +1070,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -1213,7 +1213,7 @@
             },
             {
               "params": [
-                "null"
+                "none"
               ],
               "type": "fill"
             }
@@ -1349,7 +1349,7 @@
             },
             {
               "params": [
-                "linear"
+                "none"
               ],
               "type": "fill"
             }
@@ -1448,5 +1448,5 @@
   "timezone": "",
   "title": "Home Monitoring - Overview",
   "uid": "Y26bHwZRk",
-  "version": 51
+  "version": 52
 }
