@@ -18,7 +18,7 @@ Systems to Monitor:
 ## Setup Monitoring
 The different components run as [docker](https://www.docker.com/) containers.
 
-### Storage
+### InfluxDB
 [Docker volumes](https://docs.docker.com/storage/volumes/) can be used by different docker containers to persist data and managed by docker. To create a persistent volume for the influx database, run
 ```bash
 docker volume create influxdb-storage
