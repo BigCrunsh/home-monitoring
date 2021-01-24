@@ -68,7 +68,7 @@ docker run -d \
  --volume grafana-storage:/var/lib/grafana \
  grafana/grafana
 ```
-Note that additionally to the command on top, we mount the certificate files and set the https configs as environment variables instead of changing the `grafana.ini`  (see [grafana confuration](https://grafana.com/docs/grafana/latest/administration/configuration/) for details).
+Note that additionally to the command on top, we mount the certificate files and set the https configs as environment variables instead of changing the `grafana.ini`  (see [grafana configuration](https://grafana.com/docs/grafana/latest/administration/configuration/) for details).
 
 ## Setup Data Collection Jobs
 The data collection jobs are scheduled via cron (`crontab -e`), e.g.,
