@@ -40,7 +40,7 @@ To create a persistent volume for the grafana database and plugins, run
 docker volume create grafana-storage
 ```
 
-To (download and) start the grafana container, run
+To (download and) start the [grafana container](https://grafana.com/grafana/download?platform=docker), run
 ```bash
 docker run -d \
  --restart unless-stopped \
@@ -50,6 +50,25 @@ docker run -d \
  grafana/grafana
 ```
 The grafana endpoint can be accessed on port `3000` and the login is `admin` (user name and password).
+
+#### SSL HTTPS
+The principal steps including the generation of the SSL Certificate is describe in this [blog post](http://www.turbogeek.co.uk/2020/09/30/grafana-how-to-configure-ssl-https-in-grafana/). Check the container name and group of the user to set the right permissions of the files (see [grafana docker](https://grafana.com/docs/grafana/latest/installation/docker/)).
+
+To start the grafana container with SSL, run
+```bash
+docker run -d \
+ --restart unless-stopped \
+ --net=host \
+ --name=grafana \
+ --env "GF_SERVER_CERT_FILE=/etc/grafana/grafana.crt" \
+ --env "GF_SERVER_CERT_KEY=/etc/grafana/grafana.key" \
+ --env "GF_SERVER_PROTOCOL=https" \
+ --volume $(pwd)/grafana.key:/etc/grafana/grafana.key \
+ --volume $(pwd)/grafana.crt:/etc/grafana/grafana.crt \
+ --volume grafana-storage:/var/lib/grafana \
+ grafana/grafana
+```
+Note that additionally to the command on top, we mount the certificate files and set the https configs as environment variables instead of changing the `grafana.ini`  (see [grafana confuration](https://grafana.com/docs/grafana/latest/administration/configuration/) for details).
 
 ## Setup Data Collection Jobs
 The data collection jobs are scheduled via cron (`crontab -e`), e.g.,
