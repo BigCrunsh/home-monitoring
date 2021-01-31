@@ -97,13 +97,17 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
         endpoint, response_endpoint_json = response_json.copy().popitem()
         measurement_name = measurement_name or endpoint
 
-        df = pd.concat([
+        df = [
             pd.DataFrame
             .from_dict(response_endpoint_json['meters'][i]['values'])
             .set_index('date')
             .rename({"value": response_endpoint_json['meters'][i]['type']}, axis=1)
             for i in range(len(response_endpoint_json['meters']))
-        ], axis=1, sort=True)
+            if len(response_endpoint_json['meters'][i]['values']) > 0
+        ]
+        if len(df) == 0:
+            df = [pd.DataFrame()]
+        df = pd.concat(df, axis=1, sort=True)
         df.index.name = 'date'  # https://github.com/pandas-dev/pandas/issues/21629
         df.name = measurement_name
         if not df.empty:
