@@ -45,6 +45,19 @@ class TestSolarEdgeResponseMapper(TestCase):
                 ]
             }
         },
+        'missing_date': {
+            'powerDetails': {
+                'timeUnit': 'QUARTER_OF_AN_HOUR',
+                'unit': 'W',
+                'meters': [
+                    {'type': 'FeedIn', 'values': []},
+                    {'type': 'SelfConsumption', 'values': []},
+                    {'type': 'Purchased', 'values': []},
+                    {'type': 'Consumption', 'values': []},
+                    {'type': 'Production', 'values': []}
+                ]
+            }
+        },
         'dst': {
             'powerDetails': {
                 'timeUnit': 'QUARTER_OF_AN_HOUR',
@@ -167,6 +180,17 @@ class TestSolarEdgeResponseMapper(TestCase):
                 datetime.datetime(2020, 3, 30, 18, 0): 4.0
             }
         })
+        expected.index.name = 'date'
+        pd.testing.assert_frame_equal(got, expected)
+
+    def test_to_pandas_missing_date(self):
+        """Checks conversion to pandas dataframe in frame is missing date records."""
+        got = SolarEdgeResponseMapper._to_pandas_df(
+            self.RESPONSE_FIXTURES['missing_date'],
+            time_zone=self.time_zone,
+            measurement_name=self.measurement_name
+        )
+        expected = pd.DataFrame()
         expected.index.name = 'date'
         pd.testing.assert_frame_equal(got, expected)
 
