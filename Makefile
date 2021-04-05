@@ -12,7 +12,7 @@ init:
 
 .PHONY: test
 test:
-	flake8 $(PROJECT_NAME)
+	flake8 $(PROJECT_NAME) --config=$(PROJECT_NAME)/tox.ini
 	pytest $(PROJECT_NAME)
 
 
