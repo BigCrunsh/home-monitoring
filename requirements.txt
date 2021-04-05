@@ -5,4 +5,4 @@ netatmo==1.0.1
 pandas==1.2.3
 solaredge==0.0.3
 py-smart-gardena==0.7.6
-pytest=6.2.3
+pytest==6.2.3
