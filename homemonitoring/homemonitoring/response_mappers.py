@@ -220,9 +220,9 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
                 "time": time,
                 "fields": {t: p for (t, p) in ps.items()},
                 "tags": {
-                    "brand": response_stations[station_id]['station']['brand'],
-                    "place": response_stations[station_id]['station']['place'],
-                    "street": response_stations[station_id]['station']['street'],
+                    "brand": response_stations[station_id]['station']['brand'].lower(),
+                    "place": response_stations[station_id]['station']['place'].lower(),
+                    "street": response_stations[station_id]['station']['street'].lower(),
                     "house_number": response_stations[station_id]['station']['houseNumber'],
                     "station_id": station_id,
                 }

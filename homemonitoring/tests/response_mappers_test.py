@@ -90,7 +90,7 @@ class TestTankerKoenigResponseMapper(TestCase):
                 'time': time,
                 'fields': {'status': 'open', 'e5': 1.01, 'e10': 1.02, 'diesel': 1.03},
                 'tags': {
-                    'brand': 'ARAL', 'place': 'placeA', 'street': 'Strasse1', 'house_number': '1',
+                    'brand': 'aral', 'place': 'placea', 'street': 'strasse1', 'house_number': '1',
                     'station_id': 'id_1'
                 }
             },
@@ -99,7 +99,7 @@ class TestTankerKoenigResponseMapper(TestCase):
                 'time': time,
                 'fields': {'status': 'open', 'e5': 1.04, 'e10': 1.05, 'diesel': 1.06},
                 'tags': {
-                    'brand': 'Jet', 'place': 'placeB', 'street': 'Strasse2',
+                    'brand': 'jet', 'place': 'placeb', 'street': 'strasse2',
                     'house_number': '2', 'station_id': 'id_2'
                 }
             }
