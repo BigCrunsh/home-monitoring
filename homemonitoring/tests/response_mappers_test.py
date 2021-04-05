@@ -10,9 +10,101 @@ from gardena.devices.sensor import Sensor
 from gardena.devices.smart_irrigation_control import SmartIrrigationControl
 
 from homemonitoring.response_mappers import (
-    SolarEdgeResponseMapper, GardenaResponseMapper, TechemResponseMapper
+    SolarEdgeResponseMapper, GardenaResponseMapper, TechemResponseMapper,
+    TankerKoenigResponseMapper
 )
 from .fixtures import sensor_fixture, smart_irrigation_fixture
+
+
+class TestTankerKoenigResponseMapper(TestCase):
+    """TestTankerKoenigResponseMapper contains the testsTankerKoenigResponseMapper class."""
+
+    RESPONSE_PRICE_FIXTURES = {
+        "prices": {
+            "id_1": {
+                "status": "open",
+                "e5": 1.01,
+                "e10": 1.02,
+                "diesel": 1.03
+            },
+            "id_2": {
+                "status": "open",
+                "e5": 1.04,
+                "e10": 1.05,
+                "diesel": 1.06
+            },
+            "id_3": {  # filter out since it is closed
+                "status": "close",
+                "e5": 1.07,
+                "e10": 1.08,
+                "diesel": 1.09
+            }
+        }
+    }
+
+    RESPONSE_DETAIL_FIXTURES = {
+        "id_1": {
+            "station": {
+                "id": "id_1",
+                "brand": "ARAL",
+                "street": "Strasse1",
+                "houseNumber": "1",
+                "place": "placeA",
+            }
+        },
+        "id_2": {
+            "station": {
+                "id": "id_2",
+                "brand": "Jet",
+                "street": "Strasse2",
+                "houseNumber": "2",
+                "place": "placeB",
+            }
+        },
+        "id_3": {
+            "station": {
+                "id": "id_3",
+                "brand": "Frei",
+                "street": "Strasse3",
+                "houseNumber": "3",
+                "place": "placeC",
+            }
+        },
+    }
+
+    def setUp(self):
+        """Sets common params for each test function."""
+        self.measurement_name = 'gas_prices_euro'
+
+    def test_to_influxdb_point(self):
+        """Checks conversion to influxdb."""
+        time = datetime.datetime(2020, 3, 30, 17, 45)
+        got = TankerKoenigResponseMapper.to_influxdb_point(
+            time,
+            self.RESPONSE_PRICE_FIXTURES,
+            self.RESPONSE_DETAIL_FIXTURES
+        )
+        expected = [
+            {
+                'measurement': self.measurement_name,
+                'time': time,
+                'fields': {'status': 'open', 'e5': 1.01, 'e10': 1.02, 'diesel': 1.03},
+                'tags': {
+                    'brand': 'ARAL', 'place': 'placeA', 'street': 'Strasse1', 'house_number': '1',
+                    'station_id': 'id_1'
+                }
+            },
+            {
+                'measurement': self.measurement_name,
+                'time': time,
+                'fields': {'status': 'open', 'e5': 1.04, 'e10': 1.05, 'diesel': 1.06},
+                'tags': {
+                    'brand': 'Jet', 'place': 'placeB', 'street': 'Strasse2',
+                    'house_number': '2', 'station_id': 'id_2'
+                }
+            }
+        ]
+        self.assertListEqual(got, expected)
 
 
 class TestSolarEdgeResponseMapper(TestCase):
