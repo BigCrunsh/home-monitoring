@@ -222,7 +222,8 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
                 "tags": {
                     "brand": response_stations[station_id]['station']['brand'],
                     "place": response_stations[station_id]['station']['place'],
-                    "address": f"{response_stations[station_id]['station']['street']} {response_stations[station_id]['station']['houseNumber']}",  # noqa
+                    "street": response_stations[station_id]['station']['street'],
+                    "house_number": response_stations[station_id]['station']['houseNumber'],
                     "station_id": station_id,
                 }
             }
