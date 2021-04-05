@@ -50,3 +50,19 @@ class TankerKoenig:
         )
         response.raise_for_status()
         return response.json()
+
+    def get_stations_details(self, station_ids):
+        """Returns details for given station station ids.
+
+        Queries the Tankerkoenig API to return station details for given station id.
+
+        Args:
+            station_ids(list): list of station ids
+
+        Returns:
+            dict: response
+        """
+        return {
+            station_id: self.get_station_details(station_id)
+            for station_id in station_ids
+        }
