@@ -1,5 +1,5 @@
 flake8-docstrings==1.5.0
-flake8==3.5.0
+flake8==3.9.0
 influxdb==5.2.3
 netatmo==1.0.1
 pandas==1.2.3
