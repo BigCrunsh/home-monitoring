@@ -199,7 +199,7 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
     MEASUREMENT_NAME = 'gas_prices_euro'
 
     @staticmethod
-    def to_influxdb_point(time, response_json, station_map):
+    def to_influxdb_point(time, response_prices, response_stations):
         """Converts json response to InfluxDB point format.
 
         Converts an API response json to a list of dicts that is compatible to with
@@ -208,8 +208,8 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
 
         Args:
             time (datetime): Time added to the result
-            response_endpoint_json (json): API response to be mapped.
-            station_map (dict): mapping from station id to brand name.
+            response_prices (json): API response from the prices.php
+            response_stations (json): dict of API response from the detail.php
 
         Returns:
             list[dict]: Responses mapped to InfluxDB point format.
@@ -220,11 +220,13 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
                 "time": time,
                 "fields": {t: p for (t, p) in ps.items()},
                 "tags": {
-                    "brand": station_map[station_id],
+                    "brand": response_stations[station_id]['station']['brand'],
+                    "place": response_stations[station_id]['station']['place'],
+                    "address": f"{response_stations[station_id]['station']['street']} {response_stations[station_id]['station']['houseNumber']}",  # noqa
                     "station_id": station_id,
                 }
             }
-            for station_id, ps in response_json['prices'].items() if ps['status'] == 'open'
+            for station_id, ps in response_prices['prices'].items() if ps['status'] == 'open'
         ]
 
 
