@@ -14,8 +14,22 @@ from homemonitoring.util import LoggerConfig
 
 
 DEFAULT_STATION_IDS = {
+    # Berlin - Lichtenberg
     "51d4b477-a095-1aa0-e100-80009459e03a": "Jet",
-    "005056ba-7cb6-1ed2-bceb-8e5fec1a0d35": "Star"
+    "005056ba-7cb6-1ed2-bceb-8e5fec1a0d35": "Star",
+    # Hamburg
+    "f0a4e043-ba25-49a2-b40e-3bd50cd2074c": "Esso",
+    "e78510fb-5292-4c50-837f-f55a17a4111a": "Aral",
+    "f820f0a1-7a9c-4d99-91fc-4b09514f4820": "Esso",
+    "92b37d44-73f5-417a-a838-e3c8ca480433": "Frei",
+    "005056ba-7cb6-1ed2-bceb-6e6ee17d4d20": "Star",
+    "83c9acef-23a8-4eeb-924e-fb303bc93c5e": "CleanCar",
+    "005056ba-7cb6-1ed2-bceb-6e6ee17d4d20": "Jet",
+    # St.Peter
+    "eea4cf7e-ae3e-4865-bc3b-1cbebd121061": "Aral",
+    "196d6a02-b44f-435e-b49c-a6eab994e8d9": "bft-willer",
+    # Angermuende
+    "4393bf57-f3de-42e6-8d4d-9d6ca6a9a526": "Esso",
 }
 
 
