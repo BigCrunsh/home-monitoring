@@ -24,7 +24,7 @@ DEFAULT_STATION_IDS = {
     "92b37d44-73f5-417a-a838-e3c8ca480433": "Frei",
     "005056ba-7cb6-1ed2-bceb-6e6ee17d4d20": "Star",
     "83c9acef-23a8-4eeb-924e-fb303bc93c5e": "CleanCar",
-    "005056ba-7cb6-1ed2-bceb-6e6ee17d4d20": "Jet",
+    "51d4b4dc-a095-1aa0-e100-80009459e03a": "Jet",
     # St.Peter
     "eea4cf7e-ae3e-4865-bc3b-1cbebd121061": "Aral",
     "196d6a02-b44f-435e-b49c-a6eab994e8d9": "bft-willer",
