@@ -47,7 +47,7 @@ def run(args):
 
     time = datetime.datetime.utcnow()
     response_prices = handler.get_prices(DEFAULT_STATION_IDS)
-    response_stations = handler.get_details(DEFAULT_STATION_IDS)
+    response_stations = handler.get_stations_details(DEFAULT_STATION_IDS)
     prices = TankerKoenigResponseMapper.to_influxdb_point(time, response_prices, response_stations)
 
     ifclient.write_points(prices)
