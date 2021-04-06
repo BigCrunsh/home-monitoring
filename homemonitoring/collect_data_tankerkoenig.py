@@ -43,7 +43,7 @@ def run(args):
         args.influxdb_user, args.influxdb_pass,
         args.influxdb_db
     )
-    handler = TankerKoenig(api_key=args.api_key)
+    handler = TankerKoenig(api_key=args.api_key, cache_dir=args.cache_dir)
 
     time = datetime.datetime.utcnow()
     response_prices = handler.get_prices(DEFAULT_STATION_IDS)
@@ -61,6 +61,7 @@ def cfg():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument('--api-key', required=False, default=os.getenv('TANKERKOENIG_API_KEY'), help="API Key (request from TankerKoenig)")  # noqa
+    parser.add_argument('--cache-dir', required=False, default=None, help="Caching directory to store station details and avoid API calls")  # noqa
     parser.add_argument('--influxdb-host', required=False, default=os.getenv('INFLUXDB_HOST'), help="influx db host")  # noqa
     parser.add_argument('--influxdb-port', required=False, type=int, default=os.getenv('INFLUXDB_PORT'), help="influx db port")  # noqa
     parser.add_argument('--influxdb-user', required=False, default=os.getenv('INFLUXDB_USER'), help="influx db user")  # noqa
