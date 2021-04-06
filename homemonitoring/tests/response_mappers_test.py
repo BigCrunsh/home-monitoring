@@ -50,6 +50,8 @@ class TestTankerKoenigResponseMapper(TestCase):
                 "street": "Strasse1",
                 "houseNumber": "1",
                 "place": "placeA",
+                "lat": 1,
+                "lng": 2,
             }
         },
         "id_2": {
@@ -59,6 +61,8 @@ class TestTankerKoenigResponseMapper(TestCase):
                 "street": "Strasse2",
                 "houseNumber": "2",
                 "place": "placeB",
+                "lat": 3,
+                "lng": 4,
             }
         },
         "id_3": {
@@ -68,6 +72,8 @@ class TestTankerKoenigResponseMapper(TestCase):
                 "street": "Strasse3",
                 "houseNumber": "3",
                 "place": "placeC",
+                "lat": 5,
+                "lng": 6,
             }
         },
     }
@@ -91,7 +97,7 @@ class TestTankerKoenigResponseMapper(TestCase):
                 'fields': {'status': 'open', 'e5': 1.01, 'e10': 1.02, 'diesel': 1.03},
                 'tags': {
                     'brand': 'aral', 'place': 'placea', 'street': 'strasse1', 'house_number': '1',
-                    'station_id': 'id_1'
+                    'station_id': 'id_1', 'lat': 1, 'lng': 2
                 }
             },
             {
@@ -100,7 +106,7 @@ class TestTankerKoenigResponseMapper(TestCase):
                 'fields': {'status': 'open', 'e5': 1.04, 'e10': 1.05, 'diesel': 1.06},
                 'tags': {
                     'brand': 'jet', 'place': 'placeb', 'street': 'strasse2',
-                    'house_number': '2', 'station_id': 'id_2'
+                    'house_number': '2', 'station_id': 'id_2', 'lat': 3, 'lng': 4
                 }
             }
         ]
