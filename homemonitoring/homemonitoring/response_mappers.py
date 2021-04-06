@@ -224,6 +224,8 @@ class TankerKoenigResponseMapper(InfluxDBResponseMapper):
                     "place": response_stations[station_id]['station']['place'].lower(),
                     "street": response_stations[station_id]['station']['street'].lower(),
                     "house_number": response_stations[station_id]['station']['houseNumber'],
+                    "lat": response_stations[station_id]['station']['lat'],
+                    "lng": response_stations[station_id]['station']['lng'],
                     "station_id": station_id,
                 }
             }
