@@ -22,6 +22,14 @@ class TankerKoenig:
         self.api_key = api_key
         self.cache_dir = cache_dir
 
+    def _call_api(self, endpoint, **params):
+        response = requests.get(
+            f'{self.DEFAULT_URL}/json/{endpoint}',
+            params={**params, 'apikey': self.api_key}
+        )
+        response.raise_for_status()
+        return response.json()
+
     def get_prices(self, station_ids):
         """Returns gas prices for given station station ids.
 
@@ -33,18 +41,7 @@ class TankerKoenig:
         Returns:
             dict: response
         """
-        response = requests.get(
-            f'{self.DEFAULT_URL}/json/prices.php?ids={",".join(station_ids)}&apikey={self.api_key}'
-        )
-        response.raise_for_status()
-        return response.json()
-
-    def _call_detail(self, station_id):
-        response = requests.get(
-            f'{self.DEFAULT_URL}/json/detail.php?id={station_id}&apikey={self.api_key}'
-        )
-        response.raise_for_status()
-        return response.json()
+        return self._call_api('prices.php', ids=",".join(station_ids))
 
     def get_station_details(self, station_id, force_update=False):
         """Returns details for given station station id.
@@ -66,7 +63,7 @@ class TankerKoenig:
             except IOError:
                 print(f"File {filename} not accessible")
 
-        jsn = self._call_detail(station_id)
+        jsn = self._call_api('detail.php', id=station_id)
 
         if self.cache_dir is not None:
             filename = os.path.join(self.cache_dir, f'{station_id}.json')
