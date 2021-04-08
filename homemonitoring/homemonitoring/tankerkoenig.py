@@ -68,7 +68,7 @@ class TankerKoenig:
         if self.cache_dir is not None:
             filename = os.path.join(self.cache_dir, f'{station_id}.json')
             with open(filename, 'w') as f:
-                json.dump(jsn, f)
+                json.dump(jsn, f, sort_keys=True, indent=4)
         return jsn
 
     def get_stations_details(self, station_ids, force_update=False):
