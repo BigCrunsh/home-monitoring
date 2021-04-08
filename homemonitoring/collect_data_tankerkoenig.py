@@ -47,7 +47,7 @@ def run(args):
 
     time = datetime.datetime.utcnow()
     response_prices = handler.get_prices(DEFAULT_STATION_IDS)
-    response_stations = handler.get_stations_details(DEFAULT_STATION_IDS)
+    response_stations = handler.get_stations_details(DEFAULT_STATION_IDS, args.force_update)
     prices = TankerKoenigResponseMapper.to_influxdb_point(time, response_prices, response_stations)
 
     ifclient.write_points(prices)
@@ -62,6 +62,7 @@ def cfg():
     )
     parser.add_argument('--api-key', required=False, default=os.getenv('TANKERKOENIG_API_KEY'), help="API Key (request from TankerKoenig)")  # noqa
     parser.add_argument('--cache-dir', required=False, default=None, help="Caching directory to store station details and avoid API calls")  # noqa
+    parser.add_argument('--force-update', action='store_true', help="Update and override station details even if already exist (be mindful about the rate limit)")  # noqa
     parser.add_argument('--influxdb-host', required=False, default=os.getenv('INFLUXDB_HOST'), help="influx db host")  # noqa
     parser.add_argument('--influxdb-port', required=False, type=int, default=os.getenv('INFLUXDB_PORT'), help="influx db port")  # noqa
     parser.add_argument('--influxdb-user', required=False, default=os.getenv('INFLUXDB_USER'), help="influx db user")  # noqa
