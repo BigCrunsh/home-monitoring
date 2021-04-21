@@ -439,7 +439,7 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
         Returns:
             list[dict]: Responses mapped to InfluxDB point format.
         """
-        return [
+        points = [
             {
                 "measurement": 'garden_system_battery_percentage',
                 "time": time,
@@ -466,19 +466,6 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                 }
             },
             {
-                "measurement": 'garden_temperature_celsius',
-                "time": time,
-                "fields": {
-                    'temperature': sensor.ambient_temperature
-                },
-                "tags": {
-                    "environment": 'ambient',
-                    "name": sensor.name,
-                    "id": sensor.id,
-                    "type": sensor.type
-                }
-            },
-            {
                 "measurement": 'garden_humidity_percentage',
                 "time": time,
                 "fields": {
@@ -486,18 +473,6 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                 },
                 "tags": {
                     "environment": 'soil',
-                    "name": sensor.name,
-                    "id": sensor.id,
-                    "type": sensor.type
-                }
-            },
-            {
-                "measurement": 'garden_light_intensity_lux',
-                "time": time,
-                "fields": {
-                    'light_intensity': sensor.light_intensity
-                },
-                "tags": {
                     "name": sensor.name,
                     "id": sensor.id,
                     "type": sensor.type
@@ -516,6 +491,42 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                 }
             },
         ]
+
+        # the new sensor 19040 does not support ambient temperature and light intensity
+        if sensor.ambient_temperature != 'N/A':
+            points.append(
+                {
+                    "measurement": 'garden_temperature_celsius',
+                    "time": time,
+                    "fields": {
+                        'temperature': sensor.ambient_temperature
+                    },
+                    "tags": {
+                        "environment": 'ambient',
+                        "name": sensor.name,
+                        "id": sensor.id,
+                        "type": sensor.type
+                    }
+                }
+            )
+
+        if sensor.light_intensity != 'N/A':
+            points.append(
+                {
+                    "measurement": 'garden_light_intensity_lux',
+                    "time": time,
+                    "fields": {
+                        'light_intensity': sensor.light_intensity
+                    },
+                    "tags": {
+                        "name": sensor.name,
+                        "id": sensor.id,
+                        "type": sensor.type
+                    }
+                }
+            )
+
+        return points
 
 
 class TechemResponseMapper(InfluxDBResponseMapper):

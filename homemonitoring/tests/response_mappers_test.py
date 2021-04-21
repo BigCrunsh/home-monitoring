@@ -13,7 +13,7 @@ from homemonitoring.response_mappers import (
     SolarEdgeResponseMapper, GardenaResponseMapper, TechemResponseMapper,
     TankerKoenigResponseMapper
 )
-from .fixtures import sensor_fixture, smart_irrigation_fixture
+from .fixtures import sensor_fixture, smart_irrigation_fixture, sensor_fixture_new
 
 
 class TestTankerKoenigResponseMapper(TestCase):
@@ -539,6 +539,44 @@ class TestGardenaResponseMapper(TestCase):
         ]
         self.assertListEqual(got, expected)
 
+    def test_sensor_data_to_influxdb_point_nan(self):
+        """Checks conversion to influxdb for sensor device with N/A values."""
+        sensor = Sensor(self.sm, sensor_fixture_new)
+        time = 3
+        got = GardenaResponseMapper.sensor_data_to_influxdb_point(sensor, time)
+        tags = {
+            'name': "Sensor",
+            'id': "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+            'type': 'SENSOR'
+        }
+        expected = [
+            {
+                'measurement': 'garden_system_battery_percentage',
+                'time': time,
+                'fields': {'battery': 93},
+                'tags': tags
+            },
+            {
+                'measurement': 'garden_temperature_celsius',
+                'time': time,
+                'fields': {'temperature': 22},
+                'tags': {**tags, 'environment': 'soil'}
+            },
+            {
+                'measurement': 'garden_humidity_percentage',
+                'time': time,
+                'fields': {'humidity': 0},
+                'tags': {**tags, 'environment': 'soil'}
+            },
+            {
+                'measurement': 'garden_rf_link_level_percentage',
+                'time': time,
+                'fields': {'rf_link_level': 70},
+                'tags': tags
+            }
+        ]
+        self.assertListEqual(got, expected)
+
     def test_sensor_data_to_influxdb_point(self):
         """Checks conversion to influxdb for sensor device."""
         sensor = Sensor(self.sm, sensor_fixture)
@@ -563,16 +601,22 @@ class TestGardenaResponseMapper(TestCase):
                 'tags': {**tags, 'environment': 'soil'}
             },
             {
-                'measurement': 'garden_temperature_celsius',
-                'time': time,
-                'fields': {'temperature': 21},
-                'tags': {**tags, 'environment': 'ambient'}
-            },
-            {
                 'measurement': 'garden_humidity_percentage',
                 'time': time,
                 'fields': {'humidity': 0},
                 'tags': {**tags, 'environment': 'soil'}
+            },
+            {
+                'measurement': 'garden_rf_link_level_percentage',
+                'time': time,
+                'fields': {'rf_link_level': 70},
+                'tags': tags
+            },
+            {
+                'measurement': 'garden_temperature_celsius',
+                'time': time,
+                'fields': {'temperature': 21},
+                'tags': {**tags, 'environment': 'ambient'}
             },
             {
                 'measurement': 'garden_light_intensity_lux',
@@ -580,12 +624,6 @@ class TestGardenaResponseMapper(TestCase):
                 'fields': {'light_intensity': 15},
                 'tags': tags
             },
-            {
-                'measurement': 'garden_rf_link_level_percentage',
-                'time': time,
-                'fields': {'rf_link_level': 70},
-                'tags': tags
-            }
         ]
         self.assertListEqual(got, expected)
 
