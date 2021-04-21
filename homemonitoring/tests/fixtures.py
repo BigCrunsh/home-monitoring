@@ -196,6 +196,99 @@ sensor_fixture = {
     ],
 }
 
+sensor_fixture_new = {
+    "COMMON": [
+        {
+            "attributes": {
+                "batteryLevel": {
+                    "timestamp": "2019-09-28T22:54:29.179+0000",
+                    "value": 93,
+                },
+                "batteryState": {
+                    "timestamp": "2019-09-21T08:49:53.225+0000",
+                    "value": "OK",
+                },
+                "modelType": {"value": "GARDENA " "smart " "Sensor"},
+                "name": {"value": "Sensor"},
+                "rfLinkLevel": {
+                    "timestamp": "2019-09-29T10:56:10.257+0000",
+                    "value": 70,
+                },
+                "rfLinkState": {"value": "ONLINE"},
+                "serial": {"value": "00028462"},
+            },
+            "id": "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+            "relationships": {
+                "device": {
+                    "data": {
+                        "id": "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+                        "type": "DEVICE",
+                    }
+                }
+            },
+            "type": "COMMON",
+        }
+    ],
+    "DEVICE": [
+        {
+            "id": "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+            "relationships": {
+                "location": {
+                    "data": {
+                        "id": "753aecac-4c46-470e-aa96-d92436f11e77",
+                        "type": "LOCATION",
+                    }
+                },
+                "services": {
+                    "data": [
+                        {
+                            "id": "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+                            "type": "SENSOR",
+                        },
+                        {
+                            "id": "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+                            "type": "COMMON",
+                        },
+                    ]
+                },
+            },
+            "type": "DEVICE",
+        }
+    ],
+    "SENSOR": [
+        {
+            "attributes": {
+                "ambientTemperature": {
+                    "timestamp": "2019-09-29T10:56:10.122+0000",
+                    "value": 'N/A',
+                },
+                "lightIntensity": {
+                    "timestamp": "2019-09-29T10:56:10.215+0000",
+                    "value": 'N/A',
+                },
+                "soilHumidity": {
+                    "timestamp": "2019-09-29T10:03:27.485+0000",
+                    "value": 0,
+                },
+                "soilTemperature": {
+                    "timestamp": "2019-09-29T10:02:18.119+0000",
+                    "value": 22,
+                },
+            },
+            "id": "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+            "relationships": {
+                "device": {
+                    "data": {
+                        "id": "a134596e-6127-4020-aaa5-b6d2f24d0d03",
+                        "type": "DEVICE",
+                    }
+                }
+            },
+            "type": "SENSOR",
+        }
+    ],
+}
+
 smart_irrigation_fixture = {
     "COMMON": [
         {
