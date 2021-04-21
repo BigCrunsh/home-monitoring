@@ -45,10 +45,10 @@ def run(args):
     )
     logger.info("Start web socket")
     smart_system.connect()
-    # call backs are triggered for all devices
-    smart_system.location.find_device_by_type('SENSOR')[0].add_callback(
-        lambda d: ingest_data(d, ifclient, logger)
-    )
+
+    for t in ['SENSOR', 'SMART_IRRIGATION_CONTROL']:
+        for d in smart_system.location.find_device_by_type(t):
+            d.add_callback(lambda d: ingest_data(d, ifclient, logger))
 
     input("Press any key to quit: ")
 
