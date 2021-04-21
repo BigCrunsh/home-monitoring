@@ -13,7 +13,7 @@ from homemonitoring.util import LoggerConfig
 from homemonitoring.influxdb import InfluxDBClient
 
 
-def ingest_data(device, ifclient):
+def ingest_data(device, ifclient, logger):
     """Writes device attributes to influx db."""
     time = datetime.datetime.utcnow()
     if device.type == 'SMART_IRRIGATION_CONTROL':
@@ -21,7 +21,9 @@ def ingest_data(device, ifclient):
     elif device.type == 'SENSOR':
         points = GardenaResponseMapper.sensor_data_to_influxdb_point(device, time)
     else:
+        logger.warning(f"Device type {device.type} not implemented")
         return
+    logger.debug(f"Data points to ingest {points}")
     ifclient.write_points(points)
 
 
@@ -45,7 +47,7 @@ def run(args):
     smart_system.connect()
     # call backs are triggered for all devices
     smart_system.location.find_device_by_type('SENSOR')[0].add_callback(
-        lambda d: ingest_data(d, ifclient)
+        lambda d: ingest_data(d, ifclient, logger)
     )
 
     input("Press any key to quit: ")
