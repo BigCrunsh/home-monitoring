@@ -8,3 +8,4 @@ py-smart-gardena==0.7.10
 pytest==6.2.3
 websocket-client==0.57.0
 aioinflux==0.9.0
+matplotlib==3.4.1
