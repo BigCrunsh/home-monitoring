@@ -2,6 +2,6 @@ language: python
 python:
   - "3.7"
 # command to install dependencies
-install: make init
+install: make deps init
 # command to run tests
 script: make test

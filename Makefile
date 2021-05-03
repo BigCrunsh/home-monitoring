@@ -1,19 +1,34 @@
 PROJECT_NAME = homemonitoring
 
+help:
+	@echo "Please use \`make <target>' where <target> is one of"
+	@echo "  clean                  to remove python artifacts"
+	@echo "  deps                   to install all dependencies"
+	@echo "  init                   to install project for local development"
+	@echo "  test                   to check the code syle and run unit tests"
+	@echo "  init-docker            to create docker storages"
+	@echo "  start-docker           to start container"
+
+
 .PHONY: clean
 clean:
 	find . -name '*.pyc' -delete
 	rm -rf .cache .config .ipython .jupyter .local
 	rm -rf $(PROJECT_NAME).egg-info
 
+deps:
+	pip install poetry
+	poetry config virtualenvs.in-project true --local
+	poetry install
+
 .PHONY: init
 init:
-	pip install -r requirements.txt
+	poetry install
 
 .PHONY: test
 test:
-	flake8 $(PROJECT_NAME) --config=$(PROJECT_NAME)/tox.ini
-	pytest $(PROJECT_NAME)
+	poetry run flake8 $(PROJECT_NAME) --config=$(PROJECT_NAME)/tox.ini
+	poetry run pytest $(PROJECT_NAME)
 
 
 .PHONY: init-docker
