@@ -16,6 +16,7 @@ clean:
 	rm -rf .cache .config .ipython .jupyter .local
 	rm -rf $(PROJECT_NAME).egg-info
 
+.PHONY: deps
 deps:
 	pip install poetry
 	poetry config virtualenvs.in-project true --local
