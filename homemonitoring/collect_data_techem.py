@@ -28,10 +28,7 @@ def run(args):
     time = datetime.datetime.utcnow()
     ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.serial_timeout)
     logger.info('Listen to port %s', args.serial_port)
-    responses = set(
-        ser.readline()
-        for _ in range(args.serial_num_packets)
-    )
+    responses = {ser.readline() for _ in range(args.serial_num_packets)}
     logger.info('Received %i distinct messages', len(responses))
 
     points = TechemResponseMapper.to_influxdb_point(time, responses)
