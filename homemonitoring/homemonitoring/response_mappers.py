@@ -105,7 +105,7 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
             for i in range(len(response_endpoint_json['meters']))
             if len(response_endpoint_json['meters'][i]['values']) > 0
         ]
-        if len(df) == 0:
+        if not df:
             df = [pd.DataFrame()]
         df = pd.concat(df, axis=1, sort=True)
         df.index.name = 'date'  # https://github.com/pandas-dev/pandas/issues/21629
