@@ -26,6 +26,6 @@ class InfluxDBClient(influxdb.InfluxDBClient):
         points = list(res.get_points(measurement=measurement_name))
         print(points)
         assert len(points) < 2
-        if len(points) == 0:
+        if not points:
             return None
         return pytz.utc.localize(datetime.datetime.fromisoformat(points[0]['time'][:-1]))
