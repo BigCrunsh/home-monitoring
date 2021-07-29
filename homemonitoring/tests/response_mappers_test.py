@@ -11,13 +11,98 @@ from gardena.devices.smart_irrigation_control import SmartIrrigationControl
 
 from homemonitoring.response_mappers import (
     SolarEdgeResponseMapper, GardenaResponseMapper, TechemResponseMapper,
-    TankerKoenigResponseMapper
+    TankerKoenigResponseMapper, NetatmoResponseMapper
 )
 from .fixtures import sensor_fixture, smart_irrigation_fixture, sensor_fixture_new
 
 
+class TestNetatmoResponseMapper(TestCase):
+    """TestNetatmoResponseMapper contains the tests for NetatmoResponseMapper class."""
+    RESPONSE_FIXTURES = [{
+        '_id': '0',
+        'module_name': 'Main',
+        'wifi_status': 58,
+        'data_type': ['Temperature'],
+        'dashboard_data': {
+            'time_utc': 1627581580,
+            'Temperature': 26,
+        },
+        'modules': [
+            {
+                '_id': '1',
+                'type': 'NAModule4',
+                'module_name': 'room',
+                'data_type': ['Temperature'],
+                'dashboard_data': {
+                    'time_utc': 1627581578,
+                    'Temperature': 25.6,
+                }
+            },
+            {
+                '_id': '2',
+                'type': 'NAModule2',
+                'module_name': 'wind',
+                'data_type': [],
+                'battery_percent': 1,
+                'battery_vp': 3973
+            },
+        ]
+    }]
+
+    def test_to_influxdb_point(self):
+        """Checks conversion to influxdb."""
+        time = datetime.datetime(2020, 3, 30, 17, 45)
+        got = NetatmoResponseMapper.to_influxdb_point(
+            self.RESPONSE_FIXTURES,
+            time
+        )
+        expected = [
+            {
+                'measurement': 'weather_temperature_celsius',
+                'time': datetime.datetime(2020, 3, 30, 17, 45),
+                'fields': {'Temperature': 26.0},
+                'tags': {'module_name': 'Main'}
+            },
+            {
+                'measurement': 'weather_temperature_celsius',
+                'time': datetime.datetime(2020, 3, 30, 17, 45),
+                'fields': {'Temperature': 25.6},
+                'tags': {'module_name': 'room'}
+            },
+            {
+                'measurement': 'weather_system_battery_percentage',
+                'time': datetime.datetime(2020, 3, 30, 17, 45),
+                'fields': {'Battery': 1.0},
+                'tags': {'module_name': 'wind'},
+            },
+        ]
+        print(got)
+        self.assertListEqual(got, expected)
+
+    def test_get_module_names(self):
+        """Checks extraction of module names."""
+        got = NetatmoResponseMapper._get_module_names(self.RESPONSE_FIXTURES)
+        expected = ['Main', 'room', 'wind']
+        self.assertListEqual(got, expected)
+
+    def test_get_data(self):
+        """Checks extration of data by name."""
+        got = NetatmoResponseMapper._get_data(self.RESPONSE_FIXTURES, 'room')
+        expected = {
+            '_id': '1',
+            'type': 'NAModule4',
+            'module_name': 'room',
+            'data_type': ['Temperature'],
+            'dashboard_data': {
+                'time_utc': 1627581578,
+                'Temperature': 25.6,
+            }
+        }
+        self.assertDictEqual(got, expected)
+
+
 class TestTankerKoenigResponseMapper(TestCase):
-    """TestTankerKoenigResponseMapper contains the testsTankerKoenigResponseMapper class."""
+    """TestTankerKoenigResponseMapper contains the tests for TankerKoenigResponseMapper class."""
 
     RESPONSE_PRICE_FIXTURES = {
         "prices": {

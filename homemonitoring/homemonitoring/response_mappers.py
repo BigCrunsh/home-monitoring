@@ -311,6 +311,7 @@ class NetatmoResponseMapper(InfluxDBResponseMapper):
             for measurements_name, unit in measurements.items()
             for module_name in module_names
             if data_type in NetatmoResponseMapper._get_data(response_json, module_name)['data_type']
+            if 'dashboard_data' in NetatmoResponseMapper._get_data(response_json, module_name)
         ] + [
             {
                 "measurement": 'weather_system_battery_percentage',
