@@ -7,7 +7,7 @@ import argparse
 import sys
 import datetime
 
-from gardena import smart_system
+from gardena import smart_system as gardena_smart_system
 
 from homemonitoring.response_mappers import GardenaResponseMapper
 from homemonitoring.util import LoggerConfig
@@ -39,7 +39,7 @@ def run(args):
         args.influxdb_db
     )
 
-    smart_system = smart_system.SmartSystem(
+    smart_system = gardena_smart_system.SmartSystem(
         email=args.gardena_email,
         password=args.gardena_password,
         client_id=args.gardena_application_id
