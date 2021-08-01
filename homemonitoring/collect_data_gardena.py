@@ -7,7 +7,8 @@ import argparse
 import sys
 import datetime
 
-from homemonitoring.gardena import SmartSystem
+from gardena import smart_system
+
 from homemonitoring.response_mappers import GardenaResponseMapper
 from homemonitoring.util import LoggerConfig
 from homemonitoring.influxdb import InfluxDBClient
@@ -38,13 +39,18 @@ def run(args):
         args.influxdb_db
     )
 
-    smart_system = SmartSystem(
+    smart_system = smart_system.SmartSystem(
         email=args.gardena_email,
         password=args.gardena_password,
         client_id=args.gardena_application_id
     )
     logger.info("Start web socket")
-    smart_system.connect()
+    smart_system.authenticate()
+    smart_system.update_locations()
+    assert len(smart_system.locations) == 1, "Number of locations found is not 1"
+    smart_system.location = list(smart_system.locations.values())[0]
+    smart_system.update_devices(smart_system.location)
+    smart_system.start_ws(smart_system.location)
 
     for t in ['SENSOR', 'SMART_IRRIGATION_CONTROL']:
         for d in smart_system.location.find_device_by_type(t):
