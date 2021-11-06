@@ -10,16 +10,16 @@ import sys
 from homemonitoring.util import LoggerConfig
 
 def run(args):
-    """Update DynDNS at dnsexit.com entry via https request."""
+    """Update DynDNS at dynu.com entry via https request."""
     LoggerConfig.set_verbose(args.verbose)
     logger = LoggerConfig.get_logger(__name__)
 
     r = requests.get(
         'http://api.dynu.com/nic/update',
         params={
-            'host': args.dnsexit_host,
-            'username': args.dnsexit_login,
-            'password': args.dnsexit_password,
+            'host': args.dynu_host,
+            'username': args.dynu_username,
+            'password': args.dynu_password,
         }
     )
     logger.info(r.text)
@@ -29,7 +29,7 @@ def run(args):
 def cfg():
     """Configuration of argument parser."""
     parser = argparse.ArgumentParser(
-        description="Update DynDNS at dnsexit.com",
+        description="Update DynDNS at dynu.com",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument('--dynu-host', required=False, default=os.getenv('DYNU_HOST'), help="Host to update IP")  # noqa
