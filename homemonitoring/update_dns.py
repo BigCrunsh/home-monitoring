@@ -7,17 +7,22 @@ import requests
 import argparse
 import sys
 
+from homemonitoring.util import LoggerConfig
 
 def run(args):
     """Update DynDNS at dnsexit.com entry via https request."""
+    LoggerConfig.set_verbose(args.verbose)
+    logger = LoggerConfig.get_logger(__name__)
+
     r = requests.get(
-        'https://update.dnsexit.com/RemoteUpdate.sv',
+        'http://api.dynu.com/nic/update',
         params={
             'host': args.dnsexit_host,
-            'login': args.dnsexit_login,
+            'username': args.dnsexit_login,
             'password': args.dnsexit_password,
         }
     )
+    logger.info(r.text)
     r.raise_for_status()
 
 
@@ -27,9 +32,9 @@ def cfg():
         description="Update DynDNS at dnsexit.com",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--dnsexit-host', required=False, default=os.getenv('DNSEXIT_HOST'), help="Host to update IP")  # noqa
-    parser.add_argument('--dnsexit-login', required=False, default=os.getenv('DNSEXIT_LOGIN'), help="dnsexit login.")  # noqa
-    parser.add_argument('--dnsexit-password', required=False, default=os.getenv('DNSEXIT_PASSWORD'), help="dnsexit password")  # noqa
+    parser.add_argument('--dynu-host', required=False, default=os.getenv('DYNU_HOST'), help="Host to update IP")  # noqa
+    parser.add_argument('--dynu-username', required=False, default=os.getenv('DYNU_USERNAME'), help="Dynu username.")  # noqa
+    parser.add_argument('--dynu-password', required=False, default=os.getenv('DYNU_PASSWORD'), help="Dynu password")  # noqa
     parser.add_argument('-v', '--verbose', action='store_true')
     return parser.parse_args()
 
