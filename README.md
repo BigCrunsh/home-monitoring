@@ -47,6 +47,7 @@ docker run -d \
  --net=host \
  --name=grafana \
  --volume grafana-storage:/var/lib/grafana \
+ --env "GF_INSTALL_PLUGINS=grafana-clock-panel, grafana-worldmap-panel" \
  grafana/grafana
 ```
 The grafana endpoint can be accessed on port `3000` and the login is `admin` (user name and password).
