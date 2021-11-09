@@ -6,6 +6,7 @@ import os
 import argparse
 import sys
 
+import requests
 import datetime
 
 from homemonitoring.util import LoggerConfig
