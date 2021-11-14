@@ -74,9 +74,9 @@ Note that additionally to the command on top, we mount the certificate files and
 ## Setup Data Collection Jobs
 The data collection jobs are scheduled via cron (`crontab -e`), e.g.,
 ```bash
-DNSEXIT_HOST="..."
-DNSEXIT_LOGIN="..."
-DNSEXIT_PASSWORD="..."
+DYNU_HOST="..."
+DYNU_USERNAME="..."
+DYNU_PASSWORD="..."
 
 TANKERKOENIG_API_KEY="..."
 
