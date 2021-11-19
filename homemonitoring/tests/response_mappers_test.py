@@ -13,7 +13,7 @@ from homemonitoring.response_mappers import (
     SolarEdgeResponseMapper, GardenaResponseMapper, TechemResponseMapper,
     TankerKoenigResponseMapper, NetatmoResponseMapper
 )
-from .fixtures import sensor_fixture, smart_irrigation_fixture, sensor_fixture_new
+from .fixtures import sensor_fixture, smart_irrigation_fixture, soil_sensor_fixture
 
 
 class TestNetatmoResponseMapper(TestCase):
@@ -624,11 +624,11 @@ class TestGardenaResponseMapper(TestCase):
         ]
         self.assertListEqual(got, expected)
 
-    def test_sensor_data_to_influxdb_point_nan(self):
+    def test_soil_sensor_data_to_influxdb_point_nan(self):
         """Checks conversion to influxdb for sensor device with N/A values."""
-        sensor = Sensor(self.sm, sensor_fixture_new)
+        sensor = Sensor(self.sm, soil_sensor_fixture)
         time = 3
-        got = GardenaResponseMapper.sensor_data_to_influxdb_point(sensor, time)
+        got = GardenaResponseMapper.soil_sensor_data_to_influxdb_point(sensor, time)
         tags = {
             'name': "Sensor",
             'id': "a134596e-6127-4020-aaa5-b6d2f24d0d03",

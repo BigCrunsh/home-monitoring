@@ -196,7 +196,7 @@ sensor_fixture = {
     ],
 }
 
-sensor_fixture_new = {
+soil_sensor_fixture = {
     "COMMON": [
         {
             "attributes": {
@@ -258,14 +258,6 @@ sensor_fixture_new = {
     "SENSOR": [
         {
             "attributes": {
-                "ambientTemperature": {
-                    "timestamp": "2019-09-29T10:56:10.122+0000",
-                    "value": 'N/A',
-                },
-                "lightIntensity": {
-                    "timestamp": "2019-09-29T10:56:10.215+0000",
-                    "value": 'N/A',
-                },
                 "soilHumidity": {
                     "timestamp": "2019-09-29T10:03:27.485+0000",
                     "value": 0,

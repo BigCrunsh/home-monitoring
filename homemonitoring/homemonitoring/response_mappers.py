@@ -399,7 +399,8 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
         in the struct.
 
         Args:
-            device (gardena.base_device.BaseDevice): device object holding state
+            device (gardena.smart_irrigation_control.SmartIrrigationControl):
+                device object holding state
             time (datetime): Time added to the result
 
         Returns:
@@ -434,7 +435,57 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
         in the struct.
 
         Args:
-            device (gardena.base_device.BaseDevice): device object holding state
+            device (gardena.devices.sensor.Sensor): device object holding state
+            time (datetime): Time added to the result
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
+        points = GardenaResponseMapper.soil_sensor_data_to_influxdb_point(sensor, time)
+
+        points.append(
+            {
+                "measurement": 'garden_temperature_celsius',
+                "time": time,
+                "fields": {
+                    'temperature': sensor.ambient_temperature
+                },
+                "tags": {
+                    "environment": 'ambient',
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            }
+        )
+
+        points.append(
+            {
+                "measurement": 'garden_light_intensity_lux',
+                "time": time,
+                "fields": {
+                    'light_intensity': sensor.light_intensity
+                },
+                "tags": {
+                    "name": sensor.name,
+                    "id": sensor.id,
+                    "type": sensor.type
+                }
+            }
+        )
+
+        return points
+
+    @staticmethod
+    def soil_sensor_data_to_influxdb_point(sensor, time):
+        """Reads sensor data and formates to InfluxDB point format.
+
+        Parses device attributes to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface. The `time` is added to the field `time`
+        in the struct.
+
+        Args:
+            device (gardena.devices.soil_device.SoilDevice): device object holding state
             time (datetime): Time added to the result
 
         Returns:
@@ -492,40 +543,6 @@ class GardenaResponseMapper(InfluxDBResponseMapper):
                 }
             },
         ]
-
-        # the new sensor 19040 does not support ambient temperature and light intensity
-        if sensor.ambient_temperature != 'N/A':
-            points.append(
-                {
-                    "measurement": 'garden_temperature_celsius',
-                    "time": time,
-                    "fields": {
-                        'temperature': sensor.ambient_temperature
-                    },
-                    "tags": {
-                        "environment": 'ambient',
-                        "name": sensor.name,
-                        "id": sensor.id,
-                        "type": sensor.type
-                    }
-                }
-            )
-
-        if sensor.light_intensity != 'N/A':
-            points.append(
-                {
-                    "measurement": 'garden_light_intensity_lux',
-                    "time": time,
-                    "fields": {
-                        'light_intensity': sensor.light_intensity
-                    },
-                    "tags": {
-                        "name": sensor.name,
-                        "id": sensor.id,
-                        "type": sensor.type
-                    }
-                }
-            )
 
         return points
 
