@@ -9,6 +9,7 @@ import sys
 
 from homemonitoring.util import LoggerConfig
 
+
 def run(args):
     """Update DynDNS at dynu.com entry via https request."""
     LoggerConfig.set_verbose(args.verbose)
