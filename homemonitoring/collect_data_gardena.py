@@ -19,8 +19,10 @@ def ingest_data(device, ifclient, logger):
     time = datetime.datetime.utcnow()
     if device.type == 'SMART_IRRIGATION_CONTROL':
         points = GardenaResponseMapper.control_data_to_influxdb_point(device, time)
-    elif device.type == 'SENSOR' or device.type == 'SOIL_SENSOR' :
+    elif device.type == 'SENSOR':
         points = GardenaResponseMapper.sensor_data_to_influxdb_point(device, time)
+    elif device.type == 'SOIL_SENSOR':
+        points = GardenaResponseMapper.soil_sensor_data_to_influxdb_point(device, time)
     else:
         logger.warning(f"Device type {device.type} not implemented")
         return
@@ -53,7 +55,7 @@ def run(args):
     smart_system.start_ws(smart_system.location)
 
     logger.info("Devices found:")
-    for k,v in smart_system.location.devices.items():
+    for k, v in smart_system.location.devices.items():
         logger.info(f"- {k}: {v.name} ({v.type})")
 
     for t in ['SENSOR', 'SMART_IRRIGATION_CONTROL', 'SOIL_SENSOR']:
