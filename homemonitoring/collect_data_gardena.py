@@ -52,7 +52,11 @@ def run(args):
     smart_system.update_devices(smart_system.location)
     smart_system.start_ws(smart_system.location)
 
-    for t in ['SENSOR', 'SMART_IRRIGATION_CONTROL']:
+    logger.info("Devices found:")
+    for k,v in smart_system.location.devices.items():
+        logger.info(f"- {k}: {v.name} ({v.type})")
+
+    for t in ['SENSOR', 'SMART_IRRIGATION_CONTROL', 'SOIL_SENSOR']:
         for d in smart_system.location.find_device_by_type(t):
             d.add_callback(lambda d: ingest_data(d, ifclient, logger))
 
