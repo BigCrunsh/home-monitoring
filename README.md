@@ -87,6 +87,11 @@ NETATMO_PASSWORD="..."
 NETATMO_CLIENT_ID="..."
 NETATMO_CLIENT_SECRET="..."
 
+GARDENA_EMAIL="..."
+GARDENA_PASSWORD="..."
+GARDENA_APPLICATION_ID="..."
+GARDENA_APPLICATION_SECRET="..."
+
 INFLUXDB_HOST="127.0.0.1"
 INFLUXDB_PORT=8086
 INFLUXDB_USER="..."
@@ -97,6 +102,7 @@ INFLUXDB_DB="home_monitoring"
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_tankerkoenig.py > /home/pi/logs/collect_data_tankerkoenig.log 2>&1
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_netatmo.py > /home/pi/logs/collect_data_netatmo.log 2>&1
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_solaredge.py > /home/pi/logs/collect_data_solaredge.log 2>&1
+*/30 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/deps/gardena/bin/start-gardena-screen.sh > /home/pi/logs/collect_data_gardena.log 2>&1
 01 0 * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_techem.py > /home/pi/logs/collect_data_techem.log 2>&1
 0 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/update_dns.py > /home/pi/logs/update_dns.log 2>&1
 ```
