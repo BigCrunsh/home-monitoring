@@ -10,8 +10,8 @@ montitoring metrics on a Raspberry PI 4; we use an influxDB to store and grafana
 
 Systems to Monitor:
 - [Netatmo](https://www.netatmo.com/en-eu) is a smart home weather station.
-- [SolarEdge](https://www.solaredge.com/) is a solar
-	inverter and monitoring systems for photovoltaic arrays
+- [SolarEdge](https://www.solaredge.com/) is a solar inverter and monitoring systems for photovoltaic arrays
+- [Gardena](https://www.gardena.com/de/produkte/smart/) is a smart gardening system.
 - [Tankerkoenig](https://creativecommons.tankerkoenig.de/) provides gas station prices
 - Techem Compat V energy meter is monitored via a nanoCUL USB Stick (FTDI CC1101 868MHz FW 1.67 FHEM).
 
