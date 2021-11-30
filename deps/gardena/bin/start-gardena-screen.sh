@@ -31,6 +31,6 @@ if [ "$(screen -list|grep $SOCKNAME|grep Detached)" ]; then
     log "screen exists"
 else
     log "start screen"
-    screen -dmS $SOCKNAME bash -c "$(pwd)/../../../homemonitoring/collect_data_gardena.py"
+    screen -dmS $SOCKNAME bash -c "$(pwd)/../../../homemonitoring/collect_data_gardena.py > /home/pi/logs/collect_data_gardena.log 2>&1"
     log "done"
 fi
