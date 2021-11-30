@@ -99,7 +99,7 @@ INFLUXDB_PASS="..."
 INFLUXDB_DB="home_monitoring"
 
 
-*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_tankerkoenig.py > /home/pi/logs/collect_data_tankerkoenig.log 2>&1
+*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_tankerkoenig.py --cache-dir /home/pi/logs/station_details > /home/pi/logs/collect_data_tankerkoenig.log 2>&1
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_netatmo.py > /home/pi/logs/collect_data_netatmo.log 2>&1
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_solaredge.py > /home/pi/logs/collect_data_solaredge.log 2>&1
 */30 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/deps/gardena/bin/start-gardena-screen.sh > /home/pi/logs/collect_data_gardena.log 2>&1
