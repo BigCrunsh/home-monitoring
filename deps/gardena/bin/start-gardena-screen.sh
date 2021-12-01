@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
- 
 usage() {
   echo "Start screen to run gardena script as daemon."
   echo
@@ -31,6 +30,6 @@ if [ "$(screen -list|grep $SOCKNAME|grep Detached)" ]; then
     log "screen exists"
 else
     log "start screen"
-    screen -dmS $SOCKNAME bash -c "$(pwd)/../../../homemonitoring/collect_data_gardena.py > /home/pi/logs/collect_data_gardena.log 2>&1"
+    screen -dmS $SOCKNAME bash -c "$(dirname $0)/../../../homemonitoring/collect_data_gardena.py > /home/pi/logs/collect_data_gardena.log 2>&1"
     log "done"
 fi
