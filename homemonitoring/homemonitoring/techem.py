@@ -30,7 +30,7 @@ class TechemDecoder:
     }
 
     def __init__(self, data):
-        assert self.BYTE_FORMAT.match(data), "No valid Techem WM-Bus data"
+        assert self.BYTE_FORMAT.match(data), f"No valid Techem WM-Bus data: {data}"
         self.data = data
 
     def __get_byte(self, offset):
