@@ -565,7 +565,21 @@ class TechemResponseMapper(InfluxDBResponseMapper):
         Returns:
             list[dict]: Responses mapped to InfluxDB point format.
         """
-        decoders = map(lambda p: TechemDecoder(p.decode('utf-8')), data)
+        def catch(error, default, function, *args, **kwargs):
+            try:
+                return function(*args, **kwargs)
+            except error:
+                return default
+
+        decoders = map(
+            lambda p: catch(
+                AssertionError,
+                None,
+                TechemDecoder,
+                p.decode('utf-8')
+            ),
+            data
+        )
         return [
             {
                 "measurement": 'heat_energy_watthours',
@@ -578,4 +592,5 @@ class TechemResponseMapper(InfluxDBResponseMapper):
                 }
             }
             for d in decoders
+            if d is not None
         ]
