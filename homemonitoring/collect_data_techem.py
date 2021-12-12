@@ -28,13 +28,15 @@ def run(args):
     time = datetime.datetime.utcnow()
     ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.serial_timeout)
     logger.info('Listen to port %s', args.serial_port)
-    responses = {ser.readline() for _ in range(args.serial_num_packets)}
-    logger.info(f'Received {len(responses)} distinct messages:')
-    for r in responses:
+
+    responses = set()
+    for _ in range(args.serial_num_packets):
+        r = ser.readline()
         logger.info(f'- {r}')
+        responses.add(r)
+    logger.info(f'Received {len(responses)} distinct messages.')
 
     points = TechemResponseMapper.to_influxdb_point(time, responses)
-    logger.info(f'mapped points: {points}')
     try:
         ifclient.write_points(points)
     except Exception as e:
