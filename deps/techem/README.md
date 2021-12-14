@@ -13,7 +13,7 @@ Install dependencies:
 * `wget http://culfw.de/culfw-1.67.tar.gz`
 * `tar xvfz culfw-1.67.tar.gz`
 
-Adapt configs:
+Adapt configs in board.h:
 
 * activate HAS_MBUS and remove not needed stuff
 * increase TTY_BUFSIZE 192
