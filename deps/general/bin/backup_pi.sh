@@ -13,10 +13,10 @@ usage() {
 }
 
 function log {
-    echo "[$(basename $0): $(date --rfc-3339=seconds)]: $*"
+    echo "[$(basename $0): $(date --rfc-3339=seconds)]: $*" >> $LOGFILE 2>&1
 }
 
-# global settings 
+# global settings
 USER=pi
 SERVER=raspberrypi
 NOW=$(date +"%Y-%m-%d")
@@ -72,15 +72,19 @@ fi
 
 log "Rotate the existing backups"
 if [ -d $BASENAME.3 ] ; then
+    log "Remove oldest backup $BASENAME.3"
     rm -rf $BASENAME.3 ;
 fi;
 if [ -d $BASENAME.2 ] ; then
+    log "mv $BASENAME.2 $BASENAME.3"
     mv $BASENAME.2 $BASENAME.3 ;
 fi;
 if [ -d $BASENAME.1 ] ; then
+    log "mv $BASENAME.1 $BASENAME.2"
     mv $BASENAME.1 $BASENAME.2 ;
 fi;
 if [ -d $BASENAME.0 ] ; then
+    log "mv $BASENAME.0 $BASENAME.1"
     mv $BASENAME.0 $BASENAME.1 ;
 fi;
 log "Done"
