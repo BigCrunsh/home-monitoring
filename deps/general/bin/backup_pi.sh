@@ -57,9 +57,13 @@ fi;
 
 log "Run backup"
 rsync \
+    --recursive \
+    --links \
+    --times \
+    --compress \
+    --update \
+    --rsync-path='/usr/bin/sudo /usr/bin/rsync' \
     --exclude-from=$BACKUP_DIR/scripts/rsync-exclude.txt \
-    --verbose \
-    --archive \
     --delete \
     --rsh "ssh -p 22" $USER@$RASPBERRY_PI:/ \
     $BASENAME.0 >> $LOGFILE 2>&1
