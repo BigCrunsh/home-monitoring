@@ -1,6 +1,5 @@
 #!/bin/bash
 
-set -e
 usage() {
   echo "Usage: $(basename $0) [-h] [-u user] [-i RASPBERRY_PI]"
   echo "Backups a named Raspberry Pi at a given IP address."
@@ -57,7 +56,6 @@ if [ -d $BASENAME.0 ] ; then
 fi;
 
 log "Run backup"
-
 rsync \
     --exclude-from=$BACKUP_DIR/scripts/rsync-exclude.txt \
     --verbose \
@@ -65,6 +63,12 @@ rsync \
     --delete \
     --rsh "ssh -p 22" $USER@$RASPBERRY_PI:/ \
     $BASENAME.0 >> $LOGFILE 2>&1
+
+error_code=$?
+if [ "$error_code" -ne "0" ] ; then
+    log "$error_code: rsync failed"
+    exit 1
+fi
 
 log "Rotate the existing backups"
 if [ -d $BASENAME.3 ] ; then
