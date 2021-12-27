@@ -28,6 +28,15 @@ def run(args):
     time = datetime.datetime.utcnow()
     ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.serial_timeout)
     logger.info('Listen to port %s', args.serial_port)
+    assert ser.is_open, "Port not open"
+
+    ser.write(b'V\r\n')
+    version = ser.readline().decode('utf-8')
+    logger.info(f'Version: {version}')
+
+    ser.write(b'brt\r\n')
+    mode = ser.readline().decode('utf-8')
+    logger.info(f'Set WMBUS: {mode}')
 
     responses = set()
     for _ in range(args.serial_num_packets):
@@ -35,6 +44,7 @@ def run(args):
         logger.info(f'- {r}')
         responses.add(r)
     logger.info(f'Received {len(responses)} distinct messages.')
+    ser.close()
 
     points = TechemResponseMapper.to_influxdb_point(time, responses)
     try:

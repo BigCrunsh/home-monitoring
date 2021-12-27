@@ -41,12 +41,6 @@ Once the the Cul is flashed, you can communicate as follows:
 * check version (in screen 3): `echo V > /dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0`
 * activate wmbus (in screen 3): `echo "brt" > /dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0`
 
-## Known Issues
-The first screen is blocking any further communication for unknown reasons. However, it works (at least for some time) after stopping this screen. As a temporary fix, the set up is as follows:
-* restart raspberry
-* activate wmbus [script](https://github.com/BigCrunsh/home-monitoring/blob/master/deps/techem/bin/activate-mbus.sh)
-* run collection job
-
 ## References
 * [techemAnalyser.php (FHEM)](https://github.com/fhem/fhem-mirror/blob/master/fhem/FHEM/32_TechemWZ.pm)
 * [FHEM forum](https://forum.fhem.de/index.php?topic=72682.0)
