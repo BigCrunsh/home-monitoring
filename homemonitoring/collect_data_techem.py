@@ -6,6 +6,7 @@ import os
 import argparse
 import sys
 import datetime
+import time
 import serial
 
 from influxdb import InfluxDBClient
@@ -25,8 +26,9 @@ def run(args):
         args.influxdb_db
     )
 
-    time = datetime.datetime.utcnow()
+    now = datetime.datetime.utcnow()
     ser = serial.Serial(args.serial_port, args.serial_baudrate, timeout=args.serial_timeout)
+    time.sleep(2)
     logger.info('Listen to port %s', args.serial_port)
     assert ser.is_open, "Port not open"
 
@@ -46,7 +48,7 @@ def run(args):
     logger.info(f'Received {len(responses)} distinct messages.')
     ser.close()
 
-    points = TechemResponseMapper.to_influxdb_point(time, responses)
+    points = TechemResponseMapper.to_influxdb_point(now, responses)
     try:
         ifclient.write_points(points)
     except Exception as e:
