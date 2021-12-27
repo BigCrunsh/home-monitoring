@@ -103,11 +103,8 @@ INFLUXDB_DB="home_monitoring"
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_netatmo.py > /home/pi/logs/collect_data_netatmo.log 2>&1
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_solaredge.py > /home/pi/logs/collect_data_solaredge.log 2>&1
 */30 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/deps/gardena/bin/start-gardena-screen.sh > /home/pi/logs/collect_data_gardena.log 2>&1
-47 23 * * * /home/pi/scripts/restart.sh > /home/pi/logs/restart.log 2>&1
-30 0 * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/deps/techem/bin/activate-mbus.sh > /home/pi/logs/activate-mbus.log 2>&1
 0 1 * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_techem.py > /home/pi/logs/collect_data_techem.log 2>&1
 0 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/update_dns.py > /home/pi/logs/update_dns.log 2>&1
-
 ```
 
 
