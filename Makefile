@@ -18,7 +18,7 @@ clean:
 
 .PHONY: deps
 deps:
-	pip install poetry
+	pip3 install poetry
 	poetry config virtualenvs.in-project true --local
 	poetry install
 
