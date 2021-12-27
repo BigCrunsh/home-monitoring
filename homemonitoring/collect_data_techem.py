@@ -33,11 +33,11 @@ def run(args):
     assert ser.is_open, "Port not open"
 
     ser.write(b'V\r\n')
-    version = ser.readline().decode('utf-8')
+    version = ser.readline().rstrip().decode('utf-8')
     logger.info(f'Version: {version}')
 
     ser.write(b'brt\r\n')
-    mode = ser.readline().decode('utf-8')
+    mode = ser.readline().rstrip().decode('utf-8')
     logger.info(f'Set WMBUS: {mode}')
 
     responses = set()
