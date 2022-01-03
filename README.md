@@ -47,10 +47,14 @@ docker run -d \
  --net=host \
  --name=grafana \
  --volume grafana-storage:/var/lib/grafana \
- --env "GF_INSTALL_PLUGINS=grafana-clock-panel, grafana-worldmap-panel, pierosavi-imageit-panel" \
+ --env "GF_INSTALL_PLUGINS=grafana-clock-panel, grafana-worldmap-panel, pierosavi-imageit-panel, natel-discrete-panel" \
+ --env "GF_SECURITY_ALLOW_EMBEDDING=true" \
+ --env "GF_AUTH_ANONYMOUS_ENABLED=true" \
  grafana/grafana
 ```
-The grafana endpoint can be accessed on port `3000` and the login is `admin` (user name and password).
+The grafana endpoint can be accessed on port `3000` and the login is `admin` (user name and password). Note that changes to the `grafana.ini`  are set through environment variables in the docker setup (see [grafana configuration](https://grafana.com/docs/grafana/latest/administration/configuration/) for details). Specifically,
+- `GF_INSTALL_PLUGINS` to install additional plugins
+- `GF_SECURITY_ALLOW_EMBEDDING` and `GF_AUTH_ANONYMOUS_ENABLED` to avoid login on tablets and to embed as iframes.
 
 #### SSL HTTPS
 The principal steps including the generation of the SSL Certificate is describe in this [blog post](https://www.turbogeek.co.uk/grafana-how-to-configure-ssl-https-in-grafana/). Check the container name and group of the user to set the right permissions of the files (see [grafana docker](https://grafana.com/docs/grafana/latest/installation/docker/)).
@@ -69,7 +73,7 @@ docker run -d \
  --volume grafana-storage:/var/lib/grafana \
  grafana/grafana
 ```
-Note that additionally to the command on top, we mount the certificate files and set the https configs as environment variables instead of changing the `grafana.ini`  (see [grafana configuration](https://grafana.com/docs/grafana/latest/administration/configuration/) for details).
+Note that additionally to the command on top, we mount the certificate files and set the https configs.
 
 ## Setup Data Collection Jobs
 The data collection jobs are scheduled via cron (`crontab -e`), e.g.,
