@@ -29,8 +29,8 @@ docker run -d \
  --restart unless-stopped \
  -p 8086:8086 \
  --name=influxdb \
- --volume influxdb-storage:/data \
- hypriot/rpi-influxdb
+ --volume influxdb-storage:/var/lib/influxdb/ \
+ influxdb:1.8
 ```
 to enable the HTTP endpoint on port `8086`.
 
