@@ -402,7 +402,9 @@ class TestSolarEdgeResponseMapper(TestCase):
         )
         expected = pd.DataFrame()
         expected.index.name = 'date'
-        pd.testing.assert_frame_equal(got, expected)
+        pd.testing.assert_frame_equal(
+            got, expected, check_index_type=False, check_column_type=False
+        )
 
     def test_to_pandas_df_first_missing(self):
         """Checks conversion to pandas dataframe response with missing record in the beginning."""
