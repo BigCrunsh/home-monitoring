@@ -42,9 +42,8 @@ def run(args):
     )
 
     smart_system = gardena_smart_system.SmartSystem(
-        email=args.gardena_email,
-        password=args.gardena_password,
-        client_id=args.gardena_application_id
+        client_id=args.gardena_application_id,
+        client_secret=args.gardena_application_secret
     )
     logger.info("Start web socket")
     smart_system.authenticate()
@@ -75,9 +74,8 @@ def cfg():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     # TODO: error message when missing env variable
-    parser.add_argument('--gardena-email', required=False, default=os.getenv('GARDENA_EMAIL'), help="Gardena email")  # noqa
-    parser.add_argument('--gardena-password', required=False, default=os.getenv('GARDENA_PASSWORD'), help="Gardena password")  # noqa
     parser.add_argument('--gardena-application-id', required=False, default=os.getenv('GARDENA_APPLICATION_ID'), help="Gardena application id")  # noqa
+    parser.add_argument('--gardena-application-secret', required=False, default=os.getenv('GARDENA_APPLICATION_SECRET'), help="Gardena application secret")  # noqa
     parser.add_argument('--influxdb-host', required=False, default=os.getenv('INFLUXDB_HOST'), help="influx db host")  # noqa
     parser.add_argument('--influxdb-port', required=False, default=os.getenv('INFLUXDB_PORT'), help="influx db port")  # noqa
     parser.add_argument('--influxdb-user', required=False, default=os.getenv('INFLUXDB_PORT'), help="influx db user")  # noqa
