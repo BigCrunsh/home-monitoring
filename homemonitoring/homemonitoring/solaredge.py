@@ -89,7 +89,7 @@ class Solaredge(solaredge.Solaredge):
         """
         end_dates = np.array(list(map(
             lambda d: d.replace(hour=23, minute=59, second=59),
-            pd.date_range(start_datetime, end_datetime, freq='M', normalize=False).to_pydatetime()
+            pd.date_range(start_datetime, end_datetime, freq='ME', normalize=False).to_pydatetime()
         )))
 
         start_dates = end_dates + datetime.timedelta(seconds=1)
