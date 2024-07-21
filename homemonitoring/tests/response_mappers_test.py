@@ -588,12 +588,45 @@ class TestSolarEdgeResponseMapper(TestCase):
         self.assertListEqual(got, expected)
 
 
+class TestTibberResponseMapper(TestCase):
+    """TestTibberResponseMapper contains the test cases for the TibberResponseMapper class."""
+
+    def test_control_data_to_influxdb_point(self):
+        """Checks prices to influxdb."""
+        response = {
+            'energy': 0.0937,
+            'tax': 0.222,
+            'total': 0.3157,
+            'startsAt': '2024-07-21T23:00:00.000+02:00',
+            'level': 'NORMAL'
+        }
+        time = datetime.datetime(
+            2024, 7, 21, 23, 00, tzinfo=datetime.timezone(datetime.timedelta(seconds=7200))
+        )
+        got = TibberResponseMapper.to_influxdb_point(response)
+        expected = [
+            {
+                "measurement": 'energy_prices_euro',
+                "time": time,
+                "fields": {
+                    'energy': 0.0937,
+                    'tax': 0.222,
+                    'total': 0.3157,
+                    'level': 'NORMAL'
+                },
+            }
+        ]
+        self.assertListEqual(got, expected)
+
+
 class TestGardenaResponseMapper(TestCase):
     """TestGardenaResponseMapper contains the test cases for the GardenaResponseMapper class."""
 
     def setUp(self):
         """Prepare test fixtures."""
-        self.sm = SmartSystem(email="login", password="password", client_id="client_id")
+        self.sm = SmartSystem(
+            client_id="gardena_application_id", client_secret="gardena_application_secret"
+        )
 
     def test_control_data_to_influxdb_point(self):
         """Checks conversion to influxdb for irrigation control device."""
