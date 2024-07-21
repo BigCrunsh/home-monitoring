@@ -11,7 +11,7 @@ from gardena.devices.smart_irrigation_control import SmartIrrigationControl
 
 from homemonitoring.response_mappers import (
     SolarEdgeResponseMapper, GardenaResponseMapper, TechemResponseMapper,
-    TankerKoenigResponseMapper, NetatmoResponseMapper
+    TankerKoenigResponseMapper, NetatmoResponseMapper, TibberResponseMapper
 )
 from .fixtures import sensor_fixture, smart_irrigation_fixture, soil_sensor_fixture
 

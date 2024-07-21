@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
+import datetime
 
 from homemonitoring.techem import TechemDecoder
 
@@ -176,6 +177,49 @@ class SolarEdgeResponseMapper(InfluxDBResponseMapper):
                 ), responses_json
             ), []
         )
+
+
+class TibberResponseMapper(InfluxDBResponseMapper):
+    """TibberResponseMapper maps Tibber responses to InfluxDB point format.
+
+    The TibberResponseMapper takes the response of the Tibber API and returns
+    a list of dicts that can be written to InfluxDB.
+
+    Example:
+        ifclient = InfluxDBClient(**credentials)
+        current_price_info = {
+            'energy': 0.0937,
+            'tax': 0.222,
+            'total': 0.3157,
+            'startsAt': '2024-07-21T23:00:00.000+02:00',
+            'level': 'NORMAL'
+        }
+        points = TibberResponseMapper.to_influxdb_point(current_price_info)
+        ifclient.write_points(points)
+    """
+
+    MEASUREMENT_NAME = 'energy_prices_euro'
+
+    @staticmethod
+    def to_influxdb_point(response_prices):
+        """Converts json response to InfluxDB point format.
+
+        Converts an API response json to a list of dicts that is compatible to with
+        the `InfluxDB.write_points` interface.
+
+        Args:
+            response_prices (json): API response from the home.current_price_info
+
+        Returns:
+            list[dict]: Responses mapped to InfluxDB point format.
+        """
+
+        startsAt = datetime.datetime.fromisoformat(response_prices.pop('startsAt'))
+        return [{
+            "measurement": TibberResponseMapper.MEASUREMENT_NAME,
+            "time": startsAt,
+            "fields": response_prices
+        }]
 
 
 class TankerKoenigResponseMapper(InfluxDBResponseMapper):
