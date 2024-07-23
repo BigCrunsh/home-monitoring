@@ -1,5 +1,3 @@
-[![Build Status](https://app.travis-ci.com/BigCrunsh/home-monitoring.svg?token=TqzpAwessQr3Uf5Q3ygZ&branch=master)](https://app.travis-ci.com/BigCrunsh/home-monitoring)
-
 ![Example Dashboard](static/grafana.png)
 
 # Home Monitoring
