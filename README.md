@@ -32,6 +32,14 @@ docker run -d \
 ```
 to enable the HTTP endpoint on port `8086`.
 
+To query influxdb, run
+```bash
+docker exec -it influxdb /bin/bash
+influx
+use home_monitoring
+show measurements
+```
+
 ### Grafana
 To create a persistent volume for the grafana database and plugins, run
 ```bash
