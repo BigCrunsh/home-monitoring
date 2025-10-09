@@ -651,7 +651,7 @@ class TestGardenaResponseMapper(TestCase):
                     **tags,
                     "activity": activity,
                     "valve_name": f'Valve {i}',
-                    "valve_id": f'28c26146-d4c1-42d7-964a-89f5237550ce:{i}',
+                    "valve_id": f'28c26146-d4c1-42d7-964a-89f5237550ce:{i}',  # noqa: E231
                 }
             }
             for activity in GardenaResponseMapper.VALVE_ACTIVITY
