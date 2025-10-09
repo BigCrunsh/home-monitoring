@@ -15,6 +15,7 @@ from homemonitoring.influxdb import InfluxDBClient
 
 
 async def get_tibber_prices(token, user_agent):
+    """Get Current Price Info from Tibber API."""
     tibber_connection = tibber.Tibber(token, user_agent=user_agent)
     await tibber_connection.update_info()
     print(tibber_connection.name)
