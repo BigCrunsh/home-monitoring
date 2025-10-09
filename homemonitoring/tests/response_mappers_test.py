@@ -595,26 +595,18 @@ class TestTibberResponseMapper(TestCase):
 
     def test_control_data_to_influxdb_point(self):
         """Checks prices to influxdb."""
-        response = {
-            'energy': 0.0937,
-            'tax': 0.222,
-            'total': 0.3157,
-            'startsAt': '2024-07-21T23:00:00.000+02:00',
-            'level': 'NORMAL'
-        }
         time = datetime.datetime(
             2024, 7, 21, 23, 00, tzinfo=datetime.timezone(datetime.timedelta(seconds=7200))
         )
+        response = 0.3157, time, 0.4 
         got = TibberResponseMapper.to_influxdb_point(response)
         expected = [
             {
                 "measurement": 'energy_prices_euro',
                 "time": time,
                 "fields": {
-                    'energy': 0.0937,
-                    'tax': 0.222,
                     'total': 0.3157,
-                    'level': 'NORMAL'
+                    'rank': 0.4
                 },
             }
         ]
