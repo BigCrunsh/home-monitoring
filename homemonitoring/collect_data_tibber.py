@@ -25,9 +25,6 @@ async def get_tibber_prices(token, user_agent):
     await home.update_info()
     print(home.address1)
 
-    await home.update_current_price_info()
-    print(home.current_price_info)
-
     await tibber_connection.close_connection()
     return home.current_price_info
 
@@ -44,7 +41,9 @@ def run(args):
     )
 
     logger.info("Query Tibber API")
-    response_prices = asyncio.run(get_tibber_prices(token=args.api_token, user_agent=args.user_agent))
+    response_prices = asyncio.run(
+        get_tibber_prices(token=args.api_token, user_agent=args.user_agent)
+    )
     prices = TibberResponseMapper.to_influxdb_point(response_prices)
     ifclient.write_points(prices)
     logger.info('done')

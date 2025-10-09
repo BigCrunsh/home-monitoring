@@ -3,7 +3,6 @@
 from abc import ABC, abstractmethod
 
 import pandas as pd
-import datetime
 
 from homemonitoring.techem import TechemDecoder
 
@@ -187,13 +186,10 @@ class TibberResponseMapper(InfluxDBResponseMapper):
 
     Example:
         ifclient = InfluxDBClient(**credentials)
-        current_price_info = {
-            'energy': 0.0937,
-            'tax': 0.222,
-            'total': 0.3157,
-            'startsAt': '2024-07-21T23:00:00.000+02:00',
-            'level': 'NORMAL'
-        }
+        time = datetime.datetime(
+            2024, 7, 21, 23, 00, tzinfo=datetime.timezone(datetime.timedelta(seconds=7200))
+        )
+        current_price_info = 0.3157, time, 0.4
         points = TibberResponseMapper.to_influxdb_point(current_price_info)
         ifclient.write_points(points)
     """
@@ -208,17 +204,18 @@ class TibberResponseMapper(InfluxDBResponseMapper):
         the `InfluxDB.write_points` interface.
 
         Args:
-            response_prices (json): API response from the home.current_price_info
+            response_prices (tuple): API response from the home.current_price_info
 
         Returns:
             list[dict]: Responses mapped to InfluxDB point format.
         """
-
-        startsAt = datetime.datetime.fromisoformat(response_prices.pop('startsAt'))
         return [{
             "measurement": TibberResponseMapper.MEASUREMENT_NAME,
-            "time": startsAt,
-            "fields": response_prices
+            "time": response_prices[1],
+            "fields": {
+                'total': response_prices[0],
+                'rank': response_prices[2]
+            }
         }]
 
 
