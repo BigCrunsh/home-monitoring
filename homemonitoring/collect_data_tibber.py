@@ -26,7 +26,7 @@ async def get_tibber_prices(token, user_agent):
     print(home.address1)
 
     await tibber_connection.close_connection()
-    return home.current_price_info
+    return home.current_price_data
 
 
 def run(args):
