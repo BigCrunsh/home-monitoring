@@ -4,12 +4,14 @@ import asyncio
 from datetime import UTC, datetime
 
 import serial
+from structlog.stdlib import BoundLogger
+
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.techem import TechemMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
+from home_monitoring.services.techem.config import SerialConfig
 from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
 
 
 class TechemService:
@@ -19,26 +21,19 @@ class TechemService:
         self,
         settings: Settings | None = None,
         repository: InfluxDBRepository | None = None,
-        *,
-        port: str = "/dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0",
-        baudrate: int = 38400,
-        timeout: int = 300,
+        serial_config: SerialConfig | None = None,
     ) -> None:
         """Initialize the service.
 
         Args:
             settings: Application settings. If not provided, loaded from environment.
             repository: InfluxDB repository. If not provided, created.
-            port: Serial port to listen on
-            baudrate: Serial port baudrate
-            timeout: Serial port timeout in seconds
+            serial_config: Serial port configuration
         """
         self._settings = settings or get_settings()
         self._db = repository or InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
-        self._port = port
-        self._baudrate = baudrate
-        self._timeout = timeout
+        self._serial_config = serial_config or SerialConfig()
 
     async def collect_and_store(self, num_packets: int = 5) -> None:
         """Collect meter data and store in InfluxDB.
@@ -49,8 +44,8 @@ class TechemService:
         """
         self._logger.info(
             "starting_data_collection",
-            port=self._port,
-            baudrate=self._baudrate,
+            port=self._serial_config.port,
+            baudrate=self._serial_config.baudrate,
         )
 
         try:
@@ -89,9 +84,9 @@ class TechemService:
         try:
             # Initialize serial port
             ser = serial.Serial(
-                self._port,
-                self._baudrate,
-                timeout=self._timeout,
+                self._serial_config.port,
+                self._serial_config.baudrate,
+                timeout=self._serial_config.timeout,
             )
             await asyncio.sleep(2)  # Wait for port to be ready
 
