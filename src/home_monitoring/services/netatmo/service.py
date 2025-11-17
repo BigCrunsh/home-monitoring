@@ -40,7 +40,9 @@ class NetatmoService:
             raise RuntimeError("Failed to get weather station data")
 
         timestamp = datetime.now(UTC)
-        measurements = NetatmoMapper.to_measurements(self._api.devices, timestamp)
+        measurements = NetatmoMapper.to_measurements(
+            self._api.devices, timestamp
+        )
 
         try:
             await self._db.write_measurements(measurements)
