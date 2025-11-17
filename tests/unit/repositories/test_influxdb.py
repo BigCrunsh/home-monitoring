@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
-from pytest_mock import MockerFixture
-
 from home_monitoring.config import Settings
 from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
+from pytest_mock import MockerFixture
+
 from tests.unit.constants import EXPECTED_ITEM_COUNT
 
 
