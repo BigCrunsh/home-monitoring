@@ -71,35 +71,19 @@ class GardenaService:
         Args:
             device: Gardena device that was updated
         """
-        time = datetime.utcnow()
-        points = []
+        timestamp = datetime.utcnow()
 
         try:
-            if device.type == "SMART_IRRIGATION_CONTROL":
-                points = GardenaMapper.control_data_to_points(device, time)
-            elif device.type == "SENSOR":
-                points = GardenaMapper.sensor_data_to_points(device, time)
-            elif device.type == "SOIL_SENSOR":
-                points = GardenaMapper.soil_sensor_data_to_points(device, time)
-            else:
+            measurements = GardenaMapper.to_measurements(timestamp, device)
+            if not measurements:
                 self._logger.warning(
                     "unsupported_device_type",
                     type=device.type,
                 )
                 return
 
-            self._logger.debug("writing_device_data", points=points)
-            await self._db.write_measurements(
-                [
-                    Measurement(
-                        measurement=point["measurement"],
-                        tags=point["tags"],
-                        timestamp=datetime.fromisoformat(point["time"]),
-                        fields=point["fields"],
-                    )
-                    for point in points
-                ]
-            )
+            self._logger.debug("writing_device_data", measurements=measurements)
+            await self._db.write_measurements(measurements)
         except Exception as e:
             self._logger.error(
                 "failed_to_handle_device_update",

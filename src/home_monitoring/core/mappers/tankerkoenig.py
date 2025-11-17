@@ -25,9 +25,9 @@ class TankerkoenigMapper(BaseMapper):
             stations: Station details
 
         Returns:
-            List of InfluxDB points
+            List of InfluxDB measurements
         """
-        points = []
+        measurements = []
         for station_id, price_data in prices.get("prices", {}).items():
             if not price_data:
                 continue
@@ -37,7 +37,7 @@ class TankerkoenigMapper(BaseMapper):
             if not station:
                 continue
 
-            points.append(
+            measurements.append(
                 Measurement(
                     measurement="gas_prices",
                     tags={
@@ -60,4 +60,4 @@ class TankerkoenigMapper(BaseMapper):
                 )
             )
 
-        return points
+        return measurements

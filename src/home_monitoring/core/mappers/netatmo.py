@@ -25,7 +25,7 @@ class NetatmoMapper(BaseMapper):
         Returns:
             List of InfluxDB measurements
         """
-        points = []
+        measurements = []
         for device in devices:
             # Base station data
             required_keys = ["_id", "type", "module_name"]
@@ -39,7 +39,7 @@ class NetatmoMapper(BaseMapper):
                     if isinstance(value, int | float)
                 }
                 if fields:
-                    points.append(
+                    measurements.append(
                         Measurement(
                             measurement="netatmo",
                             tags={
@@ -67,7 +67,7 @@ class NetatmoMapper(BaseMapper):
                     if isinstance(value, int | float)
                 }
                 if fields:
-                    points.append(
+                    measurements.append(
                         Measurement(
                             measurement="netatmo",
                             tags={
@@ -80,4 +80,4 @@ class NetatmoMapper(BaseMapper):
                         )
                     )
 
-        return points
+        return measurements

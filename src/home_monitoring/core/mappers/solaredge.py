@@ -27,12 +27,12 @@ class SolarEdgeMapper(BaseMapper):
         Returns:
             List of InfluxDB measurements
         """
-        points = []
+        measurements = []
 
         # Overview data
         if overview and "overview" in overview:
             data = overview["overview"]
-            points.append(
+            measurements.append(
                 Measurement(
                     measurement="solaredge",
                     tags={
@@ -62,7 +62,7 @@ class SolarEdgeMapper(BaseMapper):
         # Power flow data
         if power_flow and "siteCurrentPowerFlow" in power_flow:
             data = power_flow["siteCurrentPowerFlow"]
-            points.append(
+            measurements.append(
                 Measurement(
                     measurement="solaredge",
                     tags={
@@ -84,4 +84,4 @@ class SolarEdgeMapper(BaseMapper):
                 )
             )
 
-        return points
+        return measurements

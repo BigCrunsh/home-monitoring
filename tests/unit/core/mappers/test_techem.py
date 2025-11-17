@@ -14,17 +14,18 @@ def test_to_measurements_success() -> None:
     ]
 
     # Act
-    points = TechemMapper.to_measurements(timestamp, responses)
+    measurements = TechemMapper.to_measurements(timestamp, responses)
 
     # Assert
-    assert len(points) == 1
-    assert points[0].measurement == "techem"
-    assert points[0].tags == {
+    assert len(measurements) == 1
+    measurement = measurements[0]
+    assert measurement.measurement == "techem"
+    assert measurement.tags == {
         "meter_id": "53012353",
         "type": "00",
     }
-    assert points[0].timestamp == timestamp
-    assert points[0].fields == {
+    assert measurement.timestamp == timestamp
+    assert measurement.fields == {
         "value": 0.253,
     }
 
