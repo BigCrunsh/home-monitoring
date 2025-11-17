@@ -1,4 +1,5 @@
 """Base models for the application."""
+
 from datetime import datetime
 from typing import Any
 

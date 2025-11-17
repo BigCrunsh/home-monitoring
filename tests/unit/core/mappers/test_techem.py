@@ -1,4 +1,5 @@
 """Unit tests for Techem mapper."""
+
 from datetime import datetime
 
 from home_monitoring.core.mappers.techem import TechemMapper
@@ -9,19 +10,23 @@ def test_to_points_success() -> None:
     # Arrange
     timestamp = datetime(2024, 2, 16, 20, 0, 0)
     responses = [
-        b"b4449244426c1002426c4d230000441302fd6700000000046d280c5929",
+        b"36446850532301534362000000000000fd000000000000",
     ]
 
     # Act
-    points = TechemMapper.to_points(timestamp, responses)
+    points = TechemMapper.to_measurements(timestamp, responses)
 
     # Assert
     assert len(points) == 1
-    assert points[0]["measurement"] == "techem"
-    assert isinstance(points[0]["tags"]["meter_id"], str)
-    assert isinstance(points[0]["tags"]["type"], str)
-    assert points[0]["time"] == timestamp.isoformat()
-    assert isinstance(points[0]["fields"]["value"], float)
+    assert points[0].measurement == "techem"
+    assert points[0].tags == {
+        "meter_id": "53012353",
+        "type": "00",
+    }
+    assert points[0].timestamp == timestamp
+    assert points[0].fields == {
+        "value": 0.253,
+    }
 
 
 def test_to_points_missing_data() -> None:
@@ -31,7 +36,7 @@ def test_to_points_missing_data() -> None:
     responses = []
 
     # Act
-    points = TechemMapper.to_points(timestamp, responses)
+    points = TechemMapper.to_measurements(timestamp, responses)
 
     # Assert
     assert len(points) == 0
@@ -46,7 +51,7 @@ def test_to_points_invalid_data() -> None:
     ]
 
     # Act
-    points = TechemMapper.to_points(timestamp, responses)
+    points = TechemMapper.to_measurements(timestamp, responses)
 
     # Assert
     assert len(points) == 0

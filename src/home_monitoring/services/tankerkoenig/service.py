@@ -1,6 +1,8 @@
 """Tankerkoenig service implementation."""
-from datetime import datetime, timezone
-from typing import Sequence
+
+from collections.abc import Sequence
+from datetime import datetime, UTC
+from typing import ClassVar
 
 from structlog.stdlib import BoundLogger
 
@@ -16,7 +18,7 @@ class TankerkoenigService:
     """Service for interacting with Tankerkoenig API."""
 
     # Default gas station IDs to monitor
-    DEFAULT_STATION_IDS = [
+    DEFAULT_STATION_IDS: ClassVar[list[str]] = [
         # Berlin - Lichtenberg
         "51d4b477-a095-1aa0-e100-80009459e03a",
         "005056ba-7cb6-1ed2-bceb-8e5fec1a0d35",
@@ -43,8 +45,8 @@ class TankerkoenigService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, will be loaded from environment.
-            cache_dir: Directory to cache station details. If not provided, caching is disabled.
+            settings: Application settings. If not provided, loaded from environment.
+            cache_dir: Directory to cache station details. If not provided, disabled.
         """
         self._settings = settings or get_settings()
         self._db = InfluxDBRepository(settings=self._settings)
@@ -62,8 +64,8 @@ class TankerkoenigService:
         """Collect gas station prices and store in InfluxDB.
 
         Args:
-            station_ids: List of station IDs to monitor. If not provided, uses default list.
-            force_update: Whether to force update station details from API.
+            station_ids: List of station IDs to monitor. If None, uses default list.
+            force_update: Whether to force update station details.
         """
         station_ids = station_ids or self.DEFAULT_STATION_IDS
         self._logger.info("collecting_gas_prices", station_count=len(station_ids))
@@ -75,13 +77,17 @@ class TankerkoenigService:
                 raise APIError(prices_response.get("message", "Unknown error"))
 
             # Get station details
-            stations_response = await self._client.get_stations_details(station_ids, force_update)
+            stations_response = await self._client.get_stations_details(
+                station_ids, force_update
+            )
             if not stations_response.get("ok", False):
                 raise APIError(stations_response.get("message", "Unknown error"))
 
             # Map to InfluxDB measurements
-            timestamp = datetime.now(timezone.utc)
-            measurements = TankerkoenigMapper.to_measurements(timestamp, prices_response, stations_response)
+            timestamp = datetime.now(UTC)
+            measurements = TankerkoenigMapper.to_measurements(
+                timestamp, prices_response, stations_response
+            )
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)

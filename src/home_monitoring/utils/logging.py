@@ -1,16 +1,19 @@
 """Logging configuration for the application."""
+
 import logging
-import sys
 from typing import Any
 
 import structlog
+from home_monitoring.config import get_settings
 from structlog.types import Processor
 
-from home_monitoring.config import get_settings
 
+def configure_logging(verbose: bool = False) -> None:
+    """Configure structured logging.
 
-def configure_logging() -> None:
-    """Configure structured logging."""
+    Args:
+        verbose: If True, sets log level to DEBUG
+    """
     processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
@@ -24,10 +27,11 @@ def configure_logging() -> None:
     else:
         processors.append(structlog.dev.ConsoleRenderer())
 
+    log_level = "DEBUG" if verbose else settings.log_level
     structlog.configure(
         processors=processors,
         wrapper_class=structlog.make_filtering_bound_logger(
-            logging.getLevelName(get_settings().log_level)
+            logging.getLevelName(log_level)
         ),
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,

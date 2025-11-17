@@ -1,4 +1,5 @@
 """Unit tests for Tibber mapper."""
+
 from home_monitoring.core.mappers.tibber import TibberMapper
 
 

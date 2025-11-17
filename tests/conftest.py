@@ -1,18 +1,17 @@
 """Test configuration and fixtures."""
+
 import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-from pytest_mock import MockerFixture
-
 from home_monitoring.config import Settings
-from home_monitoring.repositories.influxdb import InfluxDBRepository
+from pytest_mock import MockerFixture
 
 
 @pytest.fixture
-def mock_settings(mocker: MockerFixture) -> Settings:
+def mock_settings() -> Settings:
     """Mock settings."""
-    settings = Settings(
+    return Settings(
         # InfluxDB settings
         influxdb_host="localhost",
         influxdb_port=8086,
@@ -40,10 +39,6 @@ def mock_settings(mocker: MockerFixture) -> Settings:
         log_level="INFO",
         json_logs=False,
     )
-    # Patch config module
-    mocker.patch("home_monitoring.config._settings", settings)
-    mocker.patch("home_monitoring.config.Settings", return_value=settings)
-    return settings
 
 
 @pytest.fixture(scope="session")
@@ -65,13 +60,10 @@ def mock_influxdb_client() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_influxdb(mocker: MockerFixture) -> AsyncMock:
+def mock_influxdb(mocker: MockerFixture, mock_settings: Settings) -> AsyncMock:
     """Mock InfluxDB repository."""
-    mock = AsyncMock()
-    mock.write_measurements = AsyncMock()
-    mocker.patch.object(
-        InfluxDBRepository,
-        "write_measurements",
-        side_effect=mock.write_measurements,
-    )
+    mock = mocker.MagicMock()
+    mock.write_points = mocker.AsyncMock()
+    mock.write_measurements = mocker.AsyncMock()
+    mock.query = mocker.AsyncMock()
     return mock

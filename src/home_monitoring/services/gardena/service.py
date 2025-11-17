@@ -1,15 +1,17 @@
 """Gardena smart system service implementation."""
-import asyncio
-from datetime import datetime
-from typing import Any, Callable
 
-from gardena import smart_system
-from structlog.stdlib import BoundLogger
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
 
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.gardena import GardenaMapper
+from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
+
+from gardena import smart_system
 
 
 class GardenaService:
@@ -83,7 +85,17 @@ class GardenaService:
                 return
 
             self._logger.debug("writing_device_data", points=points)
-            await self._db.write_points(points)
+            await self._db.write_measurements(
+                [
+                    Measurement(
+                        measurement=point["measurement"],
+                        tags=point["tags"],
+                        timestamp=datetime.fromisoformat(point["time"]),
+                        fields=point["fields"],
+                    )
+                    for point in points
+                ]
+            )
         except Exception as e:
             self._logger.error(
                 "failed_to_handle_device_update",

@@ -1,27 +1,33 @@
 """InfluxDB repository implementation."""
+
 import asyncio
+from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any, AsyncIterator
+from typing import Any
 
 from aioinflux import InfluxDBClient as BaseInfluxDBClient
-from structlog.stdlib import BoundLogger
-
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.models.base import Measurement
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
 
 
 class InfluxDBRepository:
     """Repository for InfluxDB operations."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        client: BaseInfluxDBClient | None = None,
+    ) -> None:
         """Initialize the repository.
 
         Args:
             settings: Application settings. If not provided, will be loaded from environment.
+            client: InfluxDB client. If not provided, a new client will be created.
         """
         self._settings = settings or get_settings()
-        self._client = self._create_client()
+        self._client = client or self._create_client()
         self._logger: BoundLogger = get_logger(__name__)
 
     def _create_client(self) -> BaseInfluxDBClient:
@@ -59,11 +65,11 @@ class InfluxDBRepository:
             result = await self._client.query(query)
             if not result:
                 return None
-            
+
             points = list(result["results"][0]["series"][0]["values"])
             if not points:
                 return None
-            
+
             return datetime.fromisoformat(points[0][0].rstrip("Z"))
         except Exception as e:
             self._logger.error(
@@ -95,7 +101,7 @@ class InfluxDBRepository:
             )
             raise
 
-    async def write_points(self, points: list[dict[str, Any]]) -> None:
+    async def _write_points(self, points: list[dict[str, Any]]) -> None:
         """Write points to InfluxDB.
 
         Args:
@@ -141,11 +147,11 @@ class InfluxDBRepository:
             result = await self._client.query(query)
             if not result or "results" not in result:
                 return
-            
+
             for series in result["results"][0].get("series", []):
                 columns = series["columns"]
                 for values in series["values"]:
-                    yield dict(zip(columns, values))
+                    yield dict(zip(columns, values, strict=False))
         except Exception as e:
             self._logger.error(
                 "failed_to_execute_query",
