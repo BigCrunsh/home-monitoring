@@ -3,7 +3,6 @@
 import asyncio
 import signal
 import sys
-from typing import Any
 from signal import Signals
 
 from home_monitoring.services.gardena import GardenaService
@@ -11,7 +10,7 @@ from home_monitoring.utils.logging import configure_logging
 
 
 async def main() -> int:
-    """Main entry point.
+    """Run the Gardena data collection service.
 
     Returns:
         Exit code
