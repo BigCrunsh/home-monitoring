@@ -1,11 +1,12 @@
 """Gardena data mapping utilities."""
 
-from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
 from home_monitoring.core.mappers.base import BaseMapper
 from home_monitoring.models.base import Measurement
+
+
 
 class GardenaMapper(BaseMapper):
     """Mapper for Gardena device data to InfluxDB points."""

@@ -1,7 +1,6 @@
 """Base mapper interface."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
