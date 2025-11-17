@@ -50,7 +50,7 @@ def test_to_measurements_sensor_data() -> None:
     timestamp = datetime.now(UTC)
 
     # Act
-    points = GardenaMapper.sensor_data_to_measurements(timestamp, device)
+    points = GardenaMapper.to_measurements(timestamp, device)
 
     # Assert
     assert len(points) == 1
@@ -82,7 +82,7 @@ def test_to_measurements_soil_sensor_data() -> None:
     timestamp = datetime.now(UTC)
 
     # Act
-    points = GardenaMapper.soil_sensor_data_to_measurements(timestamp, device)
+    points = GardenaMapper.to_measurements(timestamp, device)
 
     # Assert
     assert len(points) == 1
