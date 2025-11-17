@@ -9,6 +9,18 @@ from home_monitoring.services.tankerkoenig.client import TankerkoenigClient
 from home_monitoring.services.tankerkoenig.service import TankerkoenigService
 from pytest_mock import MockerFixture
 
+from tests.unit.services.tankerkoenig.constants import (
+    TEST_DIESEL_PRICE,
+    TEST_E5_PRICE,
+    TEST_E10_PRICE,
+    TEST_STATION_ID,
+    TEST_STATION_NAME,
+    TEST_STATION_BRAND,
+    TEST_STATION_STREET,
+    TEST_STATION_PLACE,
+    TEST_STATION_POSTCODE,
+)
+
 
 @pytest.mark.asyncio(scope="function")
 async def test_collect_and_store_success(
@@ -23,10 +35,10 @@ async def test_collect_and_store_success(
         return_value={
             "ok": True,
             "prices": {
-                "123": {
-                    "diesel": 1.599,
-                    "e5": 1.799,
-                    "e10": 1.749,
+                TEST_STATION_ID: {
+                    "diesel": TEST_DIESEL_PRICE,
+                    "e5": TEST_E5_PRICE,
+                    "e10": TEST_E10_PRICE,
                     "status": "open",
                 },
             },
@@ -35,12 +47,12 @@ async def test_collect_and_store_success(
     mock_client.get_stations_details = AsyncMock(
         return_value={
             "ok": True,
-            "123": {
-                "name": "Test Station",
-                "brand": "Test Brand",
-                "street": "Test Street",
-                "place": "Test Place",
-                "postCode": "12345",
+            TEST_STATION_ID: {
+                "name": TEST_STATION_NAME,
+                "brand": TEST_STATION_BRAND,
+                "street": TEST_STATION_STREET,
+                "place": TEST_STATION_PLACE,
+                "postCode": TEST_STATION_POSTCODE,
             },
         }
     )
@@ -64,15 +76,15 @@ async def test_collect_and_store_success(
     service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
 
     # Act
-    await service.collect_and_store(station_ids=["123"])
+    await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
     # Assert
     mock_influxdb.write_measurements.assert_called_once()
     measurements = mock_influxdb.write_measurements.call_args[0][0]
     assert len(measurements) == 1
     assert measurements[0].measurement == "gas_prices"
-    assert measurements[0].tags["station_id"] == "123"
-    assert measurements[0].fields["diesel"] == 1.599
+    assert measurements[0].tags["station_id"] == TEST_STATION_ID
+    assert measurements[0].fields["diesel"] == TEST_DIESEL_PRICE
 
 
 @pytest.mark.asyncio(scope="function")
@@ -101,7 +113,7 @@ async def test_collect_and_store_api_error(
 
     # Act & Assert
     with pytest.raises(APIError, match="API Error"):
-        await service.collect_and_store(station_ids=["123"])
+        await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
     assert not mock_influxdb.write_measurements.called
 
@@ -119,10 +131,10 @@ async def test_collect_and_store_database_error(
         return_value={
             "ok": True,
             "prices": {
-                "123": {
-                    "diesel": 1.599,
-                    "e5": 1.799,
-                    "e10": 1.749,
+                TEST_STATION_ID: {
+                    "diesel": TEST_DIESEL_PRICE,
+                    "e5": TEST_E5_PRICE,
+                    "e10": TEST_E10_PRICE,
                     "status": "open",
                 },
             },
@@ -131,12 +143,12 @@ async def test_collect_and_store_database_error(
     mock_client.get_stations_details = AsyncMock(
         return_value={
             "ok": True,
-            "123": {
-                "name": "Test Station",
-                "brand": "Test Brand",
-                "street": "Test Street",
-                "place": "Test Place",
-                "postCode": "12345",
+            TEST_STATION_ID: {
+                "name": TEST_STATION_NAME,
+                "brand": TEST_STATION_BRAND,
+                "street": TEST_STATION_STREET,
+                "place": TEST_STATION_PLACE,
+                "postCode": TEST_STATION_POSTCODE,
             },
         }
     )
@@ -164,7 +176,7 @@ async def test_collect_and_store_database_error(
 
     # Act & Assert
     with pytest.raises(Exception, match="DB Error"):
-        await service.collect_and_store(station_ids=["123"])
+        await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
 
 @pytest.mark.asyncio(scope="function")
@@ -200,6 +212,6 @@ async def test_collect_and_store_invalid_response(
     with pytest.raises(
         APIError, match="eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
     ):
-        await service.collect_and_store(station_ids=["123"])
+        await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
     assert not mock_influxdb.write_measurements.called
