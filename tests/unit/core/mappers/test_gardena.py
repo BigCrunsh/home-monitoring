@@ -6,7 +6,7 @@ from unittest.mock import Mock
 from home_monitoring.core.mappers.gardena import GardenaMapper
 
 
-def test_control_data_to_points() -> None:
+def test_to_measurements_control_data() -> None:
     """Test mapping of irrigation control data."""
     # Arrange
     device = Mock()
@@ -18,25 +18,25 @@ def test_control_data_to_points() -> None:
     timestamp = datetime.now(UTC)
 
     # Act
-    points = GardenaMapper.control_data_to_points(device, timestamp)
+    points = GardenaMapper.to_measurements(timestamp, device)
 
     # Assert
     assert len(points) == 1
     point = points[0]
-    assert point["measurement"] == "gardena"
-    assert point["tags"] == {
+    assert point.measurement == "gardena"
+    assert point.tags == {
         "device_id": "test-id",
         "name": "test-device",
         "type": "SMART_IRRIGATION_CONTROL",
     }
-    assert point["time"] == timestamp.isoformat()
-    assert point["fields"] == {
+    assert point.timestamp == timestamp
+    assert point.fields == {
         "state": "test-state",
         "activity": "test-activity",
     }
 
 
-def test_sensor_data_to_points() -> None:
+def test_to_measurements_sensor_data() -> None:
     """Test mapping of sensor data."""
     # Arrange
     device = Mock()
@@ -50,19 +50,19 @@ def test_sensor_data_to_points() -> None:
     timestamp = datetime.now(UTC)
 
     # Act
-    points = GardenaMapper.sensor_data_to_points(device, timestamp)
+    points = GardenaMapper.sensor_data_to_measurements(timestamp, device)
 
     # Assert
     assert len(points) == 1
     point = points[0]
-    assert point["measurement"] == "gardena"
-    assert point["tags"] == {
+    assert point.measurement == "gardena"
+    assert point.tags == {
         "device_id": "test-id",
         "name": "test-device",
         "type": "SENSOR",
     }
-    assert point["time"] == timestamp.isoformat()
-    assert point["fields"] == {
+    assert point.timestamp == timestamp
+    assert point.fields == {
         "ambient_temperature": 20.0,
         "light_intensity": 5000,
         "soil_temperature": 18.0,
@@ -70,7 +70,7 @@ def test_sensor_data_to_points() -> None:
     }
 
 
-def test_soil_sensor_data_to_points() -> None:
+def test_to_measurements_soil_sensor_data() -> None:
     """Test mapping of soil sensor data."""
     # Arrange
     device = Mock()
@@ -82,19 +82,19 @@ def test_soil_sensor_data_to_points() -> None:
     timestamp = datetime.now(UTC)
 
     # Act
-    points = GardenaMapper.soil_sensor_data_to_points(device, timestamp)
+    points = GardenaMapper.soil_sensor_data_to_measurements(timestamp, device)
 
     # Assert
     assert len(points) == 1
     point = points[0]
-    assert point["measurement"] == "gardena"
-    assert point["tags"] == {
+    assert point.measurement == "gardena"
+    assert point.tags == {
         "device_id": "test-id",
         "name": "test-device",
         "type": "SOIL_SENSOR",
     }
-    assert point["time"] == timestamp.isoformat()
-    assert point["fields"] == {
+    assert point.timestamp == timestamp
+    assert point.fields == {
         "soil_temperature": 18.0,
         "soil_humidity": 75.0,
     }
