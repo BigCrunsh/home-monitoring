@@ -25,7 +25,7 @@ class TibberService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, will be loaded from environment.
+            settings: Application settings. If not provided, loaded from env.
             repository: InfluxDB repository. If not provided, a new one will be created.
             user_agent: User agent string to use for API requests
         """
