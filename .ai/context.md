@@ -192,14 +192,33 @@ Optional:
 4. Implement repository in `repositories/`
 5. Implement service in `services/`
 6. Create API endpoints in `api/v1/`
-7. Write tests in `tests/`
-8. Update API documentation
+7. Write tests in `tests/` (1 happy + 2+ unhappy paths)
+8. **Make small, atomic commits at each step** (see `.ai/git-workflow.md`)
+9. **Run tests and linters before each commit**: `pytest && ruff check . && mypy src/`
+10. Update API documentation
+
+### Commit Strategy for New Feature
+Break into small commits following Continuous Delivery:
+```bash
+git commit -m "feat(product): add Product model"
+git commit -m "feat(product): add database migration for products table"
+git commit -m "feat(product): add ProductCreate and ProductResponse schemas"
+git commit -m "feat(product): add ProductRepository with CRUD operations"
+git commit -m "test(product): add repository tests (1 happy + 2 unhappy)"
+git commit -m "feat(product): add ProductService business logic"
+git commit -m "test(product): add service tests (1 happy + 2 unhappy per method)"
+git commit -m "feat(product): add API endpoints for product CRUD"
+git commit -m "test(product): add integration tests for API endpoints"
+git commit -m "docs(product): add product API examples to README"
+```
 
 ### Adding a New Dependency
 1. Add to `pyproject.toml` under appropriate section
 2. Run `uv pip install` or `pip install -e .`
 3. Document why it's needed in comments or docs
 4. Pin exact version for critical dependencies
+5. **Commit**: `chore(deps): add library-name for specific purpose`
+6. Run tests to ensure no conflicts
 
 ## Performance Considerations
 

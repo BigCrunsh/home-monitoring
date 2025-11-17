@@ -169,6 +169,14 @@ def calculate_metrics(data: pd.DataFrame) -> dict[str, float]:
     """
 ```
 
+## Git & Commits
+- **ALWAYS suggest small, atomic commits** following Continuous Delivery practices
+- Each commit = one logical change that could be deployed independently
+- **ALWAYS run before committing**: `pytest && ruff check . && mypy src/`
+- Use conventional commit format: `type(scope): subject`
+- If suggesting code changes, break them into multiple commit suggestions
+- See `.ai/git-workflow.md` for complete Git best practices
+
 ## Don't Do This
 - Don't use `import *`
 - Don't use mutable default arguments
@@ -181,6 +189,8 @@ def calculate_metrics(data: pd.DataFrame) -> dict[str, float]:
 - Don't use global variables for state
 - Don't use `requirements.txt` if using `pyproject.toml`
 - **Don't create files longer than 400 lines** - split them up instead
+- **Don't suggest large commits** - break into small, atomic commits
+- **Don't commit without running tests and linters**
 
 ## Security
 - Sanitize all user inputs
