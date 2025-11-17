@@ -44,7 +44,10 @@ class NetatmoService:
 
         try:
             await self._db.write_measurements(measurements)
-            self._logger.info("weather_data_stored", point_count=len(measurements))
+            self._logger.info(
+                "netatmo_data_stored",
+                point_count=len(measurements),
+            )
         except Exception as e:
             self._logger.error(
                 "failed_to_store_weather_data",
