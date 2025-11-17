@@ -9,11 +9,7 @@ from pytest_mock import MockerFixture
 from home_monitoring.config import Settings
 from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from tests.unit.repositories.constants import (
-    EXPECTED_MEASUREMENTS,
-    FIELD_VALUE_1,
-    FIELD_VALUE_2,
-)
+from tests.unit.constants import EXPECTED_ITEM_COUNT
 
 
 @pytest.mark.asyncio(scope="function")
@@ -24,15 +20,12 @@ async def test_write_measurement_success(
 ) -> None:
     """Test successful write of single measurement."""
     # Arrange
-    repository = InfluxDBRepository(
-        settings=mock_settings,
-        client=mock_influxdb_client,
-    )
+    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
     measurement = Measurement(
         measurement="test",
         tags={"tag1": "value1"},
         timestamp=datetime.now(UTC),
-        fields={"field1": FIELD_VALUE_1},
+        fields={"field1": 1.0},
     )
 
     # Act
@@ -44,7 +37,7 @@ async def test_write_measurement_success(
     assert len(points) == 1
     assert points[0]["measurement"] == "test"
     assert points[0]["tags"] == {"tag1": "value1"}
-    assert points[0]["fields"] == {"field1": FIELD_VALUE_1}
+    assert points[0]["fields"] == {"field1": 1.0}
 
 
 @pytest.mark.asyncio(scope="function")
@@ -55,15 +48,12 @@ async def test_write_measurement_error(
 ) -> None:
     """Test error handling in write_measurement."""
     # Arrange
-    repository = InfluxDBRepository(
-        settings=mock_settings,
-        client=mock_influxdb_client,
-    )
+    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
     measurement = Measurement(
         measurement="test",
         tags={"tag1": "value1"},
         timestamp=datetime.now(UTC),
-        fields={"field1": FIELD_VALUE_1},
+        fields={"field1": 1.0},
     )
     mock_influxdb_client.write.side_effect = Exception("DB Error")
 
@@ -80,22 +70,19 @@ async def test_write_measurements_success(
 ) -> None:
     """Test successful write of multiple measurements."""
     # Arrange
-    repository = InfluxDBRepository(
-        settings=mock_settings,
-        client=mock_influxdb_client,
-    )
+    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
     measurements = [
         Measurement(
             measurement="test1",
             tags={"tag1": "value1"},
             timestamp=datetime.now(UTC),
-            fields={"field1": FIELD_VALUE_1},
+            fields={"field1": 1.0},
         ),
         Measurement(
             measurement="test2",
             tags={"tag2": "value2"},
             timestamp=datetime.now(UTC),
-            fields={"field2": FIELD_VALUE_2},
+            fields={"field2": 2.0},
         ),
     ]
 
@@ -105,13 +92,13 @@ async def test_write_measurements_success(
     # Assert
     mock_influxdb_client.write.assert_called_once()
     points = mock_influxdb_client.write.call_args[0][0]
-    assert len(points) == EXPECTED_MEASUREMENTS
+    assert len(points) == EXPECTED_ITEM_COUNT
     assert points[0]["measurement"] == "test1"
     assert points[0]["tags"] == {"tag1": "value1"}
-    assert points[0]["fields"] == {"field1": FIELD_VALUE_1}
+    assert points[0]["fields"] == {"field1": 1.0}
     assert points[1]["measurement"] == "test2"
     assert points[1]["tags"] == {"tag2": "value2"}
-    assert points[1]["fields"] == {"field2": FIELD_VALUE_2}
+    assert points[1]["fields"] == {"field2": 2.0}
 
 
 @pytest.mark.asyncio(scope="function")
@@ -122,22 +109,19 @@ async def test_write_measurements_error(
 ) -> None:
     """Test error handling in write_measurements."""
     # Arrange
-    repository = InfluxDBRepository(
-        settings=mock_settings,
-        client=mock_influxdb_client,
-    )
+    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
     measurements = [
         Measurement(
             measurement="test1",
             tags={"tag1": "value1"},
             timestamp=datetime.now(UTC),
-            fields={"field1": FIELD_VALUE_1},
+            fields={"field1": 1.0},
         ),
         Measurement(
             measurement="test2",
             tags={"tag2": "value2"},
             timestamp=datetime.now(UTC),
-            fields={"field2": FIELD_VALUE_2},
+            fields={"field2": 2.0},
         ),
     ]
     mock_influxdb_client.write.side_effect = Exception("DB Error")
