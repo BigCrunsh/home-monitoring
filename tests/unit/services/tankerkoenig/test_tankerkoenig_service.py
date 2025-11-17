@@ -73,7 +73,10 @@ async def test_collect_and_store_success(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
 
     # Act
     await service.collect_and_store(station_ids=[TEST_STATION_ID])
@@ -109,7 +112,10 @@ async def test_collect_and_store_api_error(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
 
     # Act & Assert
     with pytest.raises(APIError, match="API Error"):
@@ -169,7 +175,10 @@ async def test_collect_and_store_database_error(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
 
     # Set up database error
     mock_influxdb.write_measurements.side_effect = Exception("DB Error")
@@ -206,12 +215,14 @@ async def test_collect_and_store_invalid_response(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
 
     # Act & Assert
-    with pytest.raises(
-        APIError, match="eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
-    ):
+    error_message = "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
+    with pytest.raises(APIError, match=error_message):
         await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
     assert not mock_influxdb.write_measurements.called
