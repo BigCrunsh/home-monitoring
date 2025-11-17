@@ -20,7 +20,7 @@ class TankerkoenigClient:
 
         Args:
             api_key: Tankerkoenig API key
-            cache_dir: Directory to cache station details. If not provided, caching is disabled.
+            cache_dir: Directory to cache station details. If None, disabled.
         """
         self._api_key = api_key
         self._cache_dir = Path(cache_dir) if cache_dir else None
@@ -37,7 +37,10 @@ class TankerkoenigClient:
         """
         self._logger.debug("getting_gas_prices", station_ids=station_ids)
         ids = ",".join(station_ids)
-        url = f"https://creativecommons.tankerkoenig.de/json/prices.php?ids={ids}&apikey={self._api_key}"
+        url = (
+            "https://creativecommons.tankerkoenig.de/json/prices.php"
+            f"?ids={','.join(station_ids)}&apikey={self._api_key}"
+        )
 
         try:
             async with httpx.AsyncClient() as client:
@@ -97,7 +100,10 @@ class TankerkoenigClient:
                 return cached
 
         # Get from API
-        url = f"https://creativecommons.tankerkoenig.de/json/detail.php?id={station_id}&apikey={self._api_key}"
+        url = (
+            "https://creativecommons.tankerkoenig.de/json/detail.php"
+            f"?id={station_id}&apikey={self._api_key}"
+        )
 
         try:
             async with httpx.AsyncClient() as client:
