@@ -13,7 +13,7 @@ class DynuService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, will be loaded from environment.
+            settings: Application settings. If not provided, loaded from env.
         """
         self._settings = settings or get_settings()
         self._logger: BoundLogger = get_logger(__name__)
