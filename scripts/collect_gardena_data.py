@@ -4,6 +4,7 @@ import asyncio
 import signal
 import sys
 from typing import Any
+from signal import Signals
 
 from home_monitoring.services.gardena import GardenaService
 from home_monitoring.utils.logging import configure_logging
@@ -20,10 +21,13 @@ async def main() -> int:
 
     # Set up signal handlers
     loop = asyncio.get_running_loop()
+
+    def handle_signal(sig: signal.Signals) -> None:
+        """Create a shutdown task for the given signal."""
+        asyncio.create_task(shutdown(service, sig))
+
     for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(
-            sig, lambda s=sig: asyncio.create_task(shutdown(service, sig))
-        )
+        loop.add_signal_handler(sig, lambda s=sig: handle_signal(s))
 
     try:
         await service.start()
@@ -36,7 +40,7 @@ async def main() -> int:
     return 0
 
 
-async def shutdown(service: GardenaService, signal: Any) -> None:
+async def shutdown(service: GardenaService, signal: Signals) -> None:
     """Clean shutdown on receiving a signal.
 
     Args:
