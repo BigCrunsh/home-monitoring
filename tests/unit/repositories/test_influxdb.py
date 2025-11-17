@@ -24,7 +24,10 @@ async def test_write_measurement_success(
 ) -> None:
     """Test successful write of single measurement."""
     # Arrange
-    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
+    repository = InfluxDBRepository(
+        settings=mock_settings,
+        client=mock_influxdb_client,
+    )
     measurement = Measurement(
         measurement="test",
         tags={"tag1": "value1"},
@@ -52,7 +55,10 @@ async def test_write_measurement_error(
 ) -> None:
     """Test error handling in write_measurement."""
     # Arrange
-    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
+    repository = InfluxDBRepository(
+        settings=mock_settings,
+        client=mock_influxdb_client,
+    )
     measurement = Measurement(
         measurement="test",
         tags={"tag1": "value1"},
@@ -74,7 +80,10 @@ async def test_write_measurements_success(
 ) -> None:
     """Test successful write of multiple measurements."""
     # Arrange
-    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
+    repository = InfluxDBRepository(
+        settings=mock_settings,
+        client=mock_influxdb_client,
+    )
     measurements = [
         Measurement(
             measurement="test1",
@@ -113,7 +122,10 @@ async def test_write_measurements_error(
 ) -> None:
     """Test error handling in write_measurements."""
     # Arrange
-    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
+    repository = InfluxDBRepository(
+        settings=mock_settings,
+        client=mock_influxdb_client,
+    )
     measurements = [
         Measurement(
             measurement="test1",

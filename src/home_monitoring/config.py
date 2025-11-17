@@ -52,16 +52,15 @@ class Settings(BaseSettings):
         return super().model_dump(*args, **kwargs)
 
 
-def get_settings() -> Settings:
-    """Get application settings."""
-    return Settings()
-
-
-_settings = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:
-    """Get application settings."""
+    """Get application settings.
+
+    Returns a singleton instance of Settings to avoid loading environment
+    variables multiple times.
+    """
     global _settings
     if _settings is None:
         _settings = Settings()
