@@ -18,7 +18,7 @@ class SolarEdgeService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, will be loaded from environment.
+            settings: Application settings. If not provided, loaded from env.
         """
         self._settings = settings or get_settings()
         self._db = InfluxDBRepository(settings=self._settings)
@@ -41,7 +41,10 @@ class SolarEdgeService:
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)
-            self._logger.info("solaredge_data_stored", point_count=len(measurements))
+            self._logger.info(
+                "solaredge_data_stored",
+                point_count=len(measurements),
+            )
         except Exception as e:
             self._logger.error(
                 "solaredge_data_collection_failed",
@@ -59,7 +62,10 @@ class SolarEdgeService:
         Raises:
             APIError: If the API request fails or response format is invalid
         """
-        url = f"https://monitoringapi.solaredge.com/site/{self._settings.solaredge_site_id}/overview"
+        url = (
+            "https://monitoringapi.solaredge.com/site/"
+            f"{self._settings.solaredge_site_id}/overview"
+        )
         params = {"api_key": self._settings.solaredge_api_key}
 
         try:
@@ -87,7 +93,10 @@ class SolarEdgeService:
         Raises:
             APIError: If the API request fails or response format is invalid
         """
-        url = f"https://monitoringapi.solaredge.com/site/{self._settings.solaredge_site_id}/currentPowerFlow"
+        url = (
+            "https://monitoringapi.solaredge.com/site/"
+            f"{self._settings.solaredge_site_id}/currentPowerFlow"
+        )
         params = {"api_key": self._settings.solaredge_api_key}
 
         try:
