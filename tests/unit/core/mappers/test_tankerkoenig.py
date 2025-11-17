@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.tankerkoenig import TankerkoenigMapper
+
 from tests.unit.constants import EXPECTED_ITEM_COUNT
 
 
