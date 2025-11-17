@@ -53,11 +53,17 @@ class TechemMapper:
                 for pos in [7, 6, 5, 4]:
                     meter_id_bytes += hex_str[pos * 2:(pos * 2) + 2]
                 meter_id = str(int(meter_id_bytes))
-                TechemMapper._logger.debug("parsed_meter_id", meter_id=meter_id)
+                TechemMapper._logger.debug(
+                    "parsed_meter_id",
+                    meter_id=meter_id,
+                )
 
                 # Extract media type (byte 11)
                 media_type = hex_str[11 * 2:(11 * 2) + 2]
-                TechemMapper._logger.debug("parsed_media_type", media_type=media_type)
+                TechemMapper._logger.debug(
+                    "parsed_media_type",
+                    media_type=media_type,
+                )
 
                 # Extract values (bytes 16-18 and 20-22)
                 last_period_bytes = ""
@@ -92,7 +98,10 @@ class TechemMapper:
                     )
                 )
             except Exception as e:
-                TechemMapper._logger.debug("failed_to_parse_response", error=str(e))
+                TechemMapper._logger.debug(
+                    "failed_to_parse_response",
+                    error=str(e),
+                )
                 continue
 
         return measurements
