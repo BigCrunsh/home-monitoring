@@ -4,6 +4,13 @@ from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 
+from tests.unit.core.mappers.constants import (
+    EXPECTED_POINT_COUNT,
+    SOLAREDGE_POWER,
+    SOLAREDGE_GRID_POWER,
+    ZERO,
+)
+
 
 def test_to_measurements_success() -> None:
     """Test successful mapping of valid data."""
@@ -12,7 +19,7 @@ def test_to_measurements_success() -> None:
     overview = {
         "overview": {
             "lastUpdateTime": "2024-02-16 20:00:00",
-            "lifeTimeData": {"energy": 5000000.0},
+            "lifeTimeData": {"energy": SOLAREDGE_POWER},
             "lastYearData": {"energy": 1000000.0},
             "lastMonthData": {"energy": 300000.0},
             "lastDayData": {"energy": 10000.0},
@@ -23,7 +30,7 @@ def test_to_measurements_success() -> None:
         "siteCurrentPowerFlow": {
             "unit": "W",
             "connections": [],
-            "grid": {"currentPower": 100.0},
+            "grid": {"currentPower": SOLAREDGE_GRID_POWER},
             "load": {"currentPower": 1600.0},
             "pv": {"currentPower": 1500.0},
         }
@@ -33,7 +40,7 @@ def test_to_measurements_success() -> None:
     points = SolarEdgeMapper.to_measurements(timestamp, overview, power_flow)
 
     # Assert
-    assert len(points) == 2
+    assert len(points) == EXPECTED_POINT_COUNT
 
     # Check overview point
     overview_point = points[0]
@@ -41,7 +48,7 @@ def test_to_measurements_success() -> None:
     assert overview_point.tags["type"] == "overview"
     assert overview_point.timestamp == timestamp
     assert overview_point.fields == {
-        "lifetime_energy": 5000000.0,
+        "lifetime_energy": SOLAREDGE_POWER,
         "last_year_energy": 1000000.0,
         "last_month_energy": 300000.0,
         "last_day_energy": 10000.0,
@@ -55,7 +62,7 @@ def test_to_measurements_success() -> None:
     assert power_point.tags["unit"] == "W"
     assert power_point.timestamp == timestamp
     assert power_point.fields == {
-        "grid_power": 100.0,
+        "grid_power": SOLAREDGE_GRID_POWER,
         "load_power": 1600.0,
         "pv_power": 1500.0,
     }
@@ -70,7 +77,7 @@ def test_to_measurements_missing_overview() -> None:
         "siteCurrentPowerFlow": {
             "unit": "W",
             "connections": [],
-            "grid": {"currentPower": 100.0},
+            "grid": {"currentPower": SOLAREDGE_GRID_POWER},
             "load": {"currentPower": 1600.0},
             "pv": {"currentPower": 1500.0},
         }
@@ -91,7 +98,7 @@ def test_to_measurements_missing_power_flow() -> None:
     overview = {
         "overview": {
             "lastUpdateTime": "2024-02-16 20:00:00",
-            "lifeTimeData": {"energy": 5000000.0},
+            "lifeTimeData": {"energy": SOLAREDGE_POWER},
             "lastYearData": {"energy": 1000000.0},
             "lastMonthData": {"energy": 300000.0},
             "lastDayData": {"energy": 10000.0},
@@ -116,7 +123,7 @@ def test_to_measurements_missing_fields() -> None:
         "overview": {
             "lastUpdateTime": "2024-02-16 20:00:00",
             # Missing some fields
-            "lifeTimeData": {"energy": 5000000.0},
+            "lifeTimeData": {"energy": SOLAREDGE_POWER},
             "currentPower": {"power": 1500.0},
         }
     }
@@ -125,7 +132,7 @@ def test_to_measurements_missing_fields() -> None:
             "unit": "W",
             "connections": [],
             # Missing some fields
-            "grid": {"currentPower": 100.0},
+            "grid": {"currentPower": SOLAREDGE_GRID_POWER},
         }
     }
 
@@ -133,8 +140,8 @@ def test_to_measurements_missing_fields() -> None:
     points = SolarEdgeMapper.to_measurements(timestamp, overview, power_flow)
 
     # Assert
-    assert len(points) == 2
-    assert points[0].fields["lifetime_energy"] == 5000000.0
-    assert points[0].fields["last_year_energy"] == 0.0
-    assert points[1].fields["grid_power"] == 100.0
-    assert points[1].fields["load_power"] == 0.0
+    assert len(points) == EXPECTED_POINT_COUNT
+    assert points[0].fields["lifetime_energy"] == SOLAREDGE_POWER
+    assert points[0].fields["last_year_energy"] == ZERO
+    assert points[1].fields["grid_power"] == SOLAREDGE_GRID_POWER
+    assert points[1].fields["load_power"] == ZERO
