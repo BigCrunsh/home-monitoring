@@ -70,7 +70,10 @@ class TankerkoenigService:
             force_update: Whether to force update details.
         """
         station_ids = station_ids or self.DEFAULT_STATION_IDS
-        self._logger.info("collecting_gas_prices", station_count=len(station_ids))
+        self._logger.info(
+            "collecting_gas_prices",
+            station_count=len(station_ids),
+        )
 
         try:
             # Get current prices
@@ -93,11 +96,16 @@ class TankerkoenigService:
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)
-            self._logger.info("gas_prices_stored", point_count=len(measurements))
+            self._logger.info(
+                "gas_prices_stored",
+                point_count=len(measurements),
+            )
         except Exception as e:
             self._logger.error(
                 "failed_to_store_gas_prices",
                 error=str(e),
-                measurements=measurements if "measurements" in locals() else None,
+                measurements=(
+                    measurements if "measurements" in locals() else None
+                )
             )
             raise
