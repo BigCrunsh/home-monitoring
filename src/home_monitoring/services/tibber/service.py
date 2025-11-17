@@ -1,14 +1,15 @@
 """Tibber service implementation."""
 
+from datetime import UTC, datetime
 from typing import Any
+
+import tibber
+from structlog.stdlib import BoundLogger
 
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.tibber import TibberMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
-
-import tibber
 
 
 class TibberService:
@@ -37,8 +38,9 @@ class TibberService:
         self._logger.info("collecting_electricity_data")
 
         # Get price data from Tibber API
+        timestamp = datetime.now(UTC)
         price_data = await self._get_price_data()
-        points = TibberMapper.to_points(price_data)
+        points = TibberMapper.to_measurements(timestamp, price_data)
 
         try:
             await self._db.write_measurements(points)
