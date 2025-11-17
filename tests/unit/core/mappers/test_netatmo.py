@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.netatmo import NetatmoMapper
 
+from tests.unit.core.mappers.constants import EXPECTED_POINT_COUNT
+
 
 def test_to_measurements_success() -> None:
     """Test successful mapping of valid data."""
@@ -39,7 +41,7 @@ def test_to_measurements_success() -> None:
     points = NetatmoMapper.to_measurements(devices, timestamp)
 
     # Assert
-    assert len(points) == 2
+    assert len(points) == EXPECTED_POINT_COUNT
 
     # Check base station point
     base_point = points[0]
