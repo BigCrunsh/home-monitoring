@@ -70,9 +70,15 @@ class SolarEdgeMapper:
                     },
                     timestamp=timestamp,
                     fields={
-                        "grid_power": data.get("grid", {}).get("currentPower", 0.0),
-                        "load_power": data.get("load", {}).get("currentPower", 0.0),
-                        "pv_power": data.get("pv", {}).get("currentPower", 0.0),
+                        "grid_power": data.get("grid", {}).get(
+                            "currentPower", 0.0
+                        ),
+                        "load_power": data.get("load", {}).get(
+                            "currentPower", 0.0
+                        ),
+                        "pv_power": data.get("pv", {}).get(
+                            "currentPower", 0.0
+                        ),
                     },
                 )
             )
