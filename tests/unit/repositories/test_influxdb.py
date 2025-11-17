@@ -4,10 +4,16 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
+from pytest_mock import MockerFixture
+
 from home_monitoring.config import Settings
 from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from pytest_mock import MockerFixture
+from tests.unit.repositories.constants import (
+    EXPECTED_MEASUREMENTS,
+    FIELD_VALUE_1,
+    FIELD_VALUE_2,
+)
 
 
 @pytest.mark.asyncio(scope="function")
@@ -23,7 +29,7 @@ async def test_write_measurement_success(
         measurement="test",
         tags={"tag1": "value1"},
         timestamp=datetime.now(UTC),
-        fields={"field1": 1.0},
+        fields={"field1": FIELD_VALUE_1},
     )
 
     # Act
@@ -35,7 +41,7 @@ async def test_write_measurement_success(
     assert len(points) == 1
     assert points[0]["measurement"] == "test"
     assert points[0]["tags"] == {"tag1": "value1"}
-    assert points[0]["fields"] == {"field1": 1.0}
+    assert points[0]["fields"] == {"field1": FIELD_VALUE_1}
 
 
 @pytest.mark.asyncio(scope="function")
@@ -51,7 +57,7 @@ async def test_write_measurement_error(
         measurement="test",
         tags={"tag1": "value1"},
         timestamp=datetime.now(UTC),
-        fields={"field1": 1.0},
+        fields={"field1": FIELD_VALUE_1},
     )
     mock_influxdb_client.write.side_effect = Exception("DB Error")
 
@@ -74,13 +80,13 @@ async def test_write_measurements_success(
             measurement="test1",
             tags={"tag1": "value1"},
             timestamp=datetime.now(UTC),
-            fields={"field1": 1.0},
+            fields={"field1": FIELD_VALUE_1},
         ),
         Measurement(
             measurement="test2",
             tags={"tag2": "value2"},
             timestamp=datetime.now(UTC),
-            fields={"field2": 2.0},
+            fields={"field2": FIELD_VALUE_2},
         ),
     ]
 
@@ -90,13 +96,13 @@ async def test_write_measurements_success(
     # Assert
     mock_influxdb_client.write.assert_called_once()
     points = mock_influxdb_client.write.call_args[0][0]
-    assert len(points) == 2
+    assert len(points) == EXPECTED_MEASUREMENTS
     assert points[0]["measurement"] == "test1"
     assert points[0]["tags"] == {"tag1": "value1"}
-    assert points[0]["fields"] == {"field1": 1.0}
+    assert points[0]["fields"] == {"field1": FIELD_VALUE_1}
     assert points[1]["measurement"] == "test2"
     assert points[1]["tags"] == {"tag2": "value2"}
-    assert points[1]["fields"] == {"field2": 2.0}
+    assert points[1]["fields"] == {"field2": FIELD_VALUE_2}
 
 
 @pytest.mark.asyncio(scope="function")
@@ -113,13 +119,13 @@ async def test_write_measurements_error(
             measurement="test1",
             tags={"tag1": "value1"},
             timestamp=datetime.now(UTC),
-            fields={"field1": 1.0},
+            fields={"field1": FIELD_VALUE_1},
         ),
         Measurement(
             measurement="test2",
             tags={"tag2": "value2"},
             timestamp=datetime.now(UTC),
-            fields={"field2": 2.0},
+            fields={"field2": FIELD_VALUE_2},
         ),
     ]
     mock_influxdb_client.write.side_effect = Exception("DB Error")
