@@ -76,7 +76,7 @@ class SolarEdgeService:
                 endpoint="overview",
                 error=str(e),
             )
-            raise APIError(f"SolarEdge API request failed: {e}")
+            raise APIError("SolarEdge API request failed") from e
 
     async def _get_power_flow(self) -> dict:
         """Get current power flow data from SolarEdge API.
@@ -104,4 +104,4 @@ class SolarEdgeService:
                 endpoint="power_flow",
                 error=str(e),
             )
-            raise APIError(f"SolarEdge API request failed: {e}")
+            raise APIError("SolarEdge API request failed") from e
