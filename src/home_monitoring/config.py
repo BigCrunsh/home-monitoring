@@ -55,7 +55,21 @@ class Settings(BaseSettings):
         return super().model_dump(*args, **kwargs)
 
 
-_settings: Settings | None = None
+class SettingsManager:
+    """Singleton manager for application settings."""
+
+    _instance: Settings | None = None
+
+    @classmethod
+    def get_settings(cls) -> Settings:
+        """Get application settings.
+
+        Returns a singleton instance of Settings to avoid loading environment
+        variables multiple times.
+        """
+        if cls._instance is None:
+            cls._instance = Settings()
+        return cls._instance
 
 
 def get_settings() -> Settings:
@@ -64,7 +78,4 @@ def get_settings() -> Settings:
     Returns a singleton instance of Settings to avoid loading environment
     variables multiple times.
     """
-    global _settings
-    if _settings is None:
-        _settings = Settings()
-    return _settings
+    return SettingsManager.get_settings()
