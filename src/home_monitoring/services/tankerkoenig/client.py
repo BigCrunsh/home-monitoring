@@ -36,7 +36,6 @@ class TankerkoenigClient:
             API response with prices
         """
         self._logger.debug("getting_gas_prices", station_ids=station_ids)
-        ids = ",".join(station_ids)
         url = (
             "https://creativecommons.tankerkoenig.de/json/prices.php"
             f"?ids={','.join(station_ids)}&apikey={self._api_key}"
