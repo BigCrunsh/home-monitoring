@@ -50,7 +50,7 @@ class TankerkoenigClient:
                 station_ids=station_ids,
                 error=str(e),
             )
-            raise APIError(f"Failed to get gas prices: {e}")
+            raise APIError("Failed to get current prices") from e
 
     async def get_stations_details(
         self,
@@ -117,7 +117,7 @@ class TankerkoenigClient:
                 station_id=station_id,
                 error=str(e),
             )
-            raise APIError(f"Failed to get station details: {e}")
+            raise APIError("Failed to get station details") from e
 
     def _load_from_cache(self, station_id: str) -> dict[str, Any] | None:
         """Load station details from cache.
