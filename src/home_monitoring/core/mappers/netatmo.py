@@ -35,7 +35,7 @@ class NetatmoMapper:
                 fields = {
                     field: value
                     for field, value in device["dashboard_data"].items()
-                    if not isinstance(value, int | float)
+                    if isinstance(value, int | float)
                 }
                 if fields:
                     points.append(
@@ -63,7 +63,7 @@ class NetatmoMapper:
                 fields = {
                     field: value
                     for field, value in module["dashboard_data"].items()
-                    if not isinstance(value, int | float)
+                    if isinstance(value, int | float)
                 }
                 if fields:
                     points.append(
