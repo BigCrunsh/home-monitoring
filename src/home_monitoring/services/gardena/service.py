@@ -21,7 +21,7 @@ class GardenaService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, will be loaded from environment.
+            settings: Application settings. If not provided, loaded from env.
         """
         self._settings = settings or get_settings()
         self._db = InfluxDBRepository()
@@ -41,7 +41,7 @@ class GardenaService:
         if len(self._smart_system.locations) != 1:
             raise ValueError("Expected exactly one location")
 
-        location = list(self._smart_system.locations.values())[0]
+        location = next(iter(self._smart_system.locations.values()))
         self._smart_system.location = location
         self._smart_system.update_devices(location)
         self._smart_system.start_ws(location)
