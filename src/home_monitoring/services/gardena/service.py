@@ -6,7 +6,6 @@ from typing import Any
 
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.gardena import GardenaMapper
-from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
 from structlog.stdlib import BoundLogger
@@ -82,7 +81,10 @@ class GardenaService:
                 )
                 return
 
-            self._logger.debug("writing_device_data", measurements=measurements)
+            self._logger.debug(
+                "writing_device_data",
+                measurements=measurements,
+            )
             await self._db.write_measurements(measurements)
         except Exception as e:
             self._logger.error(
