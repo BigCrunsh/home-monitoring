@@ -1,13 +1,14 @@
 """SolarEdge data mapping utilities."""
 
-from datetime import datetime
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any
 
+from home_monitoring.core.mappers.base import BaseMapper
 from home_monitoring.models.base import Measurement
 
 
-class SolarEdgeMapper:
+class SolarEdgeMapper(BaseMapper):
     """Mapper for SolarEdge data to InfluxDB measurements."""
 
     @staticmethod
