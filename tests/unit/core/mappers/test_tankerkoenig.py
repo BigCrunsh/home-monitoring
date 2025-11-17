@@ -4,6 +4,16 @@ from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.tankerkoenig import TankerkoenigMapper
 
+from tests.unit.core.mappers.constants import (
+    EXPECTED_POINT_COUNT,
+    TANKERKOENIG_DIESEL_1,
+    TANKERKOENIG_E5_1,
+    TANKERKOENIG_E10_1,
+    TANKERKOENIG_DIESEL_2,
+    TANKERKOENIG_E5_2,
+    TANKERKOENIG_E10_2,
+)
+
 
 def test_to_measurements_success() -> None:
     """Test successful mapping of valid data."""
@@ -12,15 +22,15 @@ def test_to_measurements_success() -> None:
     prices = {
         "prices": {
             "123": {
-                "diesel": 1.599,
-                "e5": 1.799,
-                "e10": 1.749,
+                "diesel": TANKERKOENIG_DIESEL_1,
+                "e5": TANKERKOENIG_E5_1,
+                "e10": TANKERKOENIG_E10_1,
                 "status": "open",
             },
             "456": {
-                "diesel": 1.619,
-                "e5": 1.819,
-                "e10": 1.769,
+                "diesel": TANKERKOENIG_DIESEL_2,
+                "e5": TANKERKOENIG_E5_2,
+                "e10": TANKERKOENIG_E10_2,
                 "status": "closed",
             },
         }
@@ -46,7 +56,7 @@ def test_to_measurements_success() -> None:
     measurements = TankerkoenigMapper.to_measurements(timestamp, prices, stations)
 
     # Assert
-    assert len(measurements) == 2
+    assert len(measurements) == EXPECTED_POINT_COUNT
 
     # Check first station
     station1 = measurements[0]
@@ -61,9 +71,9 @@ def test_to_measurements_success() -> None:
     }
     assert station1.timestamp == timestamp
     assert station1.fields == {
-        "diesel": 1.599,
-        "e5": 1.799,
-        "e10": 1.749,
+        "diesel": TANKERKOENIG_DIESEL_1,
+        "e5": TANKERKOENIG_E5_1,
+        "e10": TANKERKOENIG_E10_1,
         "is_open": True,
     }
 
@@ -80,9 +90,9 @@ def test_to_measurements_success() -> None:
     }
     assert station2.timestamp == timestamp
     assert station2.fields == {
-        "diesel": 1.619,
-        "e5": 1.819,
-        "e10": 1.769,
+        "diesel": TANKERKOENIG_DIESEL_2,
+        "e5": TANKERKOENIG_E5_2,
+        "e10": TANKERKOENIG_E10_2,
         "is_open": False,
     }
 
@@ -95,9 +105,9 @@ def test_to_measurements_missing_data() -> None:
         "prices": {
             "123": None,  # Missing price data
             "456": {
-                "diesel": 1.619,
-                "e5": 1.819,
-                "e10": 1.769,
+                "diesel": TANKERKOENIG_DIESEL_2,
+                "e5": TANKERKOENIG_E5_2,
+                "e10": TANKERKOENIG_E10_2,
                 "status": "closed",
             },
         }
