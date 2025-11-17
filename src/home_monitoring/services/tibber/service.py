@@ -26,7 +26,7 @@ class TibberService:
 
         Args:
             settings: Application settings. If not provided, loaded from env.
-            repository: InfluxDB repository. If not provided, a new one will be created.
+            repository: InfluxDB repository. If not provided, created.
             user_agent: User agent string to use for API requests
         """
         self._settings = settings or get_settings()
@@ -43,18 +43,11 @@ class TibberService:
         points = TibberMapper.to_points(price_data)
 
         try:
-            await self._db.write_measurements(
-                [
-                    Measurement(
-                        measurement="electricity_prices",
-                        tags=point["tags"],
-                        timestamp=datetime.fromisoformat(point["time"]),
-                        fields=point["fields"],
-                    )
-                    for point in points
-                ]
+            await self._db.write_measurements(points)
+            self._logger.info(
+                "tibber_data_stored",
+                point_count=len(points),
             )
-            self._logger.info("electricity_data_stored", point_count=len(points))
         except Exception as e:
             self._logger.error(
                 "failed_to_store_electricity_data",
