@@ -1,4 +1,5 @@
 """Netatmo data mapping utilities."""
+
 from datetime import datetime
 from typing import Any
 
@@ -35,16 +36,18 @@ class NetatmoMapper:
                     if isinstance(value, (int, float))
                 }
                 if fields:
-                    points.append(Measurement(
-                        measurement="netatmo",
-                        tags={
-                            "device_id": device["_id"],
-                            "type": device["type"],
-                            "module_name": device["module_name"],
-                        },
-                        timestamp=timestamp,
-                        fields=fields,
-                    ))
+                    points.append(
+                        Measurement(
+                            measurement="netatmo",
+                            tags={
+                                "device_id": device["_id"],
+                                "type": device["type"],
+                                "module_name": device["module_name"],
+                            },
+                            timestamp=timestamp,
+                            fields=fields,
+                        )
+                    )
 
             # Module data
             for module in device.get("modules", []):
@@ -60,15 +63,17 @@ class NetatmoMapper:
                     if isinstance(value, (int, float))
                 }
                 if fields:
-                    points.append(Measurement(
-                        measurement="netatmo",
-                        tags={
-                            "device_id": module["_id"],
-                            "type": module["type"],
-                            "module_name": module["module_name"],
-                        },
-                        timestamp=timestamp,
-                        fields=fields,
-                    ))
+                    points.append(
+                        Measurement(
+                            measurement="netatmo",
+                            tags={
+                                "device_id": module["_id"],
+                                "type": module["type"],
+                                "module_name": module["module_name"],
+                            },
+                            timestamp=timestamp,
+                            fields=fields,
+                        )
+                    )
 
         return points

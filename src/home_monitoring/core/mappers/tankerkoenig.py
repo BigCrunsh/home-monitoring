@@ -1,4 +1,5 @@
 """Tankerkoenig data mapping utilities."""
+
 from datetime import datetime
 from typing import Any
 
@@ -34,23 +35,25 @@ class TankerkoenigMapper:
             if not station:
                 continue
 
-            points.append(Measurement(
-                measurement="gas_prices",
-                tags={
-                    "station_id": station_id,
-                    "name": station.get("name", "unknown"),
-                    "brand": station.get("brand", "unknown"),
-                    "street": station.get("street", "unknown"),
-                    "place": station.get("place", "unknown"),
-                    "post_code": station.get("postCode", "unknown"),
-                },
-                timestamp=timestamp,
-                fields={
-                    "diesel": price_data.get("diesel", 0.0),
-                    "e5": price_data.get("e5", 0.0),
-                    "e10": price_data.get("e10", 0.0),
-                    "is_open": price_data.get("status", "closed") == "open",
-                },
-            ))
+            points.append(
+                Measurement(
+                    measurement="gas_prices",
+                    tags={
+                        "station_id": station_id,
+                        "name": station.get("name", "unknown"),
+                        "brand": station.get("brand", "unknown"),
+                        "street": station.get("street", "unknown"),
+                        "place": station.get("place", "unknown"),
+                        "post_code": station.get("postCode", "unknown"),
+                    },
+                    timestamp=timestamp,
+                    fields={
+                        "diesel": price_data.get("diesel", 0.0),
+                        "e5": price_data.get("e5", 0.0),
+                        "e10": price_data.get("e10", 0.0),
+                        "is_open": price_data.get("status", "closed") == "open",
+                    },
+                )
+            )
 
         return points

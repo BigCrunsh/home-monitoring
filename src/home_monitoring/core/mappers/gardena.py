@@ -1,4 +1,5 @@
 """Gardena data mapping utilities."""
+
 from datetime import datetime
 from typing import Any
 
@@ -7,7 +8,9 @@ class GardenaMapper:
     """Mapper for Gardena device data to InfluxDB points."""
 
     @staticmethod
-    def control_data_to_points(device: Any, timestamp: datetime) -> list[dict[str, Any]]:
+    def control_data_to_points(
+        device: Any, timestamp: datetime
+    ) -> list[dict[str, Any]]:
         """Map irrigation control data to InfluxDB points.
 
         Args:
@@ -63,7 +66,9 @@ class GardenaMapper:
         ]
 
     @staticmethod
-    def soil_sensor_data_to_points(device: Any, timestamp: datetime) -> list[dict[str, Any]]:
+    def soil_sensor_data_to_points(
+        device: Any, timestamp: datetime
+    ) -> list[dict[str, Any]]:
         """Map soil sensor data to InfluxDB points.
 
         Args:

@@ -1,14 +1,15 @@
 """Tankerkoenig API client implementation."""
+
 import json
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import httpx
-from structlog.stdlib import BoundLogger
-
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
 
 
 class TankerkoenigClient:

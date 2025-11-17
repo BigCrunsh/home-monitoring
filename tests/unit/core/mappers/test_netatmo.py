@@ -1,5 +1,6 @@
 """Unit tests for Netatmo mapper."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.netatmo import NetatmoMapper
 
@@ -7,7 +8,7 @@ from home_monitoring.core.mappers.netatmo import NetatmoMapper
 def test_to_measurements_success() -> None:
     """Test successful mapping of valid data."""
     # Arrange
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     devices = [
         {
             "_id": "test-device",
@@ -75,7 +76,7 @@ def test_to_measurements_success() -> None:
 def test_to_measurements_missing_data() -> None:
     """Test handling of missing data."""
     # Arrange
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     devices = [
         {
             "_id": "test-device",
@@ -103,7 +104,7 @@ def test_to_measurements_missing_data() -> None:
 def test_to_measurements_invalid_data() -> None:
     """Test handling of invalid data."""
     # Arrange
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     devices = [
         {
             # Missing required fields

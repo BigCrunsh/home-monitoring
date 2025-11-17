@@ -1,13 +1,16 @@
 """Tibber service implementation."""
-from typing import Any
 
-import tibber
-from structlog.stdlib import BoundLogger
+from datetime import datetime
+from typing import Any
 
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.tibber import TibberMapper
+from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
+
+import tibber
 
 
 class TibberService:
@@ -16,16 +19,18 @@ class TibberService:
     def __init__(
         self,
         settings: Settings | None = None,
+        repository: InfluxDBRepository | None = None,
         user_agent: str = "Sawade Homemonitoring",
     ) -> None:
         """Initialize the service.
 
         Args:
             settings: Application settings. If not provided, will be loaded from environment.
+            repository: InfluxDB repository. If not provided, a new one will be created.
             user_agent: User agent string to use for API requests
         """
         self._settings = settings or get_settings()
-        self._db = InfluxDBRepository()
+        self._db = repository or InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
         self._user_agent = user_agent
 
@@ -38,7 +43,17 @@ class TibberService:
         points = TibberMapper.to_points(price_data)
 
         try:
-            await self._db.write_points(points)
+            await self._db.write_measurements(
+                [
+                    Measurement(
+                        measurement="electricity_prices",
+                        tags=point["tags"],
+                        timestamp=datetime.fromisoformat(point["time"]),
+                        fields=point["fields"],
+                    )
+                    for point in points
+                ]
+            )
             self._logger.info("electricity_data_stored", point_count=len(points))
         except Exception as e:
             self._logger.error(
@@ -64,11 +79,12 @@ class TibberService:
             self._logger.debug("connected_to_tibber", name=connection.name)
 
             # Get first home's data
-            home = connection.get_homes()[0]
+            homes = await connection.get_homes()
+            home = homes[0]
             await home.fetch_consumption_data()
             await home.update_info()
             self._logger.debug("got_home_data", address=home.address1)
 
-            return home.current_price_data()
+            return await home.current_price_data()
         finally:
             await connection.close_connection()

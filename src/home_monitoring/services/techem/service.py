@@ -1,17 +1,15 @@
 """Techem service implementation."""
+
 import asyncio
-from datetime import datetime, timezone
-from typing import Sequence
+from datetime import UTC, datetime
 
 import serial
-from structlog.stdlib import BoundLogger
-
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.techem import TechemMapper
-from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
 
 
 class TechemService:
@@ -20,6 +18,8 @@ class TechemService:
     def __init__(
         self,
         settings: Settings | None = None,
+        repository: InfluxDBRepository | None = None,
+        *,
         port: str = "/dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0",
         baudrate: int = 38400,
         timeout: int = 300,
@@ -27,13 +27,14 @@ class TechemService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, will be loaded from environment.
+            settings: Application settings. If not provided, loaded from environment.
+            repository: InfluxDB repository. If not provided, created.
             port: Serial port to listen on
             baudrate: Serial port baudrate
             timeout: Serial port timeout in seconds
         """
         self._settings = settings or get_settings()
-        self._db = InfluxDBRepository(settings=self._settings)
+        self._db = repository or InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
         self._port = port
         self._baudrate = baudrate
@@ -57,7 +58,7 @@ class TechemService:
             responses = await self._get_meter_data(num_packets)
 
             # Map to InfluxDB measurements
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
             measurements = TechemMapper.to_measurements(timestamp, responses)
 
             if not measurements:
@@ -98,15 +99,15 @@ class TechemService:
                 raise APIError("Failed to open serial port")
 
             # Get version info
-            ser.write(b'V\r\n')
-            version = ser.readline().rstrip().decode('utf-8')
+            ser.write(b"V\r\n")
+            version = ser.readline().rstrip().decode("utf-8")
             if not version:
                 raise APIError("Failed to get device version")
             self._logger.info("device_version", version=version)
 
             # Set WMBUS mode
-            ser.write(b'brt\r\n')
-            mode = ser.readline().rstrip().decode('utf-8')
+            ser.write(b"brt\r\n")
+            mode = ser.readline().rstrip().decode("utf-8")
             if not mode:
                 raise APIError("Failed to set WMBUS mode")
             self._logger.info("wmbus_mode", mode=mode)
@@ -134,7 +135,7 @@ class TechemService:
                 "failed_to_get_meter_data",
                 error=str(e),
             )
-            raise APIError(f"Failed to get meter data: {e}")
+            raise APIError("Failed to get meter data") from e
         finally:
-            if 'ser' in locals() and ser.is_open:
+            if "ser" in locals() and ser.is_open:
                 ser.close()

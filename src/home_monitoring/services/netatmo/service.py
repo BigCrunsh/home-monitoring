@@ -1,14 +1,14 @@
 """Netatmo weather station service implementation."""
-from datetime import datetime, timezone
 
-import netatmo
-from structlog.stdlib import BoundLogger
+from datetime import UTC, datetime
 
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.netatmo import NetatmoMapper
-from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
+
+import netatmo
 
 
 class NetatmoService:
@@ -23,21 +23,23 @@ class NetatmoService:
         self._settings = settings or get_settings()
         self._db = InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
-        self._api = netatmo.WeatherStation({
-            'client_id': self._settings.netatmo_client_id,
-            'client_secret': self._settings.netatmo_client_secret,
-            'username': self._settings.netatmo_username,
-            'password': self._settings.netatmo_password,
-        })
+        self._api = netatmo.WeatherStation(
+            {
+                "client_id": self._settings.netatmo_client_id,
+                "client_secret": self._settings.netatmo_client_secret,
+                "username": self._settings.netatmo_username,
+                "password": self._settings.netatmo_password,
+            }
+        )
 
     async def collect_and_store(self) -> None:
         """Collect weather station data and store in InfluxDB."""
         self._logger.info("collecting_weather_data")
-        
+
         if not await self._get_data():
             raise RuntimeError("Failed to get weather station data")
 
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
         measurements = NetatmoMapper.to_measurements(self._api.devices, timestamp)
 
         try:

@@ -1,4 +1,5 @@
 """Custom exceptions for the application."""
+
 from enum import Enum
 from typing import Any
 

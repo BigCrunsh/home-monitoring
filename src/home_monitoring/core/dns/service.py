@@ -1,9 +1,9 @@
 """Dynu DNS service implementation."""
-import httpx
-from structlog.stdlib import BoundLogger
 
+import httpx
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
 
 
 class DynuService:

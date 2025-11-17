@@ -21,7 +21,9 @@ async def main() -> int:
     # Set up signal handlers
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, lambda s=sig: asyncio.create_task(shutdown(service, sig)))
+        loop.add_signal_handler(
+            sig, lambda s=sig: asyncio.create_task(shutdown(service, sig))
+        )
 
     try:
         await service.start()

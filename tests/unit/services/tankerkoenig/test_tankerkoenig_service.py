@@ -1,12 +1,13 @@
 """Unit tests for Tankerkoenig service."""
-import pytest
-from pytest_mock import MockerFixture
+
 from unittest.mock import AsyncMock
 
+import pytest
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.tankerkoenig.client import TankerkoenigClient
 from home_monitoring.services.tankerkoenig.service import TankerkoenigService
+from pytest_mock import MockerFixture
 
 
 @pytest.mark.asyncio(scope="function")
@@ -18,27 +19,31 @@ async def test_collect_and_store_success(
     """Test successful data collection and storage."""
     # Arrange
     mock_client = AsyncMock()
-    mock_client.get_prices = AsyncMock(return_value={
-        "ok": True,
-        "prices": {
-            "123": {
-                "diesel": 1.599,
-                "e5": 1.799,
-                "e10": 1.749,
-                "status": "open",
+    mock_client.get_prices = AsyncMock(
+        return_value={
+            "ok": True,
+            "prices": {
+                "123": {
+                    "diesel": 1.599,
+                    "e5": 1.799,
+                    "e10": 1.749,
+                    "status": "open",
+                },
             },
         }
-    })
-    mock_client.get_stations_details = AsyncMock(return_value={
-        "ok": True,
-        "123": {
-            "name": "Test Station",
-            "brand": "Test Brand",
-            "street": "Test Street",
-            "place": "Test Place",
-            "postCode": "12345",
+    )
+    mock_client.get_stations_details = AsyncMock(
+        return_value={
+            "ok": True,
+            "123": {
+                "name": "Test Station",
+                "brand": "Test Brand",
+                "street": "Test Street",
+                "place": "Test Place",
+                "postCode": "12345",
+            },
         }
-    })
+    )
     mocker.patch.object(
         TankerkoenigClient,
         "__init__",
@@ -56,7 +61,7 @@ async def test_collect_and_store_success(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings)
+    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
 
     # Act
     await service.collect_and_store(station_ids=["123"])
@@ -92,7 +97,7 @@ async def test_collect_and_store_api_error(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings)
+    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
 
     # Act & Assert
     with pytest.raises(APIError, match="API Error"):
@@ -110,27 +115,31 @@ async def test_collect_and_store_database_error(
     """Test handling of database error."""
     # Arrange
     mock_client = AsyncMock()
-    mock_client.get_prices = AsyncMock(return_value={
-        "ok": True,
-        "prices": {
-            "123": {
-                "diesel": 1.599,
-                "e5": 1.799,
-                "e10": 1.749,
-                "status": "open",
+    mock_client.get_prices = AsyncMock(
+        return_value={
+            "ok": True,
+            "prices": {
+                "123": {
+                    "diesel": 1.599,
+                    "e5": 1.799,
+                    "e10": 1.749,
+                    "status": "open",
+                },
             },
         }
-    })
-    mock_client.get_stations_details = AsyncMock(return_value={
-        "ok": True,
-        "123": {
-            "name": "Test Station",
-            "brand": "Test Brand",
-            "street": "Test Street",
-            "place": "Test Place",
-            "postCode": "12345",
+    )
+    mock_client.get_stations_details = AsyncMock(
+        return_value={
+            "ok": True,
+            "123": {
+                "name": "Test Station",
+                "brand": "Test Brand",
+                "street": "Test Street",
+                "place": "Test Place",
+                "postCode": "12345",
+            },
         }
-    })
+    )
     mocker.patch.object(
         TankerkoenigClient,
         "__init__",
@@ -148,7 +157,7 @@ async def test_collect_and_store_database_error(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings)
+    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
 
     # Set up database error
     mock_influxdb.write_measurements.side_effect = Exception("DB Error")
@@ -167,10 +176,12 @@ async def test_collect_and_store_invalid_response(
     """Test handling of invalid API response."""
     # Arrange
     mock_client = AsyncMock()
-    mock_client.get_prices = AsyncMock(return_value={
-        "ok": False,
-        "message": "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
-    })
+    mock_client.get_prices = AsyncMock(
+        return_value={
+            "ok": False,
+            "message": "eine oder mehrere Tankstellen-IDs nicht im korrekten Format",
+        }
+    )
     mocker.patch.object(
         TankerkoenigClient,
         "__init__",
@@ -183,10 +194,12 @@ async def test_collect_and_store_invalid_response(
     )
 
     # Create service
-    service = TankerkoenigService(settings=mock_settings)
+    service = TankerkoenigService(settings=mock_settings, repository=mock_influxdb)
 
     # Act & Assert
-    with pytest.raises(APIError, match="eine oder mehrere Tankstellen-IDs nicht im korrekten Format"):
+    with pytest.raises(
+        APIError, match="eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
+    ):
         await service.collect_and_store(station_ids=["123"])
 
     assert not mock_influxdb.write_measurements.called

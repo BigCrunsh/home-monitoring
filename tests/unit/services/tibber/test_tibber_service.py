@@ -1,10 +1,12 @@
 """Unit tests for Tibber service."""
-import pytest
-from pytest_mock import MockerFixture
-from unittest.mock import AsyncMock, MagicMock, patch
 
+from datetime import datetime
+from unittest.mock import AsyncMock, patch
+
+import pytest
 from home_monitoring.config import Settings
 from home_monitoring.services.tibber.service import TibberService
+from pytest_mock import MockerFixture
 
 
 @pytest.mark.asyncio(scope="function")
@@ -15,7 +17,7 @@ async def test_collect_and_store_success(
 ) -> None:
     """Test successful data collection and storage."""
     # Arrange
-    mock_home = MagicMock()
+    mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
     mock_home.current_price_data.return_value = {
         "total": 1.234,
@@ -32,16 +34,26 @@ async def test_collect_and_store_success(
 
     with patch("tibber.Tibber", return_value=mock_connection):
         # Create service
-        service = TibberService(settings=mock_settings)
+        service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act
         await service.collect_and_store()
 
         # Assert
-        mock_influxdb.write_points.assert_called_once()
-        points = mock_influxdb.write_points.call_args[0][0]
-        assert len(points) > 0
-        assert points[0].measurement == "electricity_prices"
+        mock_influxdb.write_measurements.assert_called_once()
+        measurements = mock_influxdb.write_measurements.call_args[0][0]
+        assert len(measurements) == 1
+        assert measurements[0].measurement == "electricity_prices"
+        assert measurements[0].tags == {
+            "currency": "NOK",
+            "level": "NORMAL",
+        }
+        assert measurements[0].fields == {
+            "total": 1.234,
+            "energy": 0.567,
+            "tax": 0.123,
+        }
+        assert measurements[0].timestamp == datetime(2024, 2, 16, 20, 0, 0)
 
 
 @pytest.mark.asyncio(scope="function")
@@ -57,13 +69,13 @@ async def test_collect_and_store_api_error(
 
     with patch("tibber.Tibber", return_value=mock_connection):
         # Create service
-        service = TibberService(settings=mock_settings)
+        service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act & Assert
         with pytest.raises(Exception, match="API Error"):
             await service.collect_and_store()
 
-        assert not mock_influxdb.write_points.called
+        assert not mock_influxdb.write_measurements.called
 
 
 @pytest.mark.asyncio(scope="function")
@@ -74,7 +86,7 @@ async def test_collect_and_store_database_error(
 ) -> None:
     """Test handling of database error."""
     # Arrange
-    mock_home = MagicMock()
+    mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
     mock_home.current_price_data.return_value = {
         "total": 1.234,
@@ -91,8 +103,8 @@ async def test_collect_and_store_database_error(
 
     with patch("tibber.Tibber", return_value=mock_connection):
         # Create service and set up database error
-        service = TibberService(settings=mock_settings)
-        mock_influxdb.write_points.side_effect = Exception("DB Error")
+        service = TibberService(settings=mock_settings, repository=mock_influxdb)
+        mock_influxdb.write_measurements.side_effect = Exception("DB Error")
 
         # Act & Assert
         with pytest.raises(Exception, match="DB Error"):

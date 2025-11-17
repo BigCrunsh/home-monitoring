@@ -1,5 +1,6 @@
 """Unit tests for SolarEdge mapper."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 
@@ -7,7 +8,7 @@ from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 def test_to_measurements_success() -> None:
     """Test successful mapping of valid data."""
     # Arrange
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     overview = {
         "overview": {
             "lastUpdateTime": "2024-02-16 20:00:00",
@@ -63,7 +64,7 @@ def test_to_measurements_success() -> None:
 def test_to_measurements_missing_overview() -> None:
     """Test handling of missing overview data."""
     # Arrange
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     overview = {}
     power_flow = {
         "siteCurrentPowerFlow": {
@@ -86,7 +87,7 @@ def test_to_measurements_missing_overview() -> None:
 def test_to_measurements_missing_power_flow() -> None:
     """Test handling of missing power flow data."""
     # Arrange
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     overview = {
         "overview": {
             "lastUpdateTime": "2024-02-16 20:00:00",
@@ -110,7 +111,7 @@ def test_to_measurements_missing_power_flow() -> None:
 def test_to_measurements_missing_fields() -> None:
     """Test handling of missing data fields."""
     # Arrange
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now(UTC)
     overview = {
         "overview": {
             "lastUpdateTime": "2024-02-16 20:00:00",

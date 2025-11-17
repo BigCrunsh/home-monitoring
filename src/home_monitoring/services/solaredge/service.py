@@ -1,15 +1,14 @@
 """SolarEdge service implementation."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 import httpx
-from structlog.stdlib import BoundLogger
-
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
-from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
 
 
 class SolarEdgeService:
@@ -35,8 +34,10 @@ class SolarEdgeService:
             power_flow = await self._get_power_flow()
 
             # Map to InfluxDB measurements
-            timestamp = datetime.now(timezone.utc)
-            measurements = SolarEdgeMapper.to_measurements(timestamp, overview, power_flow)
+            timestamp = datetime.now(UTC)
+            measurements = SolarEdgeMapper.to_measurements(
+                timestamp, overview, power_flow
+            )
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)

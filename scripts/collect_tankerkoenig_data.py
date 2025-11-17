@@ -17,7 +17,7 @@ async def main(args: argparse.Namespace) -> int:
     Returns:
         Exit code
     """
-    configure_logging()
+    configure_logging(verbose=args.verbose)
     service = TankerkoenigService(cache_dir=args.cache_dir)
 
     try:
@@ -45,6 +45,12 @@ def parse_args() -> argparse.Namespace:
         "--force-update",
         action="store_true",
         help="Force update of station details from API",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging",
     )
     return parser.parse_args()
 

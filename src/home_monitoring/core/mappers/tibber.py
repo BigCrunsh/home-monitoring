@@ -1,4 +1,5 @@
 """Tibber data mapping utilities."""
+
 from typing import Any
 
 

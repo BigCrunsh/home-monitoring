@@ -1,10 +1,9 @@
 """Common test fixtures for InfluxDB."""
+
 from unittest.mock import AsyncMock
 
 import pytest
 from pytest_mock import MockerFixture
-
-from home_monitoring.repositories.influxdb import InfluxDBRepository
 
 
 @pytest.fixture
