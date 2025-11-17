@@ -3,11 +3,12 @@
 from collections.abc import Sequence
 from datetime import datetime
 
+from home_monitoring.core.mappers.base import BaseMapper
 from home_monitoring.models.base import Measurement
 from home_monitoring.utils.logging import get_logger
 
 
-class TechemMapper:
+class TechemMapper(BaseMapper):
     """Mapper for Techem meter data to InfluxDB points."""
 
     EXPECTED_RESPONSE_LENGTH = 46  # Length of hex string response

@@ -1,13 +1,14 @@
 """Netatmo data mapping utilities."""
 
-from datetime import datetime
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any
 
+from home_monitoring.core.mappers.base import BaseMapper
 from home_monitoring.models.base import Measurement
 
 
-class NetatmoMapper:
+class NetatmoMapper(BaseMapper):
     """Mapper for Netatmo weather station data to InfluxDB measurements."""
 
     @staticmethod

@@ -1,13 +1,14 @@
 """Tankerkoenig data mapping utilities."""
 
-from datetime import datetime
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any
 
+from home_monitoring.core.mappers.base import BaseMapper
 from home_monitoring.models.base import Measurement
 
 
-class TankerkoenigMapper:
+class TankerkoenigMapper(BaseMapper):
     """Mapper for Tankerkoenig gas station data to InfluxDB measurements."""
 
     @staticmethod

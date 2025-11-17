@@ -4,10 +4,11 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
+from home_monitoring.core.mappers.base import BaseMapper
 from home_monitoring.models.base import Measurement
 
 
-class TibberMapper:
+class TibberMapper(BaseMapper):
     """Mapper for Tibber electricity data to InfluxDB measurements."""
 
     @staticmethod
