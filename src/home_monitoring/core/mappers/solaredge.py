@@ -40,16 +40,16 @@ class SolarEdgeMapper:
                     timestamp=timestamp,
                     fields={
                         "lifetime_energy": float(
-                            overview["overview"]["lifeTimeData"]["energy"]
+                            data.get("lifeTimeData", {}).get("energy", 0.0)
                         ),
                         "last_year_energy": float(
-                            overview["overview"]["lastYearData"]["energy"]
+                            data.get("lastYearData", {}).get("energy", 0.0)
                         ),
                         "last_month_energy": float(
-                            overview["overview"]["lastMonthData"]["energy"]
+                            data.get("lastMonthData", {}).get("energy", 0.0)
                         ),
                         "last_day_energy": float(
-                            overview["overview"]["lastDayData"]["energy"]
+                            data.get("lastDayData", {}).get("energy", 0.0)
                         ),
                         "current_power": data.get(
                             "currentPower", {}
