@@ -63,7 +63,10 @@ class TechemService:
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)
-            self._logger.info("meter_data_stored", point_count=len(measurements))
+            self._logger.info(
+                "meter_data_stored",
+                point_count=len(measurements),
+            )
         except Exception as e:
             self._logger.error(
                 "failed_to_collect_meter_data",
