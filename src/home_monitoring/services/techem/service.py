@@ -26,7 +26,7 @@ class TechemService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, loaded from environment.
+            settings: Application settings. If not provided, loaded from env.
             repository: InfluxDB repository. If not provided, created.
             serial_config: Serial port configuration
         """
@@ -39,8 +39,8 @@ class TechemService:
         """Collect meter data and store in InfluxDB.
 
         Args:
-            num_packets: Number of data packets to collect. Should be larger than
-                number of receivable IDs.
+            num_packets: Number of data packets to collect. Should be larger
+                than number of receivable IDs.
         """
         self._logger.info(
             "starting_data_collection",
@@ -116,7 +116,9 @@ class TechemService:
                     responses.append(response)
 
             if not responses:
-                raise APIError("No meter data received")
+                raise APIError(
+                    "No meter data received"
+                )
 
             self._logger.info(
                 "responses_collected",
