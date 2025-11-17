@@ -92,7 +92,7 @@ class InfluxDBRepository:
             "time": measurement.timestamp.isoformat(),
         }
         try:
-            await self._write_points([data])
+            await self._client.write([data])
         except Exception as e:
             self._logger.error(
                 "failed_to_write_measurement",
@@ -100,14 +100,6 @@ class InfluxDBRepository:
                 error=str(e),
             )
             raise
-
-    async def _write_points(self, points: list[dict[str, Any]]) -> None:
-        """Write points to InfluxDB.
-
-        Args:
-            points: Points to write
-        """
-        await self._client.write(points)
 
     async def write_measurements(self, measurements: list[Measurement]) -> None:
         """Write multiple measurements to InfluxDB.

@@ -135,6 +135,8 @@ class TechemService:
                 "failed_to_get_meter_data",
                 error=str(e),
             )
+            if isinstance(e, APIError):
+                raise e
             raise APIError("Failed to get meter data") from e
         finally:
             if "ser" in locals() and ser.is_open:
