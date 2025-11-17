@@ -6,8 +6,8 @@ from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 
 from tests.unit.core.mappers.constants import (
     EXPECTED_POINT_COUNT,
-    SOLAREDGE_POWER,
     SOLAREDGE_GRID_POWER,
+    SOLAREDGE_POWER,
     ZERO,
 )
 

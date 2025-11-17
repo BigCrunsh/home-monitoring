@@ -3,22 +3,22 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from pytest_mock import MockerFixture
-
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.tankerkoenig.client import TankerkoenigClient
 from home_monitoring.services.tankerkoenig.service import TankerkoenigService
+from pytest_mock import MockerFixture
+
 from tests.unit.services.tankerkoenig.constants import (
     TEST_DIESEL_PRICE,
     TEST_E5_PRICE,
     TEST_E10_PRICE,
+    TEST_STATION_BRAND,
     TEST_STATION_ID,
     TEST_STATION_NAME,
-    TEST_STATION_BRAND,
-    TEST_STATION_STREET,
     TEST_STATION_PLACE,
     TEST_STATION_POSTCODE,
+    TEST_STATION_STREET,
 )
 
 
