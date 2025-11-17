@@ -1,6 +1,7 @@
 """SolarEdge data mapping utilities."""
 
 from datetime import datetime
+from collections.abc import Mapping
 from typing import Any
 
 from home_monitoring.models.base import Measurement
@@ -12,8 +13,8 @@ class SolarEdgeMapper:
     @staticmethod
     def to_measurements(
         timestamp: datetime,
-        overview: dict[str, Any],
-        power_flow: dict[str, Any],
+        overview: Mapping[str, Any],
+        power_flow: Mapping[str, Any],
     ) -> list[Measurement]:
         """Map SolarEdge data to InfluxDB measurements.
 

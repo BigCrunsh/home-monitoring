@@ -1,6 +1,7 @@
 """Tankerkoenig data mapping utilities."""
 
 from datetime import datetime
+from collections.abc import Mapping
 from typing import Any
 
 from home_monitoring.models.base import Measurement
@@ -12,8 +13,8 @@ class TankerkoenigMapper:
     @staticmethod
     def to_measurements(
         timestamp: datetime,
-        prices: dict[str, Any],
-        stations: dict[str, Any],
+        prices: Mapping[str, Any],
+        stations: Mapping[str, Any],
     ) -> list[Measurement]:
         """Map gas station data to InfluxDB points.
 

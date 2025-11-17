@@ -1,6 +1,7 @@
 """Netatmo data mapping utilities."""
 
 from datetime import datetime
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from home_monitoring.models.base import Measurement
@@ -11,14 +12,14 @@ class NetatmoMapper:
 
     @staticmethod
     def to_measurements(
-        devices: list[dict[str, Any]],
         timestamp: datetime,
+        devices: Sequence[Mapping[str, Any]],
     ) -> list[Measurement]:
         """Map weather station data to InfluxDB measurements.
 
         Args:
-            devices: List of Netatmo devices with their data
             timestamp: Measurement timestamp
+            devices: List of Netatmo devices with their data
 
         Returns:
             List of InfluxDB measurements
