@@ -4,14 +4,13 @@ import asyncio
 from datetime import UTC, datetime
 
 import serial
-from structlog.stdlib import BoundLogger
-
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.techem import TechemMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.services.techem.config import SerialConfig
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
 
 
 class TechemService:
