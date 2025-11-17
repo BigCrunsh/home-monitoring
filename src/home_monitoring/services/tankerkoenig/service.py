@@ -86,7 +86,8 @@ class TankerkoenigService:
                 station_ids, force_update
             )
             if not stations_response.get("ok", False):
-                raise APIError(stations_response.get("message", "Unknown error"))
+                msg = stations_response.get("message", "Unknown error")
+                raise APIError(msg)
 
             # Map to InfluxDB measurements
             timestamp = datetime.now(UTC)
