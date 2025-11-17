@@ -221,7 +221,9 @@ async def test_collect_and_store_invalid_response(
     )
 
     # Act & Assert
-    error_message = "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
+    error_message = (
+        "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
+    )
     with pytest.raises(APIError, match=error_message):
         await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
