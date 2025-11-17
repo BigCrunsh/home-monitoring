@@ -40,16 +40,18 @@ class TankerkoenigService:
     def __init__(
         self,
         settings: Settings | None = None,
+        repository: InfluxDBRepository | None = None,
         cache_dir: str | None = None,
     ) -> None:
         """Initialize the service.
 
         Args:
             settings: Application settings. If not provided, loaded from environment.
+            repository: InfluxDB repository. If not provided, created.
             cache_dir: Directory to cache station details. If not provided, disabled.
         """
         self._settings = settings or get_settings()
-        self._db = InfluxDBRepository(settings=self._settings)
+        self._db = repository or InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
         self._client = TankerkoenigClient(
             api_key=self._settings.tankerkoenig_api_key,
