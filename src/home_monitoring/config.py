@@ -10,7 +10,10 @@ class Settings(BaseSettings):
     """Application settings."""
 
     model_config = ConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
     )
 
     # InfluxDB settings
