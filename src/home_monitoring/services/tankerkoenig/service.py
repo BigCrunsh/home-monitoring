@@ -46,9 +46,9 @@ class TankerkoenigService:
         """Initialize the service.
 
         Args:
-            settings: Application settings. If not provided, loaded from environment.
+            settings: Application settings. If not provided, loaded from env.
             repository: InfluxDB repository. If not provided, created.
-            cache_dir: Directory to cache station details. If not provided, disabled.
+            cache_dir: Directory to cache station details. If None, disabled.
         """
         self._settings = settings or get_settings()
         self._db = repository or InfluxDBRepository(settings=self._settings)
@@ -66,8 +66,8 @@ class TankerkoenigService:
         """Collect gas station prices and store in InfluxDB.
 
         Args:
-            station_ids: List of station IDs to monitor. If None, uses default list.
-            force_update: Whether to force update station details.
+            station_ids: Station IDs to monitor. If None, uses default list.
+            force_update: Whether to force update details.
         """
         station_ids = station_ids or self.DEFAULT_STATION_IDS
         self._logger.info("collecting_gas_prices", station_count=len(station_ids))
