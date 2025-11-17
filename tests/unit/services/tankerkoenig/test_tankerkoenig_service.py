@@ -197,10 +197,13 @@ async def test_collect_and_store_invalid_response(
     """Test handling of invalid API response."""
     # Arrange
     mock_client = AsyncMock()
+    error_message = (
+        "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
+    )
     mock_client.get_prices = AsyncMock(
         return_value={
             "ok": False,
-            "message": "eine oder mehrere Tankstellen-IDs nicht im korrekten Format",
+            "message": error_message,
         }
     )
     mocker.patch.object(
@@ -221,9 +224,6 @@ async def test_collect_and_store_invalid_response(
     )
 
     # Act & Assert
-    error_message = (
-        "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
-    )
     with pytest.raises(APIError, match=error_message):
         await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
