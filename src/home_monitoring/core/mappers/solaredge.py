@@ -39,19 +39,21 @@ class SolarEdgeMapper:
                     },
                     timestamp=timestamp,
                     fields={
-                        "lifetime_energy": data.get("lifeTimeData", {}).get(
-                            "energy", 0.0
+                        "lifetime_energy": float(
+                            overview["overview"]["lifeTimeData"]["energy"]
                         ),
-                        "last_year_energy": data.get("lastYearData", {}).get(
-                            "energy", 0.0
+                        "last_year_energy": float(
+                            overview["overview"]["lastYearData"]["energy"]
                         ),
-                        "last_month_energy": data.get("lastMonthData", {}).get(
-                            "energy", 0.0
+                        "last_month_energy": float(
+                            overview["overview"]["lastMonthData"]["energy"]
                         ),
-                        "last_day_energy": data.get("lastDayData", {}).get(
-                            "energy", 0.0
+                        "last_day_energy": float(
+                            overview["overview"]["lastDayData"]["energy"]
                         ),
-                        "current_power": data.get("currentPower", {}).get("power", 0.0),
+                        "current_power": data.get(
+                            "currentPower", {}
+                        ).get("power", 0.0),
                     },
                 )
             )
