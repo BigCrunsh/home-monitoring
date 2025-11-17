@@ -23,8 +23,8 @@ class InfluxDBRepository:
         """Initialize the repository.
 
         Args:
-            settings: Application settings. If not provided, will be loaded from environment.
-            client: InfluxDB client. If not provided, a new client will be created.
+            settings: Application settings. If not provided, loaded from env.
+            client: InfluxDB client. If not provided, new client created.
         """
         self._settings = settings or get_settings()
         self._client = client or self._create_client()
