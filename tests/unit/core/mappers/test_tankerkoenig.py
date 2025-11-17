@@ -53,7 +53,9 @@ def test_to_measurements_success() -> None:
     }
 
     # Act
-    measurements = TankerkoenigMapper.to_measurements(timestamp, prices, stations)
+    measurements = TankerkoenigMapper.to_measurements(
+        timestamp, prices, stations
+    )
 
     # Assert
     assert len(measurements) == EXPECTED_POINT_COUNT
@@ -124,7 +126,9 @@ def test_to_measurements_missing_data() -> None:
     }
 
     # Act
-    measurements = TankerkoenigMapper.to_measurements(timestamp, prices, stations)
+    measurements = TankerkoenigMapper.to_measurements(
+        timestamp, prices, stations
+    )
 
     # Assert
     assert len(measurements) == 0
@@ -138,7 +142,9 @@ def test_to_measurements_invalid_data() -> None:
     stations = {}  # Empty stations
 
     # Act
-    measurements = TankerkoenigMapper.to_measurements(timestamp, prices, stations)
+    measurements = TankerkoenigMapper.to_measurements(
+        timestamp, prices, stations
+    )
 
     # Assert
     assert len(measurements) == 0
