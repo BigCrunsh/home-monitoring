@@ -52,7 +52,9 @@ class TankerkoenigMapper:
                         "diesel": price_data.get("diesel", 0.0),
                         "e5": price_data.get("e5", 0.0),
                         "e10": price_data.get("e10", 0.0),
-                        "is_open": price_data.get("status", "closed") == "open",
+                        "is_open": (
+                            price_data.get("status", "closed") == "open"
+                        ),
                     },
                 )
             )
