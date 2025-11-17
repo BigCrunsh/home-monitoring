@@ -10,7 +10,7 @@ from home_monitoring.utils.logging import get_logger
 class TechemMapper:
     """Mapper for Techem meter data to InfluxDB points."""
 
-    EXPECTED_RESPONSE_LENGTH = 44  # Length of hex string response
+    EXPECTED_RESPONSE_LENGTH = 46  # Length of hex string response
     _logger = get_logger(__name__)
 
     @staticmethod
