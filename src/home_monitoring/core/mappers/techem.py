@@ -9,6 +9,8 @@ from home_monitoring.models.base import Measurement
 class TechemMapper:
     """Mapper for Techem meter data to InfluxDB points."""
 
+    EXPECTED_RESPONSE_LENGTH = 32  # Length of raw response in bytes
+
     @staticmethod
     def to_measurements(
         timestamp: datetime,
@@ -34,7 +36,7 @@ class TechemMapper:
                 # 4-7: 53012345 - heat meter ID
                 # 16-18: last period value
                 # 20-22: current period value
-                if len(response) < 32:
+                if len(response) != TechemMapper.EXPECTED_RESPONSE_LENGTH:
                     continue
 
                 # Convert response to hex string with 'b' prefix
