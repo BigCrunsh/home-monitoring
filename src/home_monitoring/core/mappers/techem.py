@@ -4,12 +4,14 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from home_monitoring.models.base import Measurement
+from home_monitoring.utils.logging import get_logger
 
 
 class TechemMapper:
     """Mapper for Techem meter data to InfluxDB points."""
 
     EXPECTED_RESPONSE_LENGTH = 44  # Length of hex string response
+    _logger = get_logger(__name__)
 
     @staticmethod
     def to_measurements(
@@ -37,7 +39,13 @@ class TechemMapper:
                 # 16-18: last period value
                 # 20-22: current period value
                 hex_str = response.decode("ascii")
+                TechemMapper._logger.debug("parsing_response", hex_str=hex_str)
                 if len(hex_str) != TechemMapper.EXPECTED_RESPONSE_LENGTH:
+                    TechemMapper._logger.debug(
+                        "invalid_response_length",
+                        length=len(hex_str),
+                        expected=TechemMapper.EXPECTED_RESPONSE_LENGTH,
+                    )
                     continue
 
                 # Extract meter ID (bytes 4-7)
@@ -45,9 +53,11 @@ class TechemMapper:
                 for pos in [7, 6, 5, 4]:
                     meter_id_bytes += hex_str[pos * 2:(pos * 2) + 2]
                 meter_id = str(int(meter_id_bytes))
+                TechemMapper._logger.debug("parsed_meter_id", meter_id=meter_id)
 
                 # Extract media type (byte 11)
                 media_type = hex_str[11 * 2:(11 * 2) + 2]
+                TechemMapper._logger.debug("parsed_media_type", media_type=media_type)
 
                 # Extract values (bytes 16-18 and 20-22)
                 last_period_bytes = ""
@@ -61,6 +71,12 @@ class TechemMapper:
                 current_period = int(current_period_bytes, 16)
 
                 value = (last_period + current_period) / 1000.0
+                TechemMapper._logger.debug(
+                    "parsed_value",
+                    last_period=last_period,
+                    current_period=current_period,
+                    value=value,
+                )
 
                 measurements.append(
                     Measurement(
@@ -75,7 +91,8 @@ class TechemMapper:
                         },
                     )
                 )
-            except Exception:
+            except Exception as e:
+                TechemMapper._logger.debug("failed_to_parse_response", error=str(e))
                 continue
 
         return measurements
