@@ -26,17 +26,17 @@ def test_to_measurements_success() -> None:
 
     # Act
     timestamp = datetime(2024, 2, 16, 20, 0, 0)
-    points = TibberMapper.to_measurements(timestamp, price_data)
+    measurements = TibberMapper.to_measurements(timestamp, price_data)
 
     # Assert
-    assert len(points) == 1
-    assert points[0].measurement == "electricity_prices"
-    assert points[0].tags["currency"] == "NOK"
-    assert points[0].tags["level"] == "NORMAL"
-    assert points[0].timestamp == datetime(2024, 2, 16, 20, 0, 0)
-    assert points[0].fields["total"] == TIBBER_CONSUMPTION
-    assert points[0].fields["energy"] == TIBBER_PRODUCTION
-    assert points[0].fields["tax"] == TIBBER_COST
+    assert len(measurements) == 1
+    assert measurements[0].measurement == "electricity_prices"
+    assert measurements[0].tags["currency"] == "NOK"
+    assert measurements[0].tags["level"] == "NORMAL"
+    assert measurements[0].timestamp == datetime(2024, 2, 16, 20, 0, 0)
+    assert measurements[0].fields["total"] == TIBBER_CONSUMPTION
+    assert measurements[0].fields["energy"] == TIBBER_PRODUCTION
+    assert measurements[0].fields["tax"] == TIBBER_COST
 
 
 def test_to_measurements_missing_data() -> None:
@@ -46,15 +46,15 @@ def test_to_measurements_missing_data() -> None:
 
     # Act
     timestamp = datetime(2024, 2, 16, 20, 0, 0)
-    points = TibberMapper.to_measurements(timestamp, price_data)
+    measurements = TibberMapper.to_measurements(timestamp, price_data)
 
     # Assert
-    assert len(points) == 1
-    assert points[0].tags["currency"] == "unknown"
-    assert points[0].tags["level"] == "unknown"
-    assert points[0].fields["total"] == ZERO
-    assert points[0].fields["energy"] == ZERO
-    assert points[0].fields["tax"] == ZERO
+    assert len(measurements) == 1
+    assert measurements[0].tags["currency"] == "unknown"
+    assert measurements[0].tags["level"] == "unknown"
+    assert measurements[0].fields["total"] == ZERO
+    assert measurements[0].fields["energy"] == ZERO
+    assert measurements[0].fields["tax"] == ZERO
 
 
 def test_to_measurements_invalid_data() -> None:
@@ -71,12 +71,12 @@ def test_to_measurements_invalid_data() -> None:
 
     # Act
     timestamp = datetime(2024, 2, 16, 20, 0, 0)
-    points = TibberMapper.to_measurements(timestamp, price_data)
+    measurements = TibberMapper.to_measurements(timestamp, price_data)
 
     # Assert
-    assert len(points) == 1
-    assert points[0].tags["currency"] == "unknown"
-    assert points[0].tags["level"] == "unknown"
-    assert points[0].fields["total"] == ZERO
-    assert points[0].fields["energy"] == ZERO
-    assert points[0].fields["tax"] == ZERO
+    assert len(measurements) == 1
+    assert measurements[0].tags["currency"] == "unknown"
+    assert measurements[0].tags["level"] == "unknown"
+    assert measurements[0].fields["total"] == ZERO
+    assert measurements[0].fields["energy"] == ZERO
+    assert measurements[0].fields["tax"] == ZERO
