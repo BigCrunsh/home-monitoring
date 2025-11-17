@@ -36,7 +36,6 @@ class GardenaMapper(BaseMapper):
                 fields={
                     "state": device.state,
                     "activity": device.activity,
-                    "last_error_code": device.last_error_code,
                 },
             )
         ]
@@ -67,7 +66,7 @@ class GardenaMapper(BaseMapper):
                 fields={
                     "soil_temperature": device.soil_temperature,
                     "soil_humidity": device.soil_humidity,
-                    "light": device.light,
+                    "light_intensity": device.light_intensity,
                     "ambient_temperature": device.ambient_temperature,
                 },
             )
