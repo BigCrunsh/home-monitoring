@@ -38,7 +38,7 @@ def test_to_measurements_success() -> None:
     ]
 
     # Act
-    points = NetatmoMapper.to_measurements(devices, timestamp)
+    points = NetatmoMapper.to_measurements(timestamp, devices)
 
     # Assert
     assert len(points) == EXPECTED_POINT_COUNT
@@ -97,7 +97,7 @@ def test_to_measurements_missing_data() -> None:
     ]
 
     # Act
-    points = NetatmoMapper.to_measurements(devices, timestamp)
+    points = NetatmoMapper.to_measurements(timestamp, devices)
 
     # Assert
     assert len(points) == 0
@@ -118,7 +118,7 @@ def test_to_measurements_invalid_data() -> None:
     ]
 
     # Act
-    points = NetatmoMapper.to_measurements(devices, timestamp)
+    points = NetatmoMapper.to_measurements(timestamp, devices)
 
     # Assert
     assert len(points) == 0
