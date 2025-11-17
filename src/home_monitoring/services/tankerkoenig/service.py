@@ -1,7 +1,7 @@
 """Tankerkoenig service implementation."""
 
 from collections.abc import Sequence
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import ClassVar
 
 from structlog.stdlib import BoundLogger
