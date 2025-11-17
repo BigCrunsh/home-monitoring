@@ -7,10 +7,10 @@ from home_monitoring.core.mappers.tankerkoenig import TankerkoenigMapper
 from tests.unit.core.mappers.constants import (
     EXPECTED_POINT_COUNT,
     TANKERKOENIG_DIESEL_1,
-    TANKERKOENIG_E5_1,
-    TANKERKOENIG_E10_1,
     TANKERKOENIG_DIESEL_2,
+    TANKERKOENIG_E5_1,
     TANKERKOENIG_E5_2,
+    TANKERKOENIG_E10_1,
     TANKERKOENIG_E10_2,
 )
 

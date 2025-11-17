@@ -4,8 +4,8 @@ from home_monitoring.core.mappers.tibber import TibberMapper
 
 from tests.unit.core.mappers.constants import (
     TIBBER_CONSUMPTION,
-    TIBBER_PRODUCTION,
     TIBBER_COST,
+    TIBBER_PRODUCTION,
     ZERO,
 )
 
