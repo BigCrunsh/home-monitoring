@@ -26,7 +26,8 @@ class NetatmoMapper:
         points = []
         for device in devices:
             # Base station data
-            if not all(key in device for key in ["_id", "type", "module_name"]):
+            required_keys = ["_id", "type", "module_name"]
+            if not all(key in device for key in required_keys):
                 continue
 
             if "dashboard_data" in device:
@@ -51,7 +52,8 @@ class NetatmoMapper:
 
             # Module data
             for module in device.get("modules", []):
-                if not all(key in module for key in ["_id", "type", "module_name"]):
+                required_keys = ["_id", "type", "module_name"]
+                if not all(key in module for key in required_keys):
                     continue
 
                 if "dashboard_data" not in module:
