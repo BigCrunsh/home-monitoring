@@ -38,8 +38,8 @@ class TibberService:
         self._logger.info("collecting_electricity_data")
 
         # Get price data from Tibber API
-        timestamp = datetime.now(UTC)
         price_data = await self._get_price_data()
+        timestamp = datetime.fromisoformat(price_data.get("startsAt", ""))
         points = TibberMapper.to_measurements(timestamp, price_data)
 
         try:
