@@ -55,7 +55,8 @@ class GardenaService:
         )
 
         # Set up device callbacks
-        for device_type in ["SENSOR", "SMART_IRRIGATION_CONTROL", "SOIL_SENSOR"]:
+        device_types = ["SENSOR", "SMART_IRRIGATION_CONTROL", "SOIL_SENSOR"]
+        for device_type in device_types:
             for device in location.find_device_by_type(device_type):
                 device.add_callback(self._handle_device_update)
 
@@ -81,7 +82,10 @@ class GardenaService:
             elif device.type == "SOIL_SENSOR":
                 points = GardenaMapper.soil_sensor_data_to_points(device, time)
             else:
-                self._logger.warning("unsupported_device_type", type=device.type)
+                self._logger.warning(
+                    "unsupported_device_type",
+                    type=device.type,
+                )
                 return
 
             self._logger.debug("writing_device_data", points=points)
