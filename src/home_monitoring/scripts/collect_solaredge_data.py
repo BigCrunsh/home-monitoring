@@ -8,7 +8,7 @@ from home_monitoring.utils.logging import configure_logging
 
 
 async def main() -> int:
-    """Main entry point.
+    """Run the data collection.
 
     Returns:
         Exit code
