@@ -102,19 +102,19 @@ All services are configured via environment variables. See `.env.example` for re
 
 ### Running Data Collectors
 
-Data collectors and utilities are Python modules located in `src/home_monitoring/scripts/`. Run them using Python's module syntax:
+Data collectors and utilities are Python modules located in `src/home_monitoring/scripts/`. Run them from the project root directory with PYTHONPATH set:
 
 ```bash
 # Data Collection
-python -m home_monitoring.scripts.collect_netatmo_data -v
-python -m home_monitoring.scripts.collect_solaredge_data -v
-python -m home_monitoring.scripts.collect_gardena_data -v
-python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache -v
-python -m home_monitoring.scripts.collect_tibber_data -v
-python -m home_monitoring.scripts.collect_techem_data -v
+PYTHONPATH=src python -m home_monitoring.scripts.collect_netatmo_data -v
+PYTHONPATH=src python -m home_monitoring.scripts.collect_solaredge_data -v
+PYTHONPATH=src python -m home_monitoring.scripts.collect_gardena_data -v
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache -v
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data -v
+PYTHONPATH=src python -m home_monitoring.scripts.collect_techem_data -v
 
 # DNS Updates
-python -m home_monitoring.scripts.update_dns -v
+PYTHONPATH=src python -m home_monitoring.scripts.update_dns -v
 ```
 
 Common options supported by all scripts:
@@ -130,26 +130,24 @@ Additional options for specific collectors:
 Create a crontab entry (`crontab -e`):
 
 ```bash
-# Load environment variables
-set -a; source /path/to/your/.env; set +a
-
-# Create log directory
+# Variables for all jobs
+PROJECT_DIR=/home/pi/src/github.com/BigCrunsh/home-monitoring
+PYTHON=/usr/local/bin/python3.12
 LOG_DIR=/var/log/home_monitoring
+
+# Ensure log directory exists
 mkdir -p $LOG_DIR
 
-# Set Python path to find modules
-export PYTHONPATH=/path/to/home-monitoring/src
-
 # Collect data every 5 minutes
-*/5 * * * * python -m home_monitoring.scripts.collect_netatmo_data -v >> $LOG_DIR/netatmo.log 2>&1
-*/5 * * * * python -m home_monitoring.scripts.collect_solaredge_data -v >> $LOG_DIR/solaredge.log 2>&1
-*/5 * * * * python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache -v >> $LOG_DIR/tankerkoenig.log 2>&1
-*/30 * * * * python -m home_monitoring.scripts.collect_gardena_data -v >> $LOG_DIR/gardena.log 2>&1
-*/15 * * * * python -m home_monitoring.scripts.collect_tibber_data -v >> $LOG_DIR/tibber.log 2>&1
-0 1 * * * python -m home_monitoring.scripts.collect_techem_data -v >> $LOG_DIR/techem.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_netatmo_data -v >> $LOG_DIR/netatmo.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_solaredge_data -v >> $LOG_DIR/solaredge.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir $PROJECT_DIR/cache -v >> $LOG_DIR/tankerkoenig.log 2>&1
+*/30 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_gardena_data -v >> $LOG_DIR/gardena.log 2>&1
+*/15 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tibber_data -v >> $LOG_DIR/tibber.log 2>&1
+0 1 * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_techem_data -v >> $LOG_DIR/techem.log 2>&1
 
 # Update DNS every hour
-0 * * * * python -m home_monitoring.scripts.update_dns -v >> $LOG_DIR/update_dns.log 2>&1
+0 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.update_dns -v >> $LOG_DIR/update_dns.log 2>&1
 ```
 
 ## Development
