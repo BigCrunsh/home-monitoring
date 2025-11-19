@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to update Dynu DNS entry."""
+"""Update Dynu DNS entry."""
 import asyncio
 import sys
 
