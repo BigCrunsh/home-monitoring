@@ -24,26 +24,26 @@ class Settings(BaseSettings):
     influxdb_password: str | None = None
 
     # Netatmo settings
-    netatmo_client_id: str
-    netatmo_client_secret: str
-    netatmo_username: str
-    netatmo_password: str
+    netatmo_client_id: str | None = None
+    netatmo_client_secret: str | None = None
+    netatmo_username: str | None = None
+    netatmo_password: str | None = None
 
     # SolarEdge settings
-    solaredge_api_key: str
-    solaredge_site_id: str
+    solaredge_api_key: str | None = None
+    solaredge_site_id: str | None = None
 
     # Gardena settings
-    gardena_client_id: str
-    gardena_client_secret: str
-    gardena_username: str
-    gardena_password: str
+    gardena_client_id: str | None = None
+    gardena_client_secret: str | None = None
+    gardena_username: str | None = None
+    gardena_password: str | None = None
 
     # Tibber settings
-    tibber_access_token: str
+    tibber_access_token: str | None = None
 
     # Tankerkoenig settings
-    tankerkoenig_api_key: str
+    tankerkoenig_api_key: str | None = None
 
     # Logging
     log_level: str = "INFO"

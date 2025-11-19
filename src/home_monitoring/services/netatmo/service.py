@@ -23,6 +23,20 @@ class NetatmoService:
         self._settings = settings or get_settings()
         self._db = InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
+
+        # Validate required credentials
+        if not all([
+            self._settings.netatmo_client_id,
+            self._settings.netatmo_client_secret,
+            self._settings.netatmo_username,
+            self._settings.netatmo_password,
+        ]):
+            raise ValueError(
+                "Missing Netatmo credentials. Please set NETATMO_CLIENT_ID, "
+                "NETATMO_CLIENT_SECRET, NETATMO_USERNAME, and NETATMO_PASSWORD "
+                "environment variables."
+            )
+
         self._api = netatmo.WeatherStation(
             {
                 "client_id": self._settings.netatmo_client_id,
