@@ -8,7 +8,7 @@ from home_monitoring.utils.logging import configure_logging
 
 
 async def main() -> int:
-    """Main entry point.
+    """Update the DNS entry.
 
     Returns:
         Exit code

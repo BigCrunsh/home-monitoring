@@ -9,7 +9,7 @@ from home_monitoring.utils.logging import configure_logging
 
 
 async def main(args: argparse.Namespace) -> int:
-    """Main entry point.
+    """Run the data collection.
 
     Args:
         args: Command line arguments
