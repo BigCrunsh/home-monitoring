@@ -43,6 +43,7 @@ class GardenaService:
             client_id=self._settings.gardena_application_id,
             client_secret=self._settings.gardena_application_secret,
             email=self._settings.gardena_email,
+            password=self._settings.gardena_password,
         )
         self._callbacks: list[tuple[str, Callable]] = []
 
