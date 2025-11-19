@@ -29,21 +29,16 @@ git clone https://github.com/bigcrunsh/home-monitoring.git
 cd home-monitoring
 ```
 
-2. Create and activate a virtual environment:
+2. Initialize the project (creates virtual environment and installs dependencies):
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+make init
+source .venv/bin/activate
 ```
 
-3. Install dependencies:
+3. Set up environment variables:
 ```bash
-pip install -e ".[dev]"
-```
-
-4. Set up environment variables:
-```bash
-cp .env.example .env
-# Edit .env with your configuration
+# .env is created by make init, edit with your configuration
+nano .env
 ```
 
 ### Infrastructure Setup
@@ -51,14 +46,17 @@ cp .env.example .env
 Use Docker Compose to set up the monitoring infrastructure:
 
 ```bash
+# Create required volumes
+make init-docker
+
 # Start all services
-docker compose up -d
+make start-docker
 
 # View logs
-docker compose logs -f
+make logs-docker
 
 # Stop services
-docker compose down
+make stop-docker
 ```
 
 Services:
@@ -104,26 +102,26 @@ All services are configured via environment variables. See `.env.example` for re
 
 ### Running Data Collectors
 
-Data collectors and utilities are located in the `scripts/` directory and can be run manually or scheduled:
+Data collectors and utilities are Python modules located in `src/home_monitoring/scripts/`. Run them using Python's module syntax:
 
 ```bash
 # Data Collection
-scripts/collect_netatmo_data.py -v
-scripts/collect_solaredge_data.py -v
-scripts/collect_gardena_data.py -v
-scripts/collect_tankerkoenig_data.py --cache-dir /path/to/cache -v
-scripts/collect_tibber_data.py -v
-scripts/collect_techem_data.py -v
+python -m home_monitoring.scripts.collect_netatmo_data -v
+python -m home_monitoring.scripts.collect_solaredge_data -v
+python -m home_monitoring.scripts.collect_gardena_data -v
+python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache -v
+python -m home_monitoring.scripts.collect_tibber_data -v
+python -m home_monitoring.scripts.collect_techem_data -v
 
 # DNS Updates
-scripts/update_dns.py -v
+python -m home_monitoring.scripts.update_dns -v
 ```
 
 Common options supported by all scripts:
 - `-v, --verbose`: Enable verbose logging
 
 Additional options for specific collectors:
-- `collect_tankerkoenig_data.py`: 
+- `collect_tankerkoenig_data.py`:
   - `--cache-dir`: Directory to cache station details
   - `--force-update`: Force update of station details from API
 
@@ -139,25 +137,21 @@ set -a; source /path/to/your/.env; set +a
 LOG_DIR=/var/log/home_monitoring
 mkdir -p $LOG_DIR
 
-# Set script directory
-SCRIPT_DIR=/path/to/home-monitoring/scripts
+# Set Python path to find modules
+export PYTHONPATH=/path/to/home-monitoring/src
 
 # Collect data every 5 minutes
-*/5 * * * * $SCRIPT_DIR/collect_netatmo_data.py -v >> $LOG_DIR/netatmo.log 2>&1
-*/5 * * * * $SCRIPT_DIR/collect_solaredge_data.py -v >> $LOG_DIR/solaredge.log 2>&1
-*/5 * * * * $SCRIPT_DIR/collect_tankerkoenig_data.py --cache-dir /path/to/cache -v >> $LOG_DIR/tankerkoenig.log 2>&1
-*/30 * * * * $SCRIPT_DIR/collect_gardena_data.py -v >> $LOG_DIR/gardena.log 2>&1
-*/15 * * * * $SCRIPT_DIR/collect_tibber_data.py -v >> $LOG_DIR/tibber.log 2>&1
-0 1 * * * $SCRIPT_DIR/collect_techem_data.py -v >> $LOG_DIR/techem.log 2>&1
+*/5 * * * * python -m home_monitoring.scripts.collect_netatmo_data -v >> $LOG_DIR/netatmo.log 2>&1
+*/5 * * * * python -m home_monitoring.scripts.collect_solaredge_data -v >> $LOG_DIR/solaredge.log 2>&1
+*/5 * * * * python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache -v >> $LOG_DIR/tankerkoenig.log 2>&1
+*/30 * * * * python -m home_monitoring.scripts.collect_gardena_data -v >> $LOG_DIR/gardena.log 2>&1
+*/15 * * * * python -m home_monitoring.scripts.collect_tibber_data -v >> $LOG_DIR/tibber.log 2>&1
+0 1 * * * python -m home_monitoring.scripts.collect_techem_data -v >> $LOG_DIR/techem.log 2>&1
 
 # Update DNS every hour
-0 * * * * $SCRIPT_DIR/update_dns.py -v >> $LOG_DIR/update_dns.log 2>&1
+0 * * * * python -m home_monitoring.scripts.update_dns -v >> $LOG_DIR/update_dns.log 2>&1
 ```
 
-Make sure the scripts are executable:
-```bash
-chmod +x scripts/collect_*.py
-```
 ## Development
 
 ### Project Structure
@@ -165,9 +159,11 @@ chmod +x scripts/collect_*.py
 ```
 src/
 ├── home_monitoring/
-│   ├── api/          # API endpoints
 │   ├── core/         # Core business logic
 │   ├── models/       # Data models
+│   ├── repositories/ # Data access layer
+│   ├── schemas/      # Data validation schemas
+│   ├── scripts/      # Data collection scripts
 │   ├── services/     # Service integrations
 │   └── utils/        # Utility functions
 tests/
@@ -175,38 +171,41 @@ tests/
 └── integration/     # Integration tests
 ```
 
-### Running Tests
+### Development Commands
 
 ```bash
-# Run all tests
-python -m pytest
+# Run all tests and quality checks
+make test
 
-# Run with coverage
-python -m pytest --cov=home_monitoring
+# Run specific test suites
+make test-unit
+make test-integration
 
-# Run specific test file
-python -m pytest tests/unit/test_service.py
+# Code quality
+make lint          # Run all code quality checks
+make format        # Format code with black
+make type-check    # Run type checking
+make ruff          # Run linting with ruff
+
+# Clean up
+make clean         # Remove Python artifacts and caches
 ```
 
-### Code Quality
+### Code Quality Standards
 
-```bash
-# Format code
-black src/ tests/
-
-# Lint code
-ruff check src/ tests/
-
-# Type checking
-mypy src/
-```
+- Black for code formatting
+- Ruff for linting
+- MyPy for type checking
+- 100% test coverage for core functionality
+- Docstrings required for public APIs
+- Type hints required for all functions
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests and linting
+4. Run tests and linting (`make test`)
 5. Submit a pull request
 
 ## License
@@ -218,3 +217,5 @@ MIT License - see LICENSE file
 - [InfluxDB Documentation](https://docs.influxdata.com/influxdb/v1.8/)
 - [Grafana Documentation](https://grafana.com/docs/)
 - [Python asyncio](https://docs.python.org/3/library/asyncio.html)
+- [Black Code Style](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html)
+- [MyPy Type System](https://mypy.readthedocs.io/en/stable/)
