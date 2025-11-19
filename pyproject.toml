@@ -17,6 +17,7 @@ dependencies = [
     "pyTibber==0.32.2",
     "matplotlib==3.8.2",
     "oauthlib==3.2.2",
+    "setuptools>=69.0.0",
 ]
 
 [project.optional-dependencies]
