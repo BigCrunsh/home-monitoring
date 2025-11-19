@@ -25,9 +25,24 @@ class GardenaService:
         self._settings = settings or get_settings()
         self._db = InfluxDBRepository()
         self._logger: BoundLogger = get_logger(__name__)
+
+        # Validate required credentials
+        if not all([
+            self._settings.gardena_application_id,
+            self._settings.gardena_application_secret,
+            self._settings.gardena_email,
+            self._settings.gardena_password,
+        ]):
+            raise ValueError(
+                "Missing Gardena credentials. Please set GARDENA_APPLICATION_ID, "
+                "GARDENA_APPLICATION_SECRET, GARDENA_EMAIL, and GARDENA_PASSWORD "
+                "environment variables."
+            )
+
         self._smart_system = smart_system.SmartSystem(
-            client_id=self._settings.gardena_client_id,
-            client_secret=self._settings.gardena_client_secret,
+            client_id=self._settings.gardena_application_id,
+            client_secret=self._settings.gardena_application_secret,
+            email=self._settings.gardena_email,
         )
         self._callbacks: list[tuple[str, Callable]] = []
 

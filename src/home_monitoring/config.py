@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     solaredge_site_id: str | None = None
 
     # Gardena settings
-    gardena_client_id: str | None = None
-    gardena_client_secret: str | None = None
-    gardena_username: str | None = None
+    gardena_application_id: str | None = None
+    gardena_application_secret: str | None = None
+    gardena_email: str | None = None
     gardena_password: str | None = None
 
     # Tibber settings
