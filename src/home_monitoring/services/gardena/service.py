@@ -4,13 +4,13 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
+from gardena.smart_system import SmartSystem
+from structlog.stdlib import BoundLogger
+
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.gardena import GardenaMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
-
-from gardena import smart_system
 
 
 class GardenaService:
@@ -27,25 +27,27 @@ class GardenaService:
         self._logger: BoundLogger = get_logger(__name__)
 
         # Validate required credentials
-        if not all([
-            self._settings.gardena_application_id,
-            self._settings.gardena_application_secret,
-            self._settings.gardena_email,
-            self._settings.gardena_password,
-        ]):
+        if not all(
+            [
+                self._settings.gardena_application_id,
+                self._settings.gardena_application_secret,
+                self._settings.gardena_email,
+                self._settings.gardena_password,
+            ]
+        ):
             raise ValueError(
-                "Missing Gardena credentials. Please set GARDENA_APPLICATION_ID, "
-                "GARDENA_APPLICATION_SECRET, GARDENA_EMAIL, and GARDENA_PASSWORD "
-                "environment variables."
+                "Missing Gardena credentials. Please set "
+                "GARDENA_APPLICATION_ID, GARDENA_APPLICATION_SECRET, "
+                "GARDENA_EMAIL, and GARDENA_PASSWORD environment variables."
             )
 
-        self._smart_system = smart_system.SmartSystem(
+        self._smart_system = SmartSystem(
             client_id=self._settings.gardena_application_id,
             client_secret=self._settings.gardena_application_secret,
             email=self._settings.gardena_email,
             password=self._settings.gardena_password,
         )
-        self._callbacks: list[tuple[str, Callable]] = []
+        self._callbacks: list[tuple[str, Callable[..., Any]]] = []
 
     async def start(self) -> None:
         """Start the Gardena service and connect to devices."""
