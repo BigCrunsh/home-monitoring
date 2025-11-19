@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to collect data from SolarEdge API."""
+"""Collect data from SolarEdge API."""
 import asyncio
 import sys
 

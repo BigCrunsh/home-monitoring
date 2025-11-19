@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to collect data from Tibber API."""
+"""Collect data from Tibber API."""
 import argparse
 import asyncio
 import sys

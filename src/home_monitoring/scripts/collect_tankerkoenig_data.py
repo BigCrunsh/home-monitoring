@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to collect data from Tankerkoenig API."""
+"""Collect data from Tankerkoenig API."""
 import argparse
 import asyncio
 import sys

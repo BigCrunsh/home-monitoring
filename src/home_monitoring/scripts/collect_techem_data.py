@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to collect data from Techem meters."""
+"""Collect data from Techem meters."""
 import argparse
 import asyncio
 import sys
