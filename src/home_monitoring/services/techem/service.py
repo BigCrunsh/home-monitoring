@@ -56,9 +56,7 @@ class TechemService:
             measurements = TechemMapper.to_measurements(timestamp, responses)
 
             if not measurements:
-                raise APIError(
-                    "No meter data received"
-                )
+                raise APIError("No meter data received")
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)
@@ -120,9 +118,7 @@ class TechemService:
                     responses.append(response)
 
             if not responses:
-                raise APIError(
-                    "No meter data received"
-                )
+                raise APIError("No meter data received")
 
             self._logger.info(
                 "responses_collected",

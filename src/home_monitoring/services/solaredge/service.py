@@ -19,10 +19,23 @@ class SolarEdgeService:
 
         Args:
             settings: Application settings. If not provided, loaded from env.
+
+        Raises:
+            ValueError: If required credentials are missing.
         """
         self._settings = settings or get_settings()
-        self._db = InfluxDBRepository(settings=self._settings)
+        self._db = InfluxDBRepository()
         self._logger: BoundLogger = get_logger(__name__)
+
+        # Validate required credentials
+        if not all([
+            self._settings.solaredge_api_key,
+            self._settings.solaredge_site_id,
+        ]):
+            raise ValueError(
+                "Missing SolarEdge credentials. Please set SOLAREDGE_API_KEY "
+                "and SOLAREDGE_SITE_ID environment variables."
+            )
 
     async def collect_and_store(self) -> None:
         """Collect current data from SolarEdge and store in InfluxDB."""

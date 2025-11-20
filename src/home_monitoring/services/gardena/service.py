@@ -4,13 +4,13 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from gardena.smart_system import SmartSystem
-from structlog.stdlib import BoundLogger
-
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.gardena import GardenaMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
+
+from gardena.smart_system import SmartSystem
 
 
 class GardenaService:
@@ -44,16 +44,14 @@ class GardenaService:
         self._smart_system = SmartSystem(
             client_id=self._settings.gardena_application_id,
             client_secret=self._settings.gardena_application_secret,
-            email=self._settings.gardena_email,
-            password=self._settings.gardena_password,
         )
         self._callbacks: list[tuple[str, Callable[..., Any]]] = []
 
     async def start(self) -> None:
         """Start the Gardena service and connect to devices."""
         self._logger.info("authenticating_with_gardena")
-        self._smart_system.authenticate()
-        self._smart_system.update_locations()
+        await self._smart_system.authenticate()
+        await self._smart_system.update_locations()
 
         if len(self._smart_system.locations) != 1:
             raise ValueError("Expected exactly one location")
@@ -80,7 +78,7 @@ class GardenaService:
     async def stop(self) -> None:
         """Stop the Gardena service and disconnect from devices."""
         self._logger.info("stopping_gardena_service")
-        self._smart_system.quit()
+        await self._smart_system.quit()
 
     async def _handle_device_update(self, device: Any) -> None:
         """Handle device updates and store data in InfluxDB.

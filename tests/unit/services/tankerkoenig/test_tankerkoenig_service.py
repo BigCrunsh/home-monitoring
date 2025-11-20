@@ -197,9 +197,7 @@ async def test_collect_and_store_invalid_response(
     """Test handling of invalid API response."""
     # Arrange
     mock_client = AsyncMock()
-    error_message = (
-        "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
-    )
+    error_message = "eine oder mehrere Tankstellen-IDs nicht im korrekten Format"
     mock_client.get_prices = AsyncMock(
         return_value={
             "ok": False,

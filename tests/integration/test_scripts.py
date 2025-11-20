@@ -1,9 +1,9 @@
 """Integration tests for data collection scripts."""
+
 import importlib
 from pathlib import Path
 
 import pytest
-
 
 SCRIPTS = [
     "collect_netatmo_data",
@@ -25,9 +25,7 @@ def test_script_exists(script_name: str) -> None:
     """
     script_file = Path("src/home_monitoring/scripts") / f"{script_name}.py"
     assert script_file.exists(), f"Script file not found: {script_file}"
-    assert (
-        script_file.stat().st_mode & 0o111
-    ), f"Script {script_file} is not executable"
+    assert script_file.stat().st_mode & 0o111, f"Script {script_file} is not executable"
 
 
 @pytest.mark.parametrize("script_name", SCRIPTS)

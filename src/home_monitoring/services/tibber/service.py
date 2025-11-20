@@ -3,13 +3,13 @@
 from datetime import datetime
 from typing import Any
 
-import tibber
-from structlog.stdlib import BoundLogger
-
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.tibber import TibberMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
+from structlog.stdlib import BoundLogger
+
+import tibber
 
 
 class TibberService:
