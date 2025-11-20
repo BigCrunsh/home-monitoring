@@ -25,12 +25,14 @@ class NetatmoService:
         self._logger: BoundLogger = get_logger(__name__)
 
         # Validate required credentials
-        if not all([
-            self._settings.netatmo_client_id,
-            self._settings.netatmo_client_secret,
-            self._settings.netatmo_username,
-            self._settings.netatmo_password,
-        ]):
+        if not all(
+            [
+                self._settings.netatmo_client_id,
+                self._settings.netatmo_client_secret,
+                self._settings.netatmo_username,
+                self._settings.netatmo_password,
+            ]
+        ):
             raise ValueError(
                 "Missing Netatmo credentials. Please set NETATMO_CLIENT_ID, "
                 "NETATMO_CLIENT_SECRET, NETATMO_USERNAME, and NETATMO_PASSWORD "
@@ -55,7 +57,7 @@ class NetatmoService:
 
         timestamp = datetime.now(UTC)
         measurements = NetatmoMapper.to_measurements(
-            self._api.devices, timestamp
+            timestamp, list(self._api.devices.values())
         )
 
         try:

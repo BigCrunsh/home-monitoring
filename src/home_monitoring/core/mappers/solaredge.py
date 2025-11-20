@@ -52,9 +52,7 @@ class SolarEdgeMapper(BaseMapper):
                         "last_day_energy": float(
                             data.get("lastDayData", {}).get("energy", 0.0)
                         ),
-                        "current_power": data.get(
-                            "currentPower", {}
-                        ).get("power", 0.0),
+                        "current_power": data.get("currentPower", {}).get("power", 0.0),
                     },
                 )
             )
@@ -71,15 +69,9 @@ class SolarEdgeMapper(BaseMapper):
                     },
                     timestamp=timestamp,
                     fields={
-                        "grid_power": data.get("grid", {}).get(
-                            "currentPower", 0.0
-                        ),
-                        "load_power": data.get("load", {}).get(
-                            "currentPower", 0.0
-                        ),
-                        "pv_power": data.get("pv", {}).get(
-                            "currentPower", 0.0
-                        ),
+                        "grid_power": data.get("grid", {}).get("currentPower", 0.0),
+                        "load_power": data.get("load", {}).get("currentPower", 0.0),
+                        "pv_power": data.get("pv", {}).get("currentPower", 0.0),
                     },
                 )
             )

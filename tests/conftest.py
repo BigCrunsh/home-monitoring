@@ -1,6 +1,5 @@
 """Test configuration and fixtures."""
 
-import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
@@ -41,11 +40,6 @@ def mock_settings() -> Settings:
     )
 
 
-@pytest.fixture(scope="session")
-def event_loop_policy():
-    """Event loop policy fixture."""
-    policy = asyncio.get_event_loop_policy()
-    return policy
 
 
 @pytest.fixture
@@ -56,6 +50,8 @@ def mock_influxdb_client() -> AsyncMock:
     mock_client.write.return_value = None
     mock_client._session = AsyncMock()
     mock_client._session.post = AsyncMock()
+    mock_client._session.__aenter__ = AsyncMock(return_value=mock_client._session)
+    mock_client._session.__aexit__ = AsyncMock()
     return mock_client
 
 
