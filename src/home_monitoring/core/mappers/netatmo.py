@@ -11,12 +11,30 @@ from home_monitoring.models.base import Measurement
 class NetatmoMapper(BaseMapper):
     """Mapper for Netatmo weather station data to InfluxDB measurements."""
 
+    # Mapping from dashboard data fields to measurement names and units
+    FIELD_MAPPING = {
+        'Temperature': ('weather_temperature_celsius', 'Temperature'),
+        'Humidity': ('weather_humidity_percentage', 'Humidity'),
+        'CO2': ('weather_co2_ppm', 'CO2'),
+        'Noise': ('weather_noise_db', 'Noise'),
+        'Pressure': ('weather_pressure_mbar', 'Pressure'),
+        'AbsolutePressure': ('weather_absolute_pressure_mbar', 'AbsolutePressure'),
+        'Rain': ('weather_rain_mm', 'Rain'),
+        'WindStrength': ('weather_wind_strength_kph', 'WindStrength'),
+        'WindAngle': ('weather_wind_angle_degrees', 'WindAngle'),
+        'GustStrength': ('weather_gust_strength_kph', 'GustStrength'),
+        'GustAngle': ('weather_gust_angle_degrees', 'GustAngle'),
+    }
+
     @staticmethod
     def to_measurements(
         timestamp: datetime,
         devices: Sequence[Mapping[str, Any]],
     ) -> list[Measurement]:
         """Map weather station data to InfluxDB measurements.
+
+        Creates separate measurements for each sensor type (temperature, 
+        humidity, etc.) with descriptive names and appropriate units.
 
         Args:
             timestamp: Measurement timestamp
@@ -26,58 +44,70 @@ class NetatmoMapper(BaseMapper):
             List of InfluxDB measurements
         """
         measurements = []
+        
         for device in devices:
-            # Base station data
-            required_keys = ["_id", "type", "module_name"]
-            if not all(key in device for key in required_keys):
-                continue
+            # Process base station data
+            measurements.extend(
+                NetatmoMapper._process_device_data(device, timestamp)
+            )
+            
+            # Process module data
+            for module in device.get("modules", []):
+                measurements.extend(
+                    NetatmoMapper._process_device_data(module, timestamp)
+                )
 
-            if "dashboard_data" in device:
-                fields = {
-                    field: value
-                    for field, value in device["dashboard_data"].items()
-                    if isinstance(value, int | float)
-                }
-                if fields:
+        return measurements
+
+    @staticmethod
+    def _process_device_data(
+        device: Mapping[str, Any], 
+        timestamp: datetime
+    ) -> list[Measurement]:
+        """Process individual device/module data into measurements."""
+        measurements = []
+        
+        # Check required fields
+        required_keys = ["_id", "type", "module_name"]
+        if not all(key in device for key in required_keys):
+            return measurements
+
+        # Process dashboard data (sensor readings)
+        if "dashboard_data" in device:
+            dashboard_data = device["dashboard_data"]
+            
+            for field_name, value in dashboard_data.items():
+                if not isinstance(value, (int, float)):
+                    continue
+                    
+                if field_name in NetatmoMapper.FIELD_MAPPING:
+                    measurement_name, field_key = NetatmoMapper.FIELD_MAPPING[field_name]
                     measurements.append(
                         Measurement(
-                            measurement="netatmo",
+                            measurement=measurement_name,
                             tags={
+                                "module_name": device["module_name"],
                                 "device_id": device["_id"],
                                 "type": device["type"],
-                                "module_name": device["module_name"],
                             },
                             timestamp=timestamp,
-                            fields=fields,
+                            fields={field_key: float(value)},
                         )
                     )
 
-            # Module data
-            for module in device.get("modules", []):
-                required_keys = ["_id", "type", "module_name"]
-                if not all(key in module for key in required_keys):
-                    continue
-
-                if "dashboard_data" not in module:
-                    continue
-
-                fields = {
-                    field: value
-                    for field, value in module["dashboard_data"].items()
-                    if isinstance(value, int | float)
-                }
-                if fields:
-                    measurements.append(
-                        Measurement(
-                            measurement="netatmo",
-                            tags={
-                                "device_id": module["_id"],
-                                "type": module["type"],
-                                "module_name": module["module_name"],
-                            },
-                            timestamp=timestamp,
-                            fields=fields,
-                        )
-                    )
+        # Process battery data if available
+        if "battery_percent" in device:
+            measurements.append(
+                Measurement(
+                    measurement="weather_system_battery_percentage",
+                    tags={
+                        "module_name": device["module_name"],
+                        "device_id": device["_id"],
+                        "type": device["type"],
+                    },
+                    timestamp=timestamp,
+                    fields={"Battery": float(device["battery_percent"])},
+                )
+            )
 
         return measurements

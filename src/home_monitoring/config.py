@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     # Netatmo settings
     netatmo_client_id: str | None = None
     netatmo_client_secret: str | None = None
+    netatmo_refresh_token: str | None = None
+    # Legacy fields (no longer used by lnetatmo)
     netatmo_username: str | None = None
     netatmo_password: str | None = None
 
@@ -44,6 +46,11 @@ class Settings(BaseSettings):
 
     # Tankerkoenig settings
     tankerkoenig_api_key: str | None = None
+
+    # Dynu DNS settings
+    dynu_host: str | None = None
+    dynu_username: str | None = None
+    dynu_password: str | None = None
 
     # Logging
     log_level: str = "INFO"
