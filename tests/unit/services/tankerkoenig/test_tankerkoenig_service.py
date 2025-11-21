@@ -47,12 +47,14 @@ async def test_collect_and_store_success(
     mock_client.get_stations_details = AsyncMock(
         return_value={
             "ok": True,
-            TEST_STATION_ID: {
-                "name": TEST_STATION_NAME,
-                "brand": TEST_STATION_BRAND,
-                "street": TEST_STATION_STREET,
-                "place": TEST_STATION_PLACE,
-                "postCode": TEST_STATION_POSTCODE,
+            "stations": {
+                TEST_STATION_ID: {
+                    "name": TEST_STATION_NAME,
+                    "brand": TEST_STATION_BRAND,
+                    "street": TEST_STATION_STREET,
+                    "place": TEST_STATION_PLACE,
+                    "postCode": TEST_STATION_POSTCODE,
+                },
             },
         }
     )
@@ -149,12 +151,14 @@ async def test_collect_and_store_database_error(
     mock_client.get_stations_details = AsyncMock(
         return_value={
             "ok": True,
-            TEST_STATION_ID: {
-                "name": TEST_STATION_NAME,
-                "brand": TEST_STATION_BRAND,
-                "street": TEST_STATION_STREET,
-                "place": TEST_STATION_PLACE,
-                "postCode": TEST_STATION_POSTCODE,
+            "stations": {
+                TEST_STATION_ID: {
+                    "name": TEST_STATION_NAME,
+                    "brand": TEST_STATION_BRAND,
+                    "street": TEST_STATION_STREET,
+                    "place": TEST_STATION_PLACE,
+                    "postCode": TEST_STATION_POSTCODE,
+                },
             },
         }
     )
@@ -226,3 +230,74 @@ async def test_collect_and_store_invalid_response(
         await service.collect_and_store(station_ids=[TEST_STATION_ID])
 
     assert not mock_influxdb.write_measurements.called
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_collect_and_store_integer_postcode(
+    mocker: MockerFixture,
+    mock_influxdb: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """Test handling of integer postCode from API."""
+    # Arrange - API returns postCode as integer (real scenario)
+    mock_client = AsyncMock()
+    mock_client.get_prices = AsyncMock(
+        return_value={
+            "ok": True,
+            "prices": {
+                TEST_STATION_ID: {
+                    "diesel": TEST_DIESEL_PRICE,
+                    "e5": TEST_E5_PRICE,
+                    "e10": TEST_E10_PRICE,
+                    "status": "open",
+                },
+            },
+        }
+    )
+    mock_client.get_stations_details = AsyncMock(
+        return_value={
+            "ok": True,
+            "stations": {
+                TEST_STATION_ID: {
+                    "name": TEST_STATION_NAME,
+                    "brand": TEST_STATION_BRAND,
+                    "street": TEST_STATION_STREET,
+                    "place": TEST_STATION_PLACE,
+                    "postCode": 20535,  # Integer postCode from API
+                },
+            },
+        }
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "__init__",
+        return_value=None,
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "get_prices",
+        side_effect=mock_client.get_prices,
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "get_stations_details",
+        side_effect=mock_client.get_stations_details,
+    )
+
+    # Create service
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
+
+    # Act
+    await service.collect_and_store(station_ids=[TEST_STATION_ID])
+
+    # Assert - should handle integer postCode gracefully
+    mock_influxdb.write_measurements.assert_called_once()
+    measurements = mock_influxdb.write_measurements.call_args[0][0]
+    assert len(measurements) == 1
+    assert measurements[0].measurement == "gas_prices"
+    assert measurements[0].tags["station_id"] == TEST_STATION_ID
+    assert measurements[0].tags["post_code"] == "20535"  # Should be converted to string
+    assert measurements[0].fields["diesel"] == TEST_DIESEL_PRICE
