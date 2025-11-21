@@ -84,8 +84,8 @@ class SolarEdgeService:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
-                await response.raise_for_status()
-                data = await response.json()
+                response.raise_for_status()
+                data = response.json()
                 if "overview" not in data:
                     raise APIError("Invalid response format")
                 return data
@@ -115,8 +115,8 @@ class SolarEdgeService:
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
-                await response.raise_for_status()
-                data = await response.json()
+                response.raise_for_status()
+                data = response.json()
                 if "siteCurrentPowerFlow" not in data:
                     raise APIError("Invalid response format")
                 return data

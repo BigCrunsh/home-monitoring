@@ -31,8 +31,8 @@ def mock_client() -> MagicMock:
     
     # Create mock response
     mock_response = MagicMock()
-    mock_response.raise_for_status = AsyncMock()
-    mock_response.json = AsyncMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json = MagicMock()
     
     # Set up the client methods
     client.get = AsyncMock(return_value=mock_response)
