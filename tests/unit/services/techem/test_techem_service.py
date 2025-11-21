@@ -15,6 +15,35 @@ from tests.unit.services.techem.constants import (
 )
 
 
+def test_serial_import_available():
+    """Test that pyserial dependency is available for Techem service."""
+    try:
+        import serial
+        # Verify it's the correct pyserial package by checking a known attribute
+        assert hasattr(serial, 'Serial')
+        assert hasattr(serial, 'SerialException')
+    except ImportError as e:
+        pytest.fail(f"pyserial dependency missing: {e}. Install with 'pip install pyserial==3.5'")
+
+
+def test_service_init_with_serial_config():
+    """Test TechemService initialization with SerialConfig parameters."""
+    from home_monitoring.services.techem.config import SerialConfig
+    
+    # Test that service accepts SerialConfig, not individual parameters
+    config = SerialConfig(port="/dev/ttyUSB0", baudrate=9600, timeout=60)
+    
+    # This should work
+    service = TechemService(serial_config=config)
+    assert service._serial_config.port == "/dev/ttyUSB0"
+    assert service._serial_config.baudrate == 9600
+    assert service._serial_config.timeout == 60
+    
+    # This should fail (reproduces the script error)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        TechemService(port="/dev/ttyUSB0", baudrate=9600, timeout=60)
+
+
 @pytest.mark.asyncio(scope="function")
 async def test_collect_and_store_success(
     mocker: MockerFixture,
