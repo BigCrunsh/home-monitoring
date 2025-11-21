@@ -1,123 +1,224 @@
 ![Example Dashboard](static/grafana.png)
 
 # Home Monitoring
-Different smart home application typically come with their own interfaces. As a user I want to have a central place to monitor the central metrics recorded by the different systems.
 
-The project consolidates different scripts and configuration to collect home
-montitoring metrics on a Raspberry PI 4; we use an influxDB to store and grafana to visualize the measurements.
+A centralized monitoring system for smart home devices and services. This project provides a unified interface to collect, store, and visualize metrics from various smart home systems using InfluxDB and Grafana.
 
-Systems to Monitor:
-- [Netatmo](https://www.netatmo.com/en-eu) is a smart home weather station.
-- [SolarEdge](https://www.solaredge.com/) is a solar inverter and monitoring systems for photovoltaic arrays
-- [Gardena](https://www.gardena.com/de/produkte/smart/) is a smart gardening system.
-- [Tankerkoenig](https://creativecommons.tankerkoenig.de/) provides gas station prices
-- Techem Compat V energy meter is monitored via a nanoCUL USB Stick (FTDI CC1101 868MHz FW 1.67 FHEM).
+## Supported Systems
 
-## Setup Monitoring
-The different components run as [docker](https://www.docker.com/) containers.
+- [Netatmo](https://www.netatmo.com/en-eu) - Smart home weather station (OAuth2 with lnetatmo library)
+- [SolarEdge](https://www.solaredge.com/) - Solar inverter and PV monitoring
+- [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart gardening system
+- [Tankerkoenig](https://creativecommons.tankerkoenig.de/) - Gas station price monitoring
+- [Tibber](https://tibber.com/) - Smart energy monitoring
+- Techem Compat V - Energy meter monitoring via nanoCUL USB Stick (requires pyserial)
+- Dynu DNS - Dynamic DNS updates for remote access
 
-### InfluxDB
-[Docker volumes](https://docs.docker.com/storage/volumes/) can be used by different docker containers to persist data and managed by docker. To create a persistent volume for the influx database, run
+## Installation
+
+### Prerequisites
+
+- Python 3.12.3 or higher
+- Docker and Docker Compose
+- Git
+
+### Setup Development Environment
+
+1. Clone the repository:
 ```bash
-docker volume create influxdb-storage
-```
-To (download and) start the influxdb container, run
-```bash
-docker run -d \
- --restart unless-stopped \
- -p 8086:8086 \
- --name=influxdb \
- --volume influxdb-storage:/var/lib/influxdb/ \
- influxdb:1.8
-```
-to enable the HTTP endpoint on port `8086`.
-
-To query influxdb, run
-```bash
-docker exec -it influxdb /bin/bash
-influx
-use home_monitoring
-show measurements
+git clone https://github.com/bigcrunsh/home-monitoring.git
+cd home-monitoring
 ```
 
-### Grafana
-To create a persistent volume for the grafana database and plugins, run
+2. Initialize the project (creates virtual environment and installs dependencies):
 ```bash
-docker volume create grafana-storage
+make init
+source .venv/bin/activate
 ```
 
-To (download and) start the [grafana container](https://grafana.com/grafana/download?platform=docker), run
+3. Set up environment variables:
 ```bash
-docker run -d \
- --restart unless-stopped \
- --net=host \
- --name=grafana \
- --volume grafana-storage:/var/lib/grafana \
- --env "GF_INSTALL_PLUGINS=grafana-clock-panel, grafana-worldmap-panel, pierosavi-imageit-panel, natel-discrete-panel" \
- --env "GF_SECURITY_ALLOW_EMBEDDING=true" \
- --env "GF_AUTH_ANONYMOUS_ENABLED=true" \
- grafana/grafana
-```
-The grafana endpoint can be accessed on port `3000` and the login is `admin` (user name and password). Note that changes to the `grafana.ini`  are set through environment variables in the docker setup (see [grafana configuration](https://grafana.com/docs/grafana/latest/administration/configuration/) for details). Specifically,
-- `GF_INSTALL_PLUGINS` to install additional plugins
-- `GF_SECURITY_ALLOW_EMBEDDING` and `GF_AUTH_ANONYMOUS_ENABLED` to avoid login on tablets and to embed as iframes.
-
-#### SSL HTTPS
-The principal steps including the generation of the SSL Certificate is describe in this [blog post](https://www.turbogeek.co.uk/grafana-how-to-configure-ssl-https-in-grafana/). Check the container name and group of the user to set the right permissions of the files (see [grafana docker](https://grafana.com/docs/grafana/latest/installation/docker/)).
-
-To start the grafana container with SSL, run
-```bash
-docker run -d \
- --restart unless-stopped \
- --net=host \
- --name=grafana \
- --env "GF_SERVER_CERT_FILE=/etc/grafana/grafana.crt" \
- --env "GF_SERVER_CERT_KEY=/etc/grafana/grafana.key" \
- --env "GF_SERVER_PROTOCOL=https" \
- --volume $(pwd)/grafana.key:/etc/grafana/grafana.key \
- --volume $(pwd)/grafana.crt:/etc/grafana/grafana.crt \
- --volume grafana-storage:/var/lib/grafana \
- grafana/grafana
-```
-Note that additionally to the command on top, we mount the certificate files and set the https configs.
-
-## Setup Data Collection Jobs
-The data collection jobs are scheduled via cron (`crontab -e`), e.g.,
-```bash
-DYNU_HOST="..."
-DYNU_USERNAME="..."
-DYNU_PASSWORD="..."
-
-TANKERKOENIG_API_KEY="..."
-
-SOLAREDGE_API_KEY="..."
-
-NETATMO_USERNAME="..."
-NETATMO_PASSWORD="..."
-NETATMO_CLIENT_ID="..."
-NETATMO_CLIENT_SECRET="..."
-
-GARDENA_EMAIL="..."
-GARDENA_PASSWORD="..."
-GARDENA_APPLICATION_ID="..."
-GARDENA_APPLICATION_SECRET="..."
-
-INFLUXDB_HOST="127.0.0.1"
-INFLUXDB_PORT=8086
-INFLUXDB_USER="..."
-INFLUXDB_PASS="..."
-INFLUXDB_DB="home_monitoring"
-
-
-*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_tankerkoenig.py --cache-dir /home/pi/logs/station_details > /home/pi/logs/collect_data_tankerkoenig.log 2>&1
-*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_netatmo.py > /home/pi/logs/collect_data_netatmo.log 2>&1
-*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_solaredge.py > /home/pi/logs/collect_data_solaredge.log 2>&1
-*/30 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/deps/gardena/bin/start-gardena-screen.sh > /home/pi/logs/collect_data_gardena.log 2>&1
-0 1 * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/collect_data_techem.py > /home/pi/logs/collect_data_techem.log 2>&1
-0 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/homemonitoring/update_dns.py > /home/pi/logs/update_dns.log 2>&1
+# .env is created by make init, edit with your configuration
+nano .env
 ```
 
+### Infrastructure Setup
 
-# References
-- [Monitoring your home network with InfluxDB on Raspberry Pi with Docker](https://mostlyoperational.com/posts/2017-12-28_monitoring-your-home-network-with-influxdb-on-raspberry-pi-with-docker/)
-- [Docker Image with InfluxDB and Grafana](https://hub.docker.com/r/philhawthorne/docker-influxdb-grafana/)
+Use Docker Compose to set up the monitoring infrastructure:
+
+```bash
+# Create required volumes
+make init-docker
+
+# Start all services
+make start-docker
+
+# View logs
+make logs-docker
+
+# Stop services
+make stop-docker
+```
+
+Services:
+- InfluxDB: Time-series database (port 8086)
+- Grafana: Visualization dashboard (port 3000)
+
+#### Grafana Configuration
+
+1. Access Grafana at http://localhost:3000
+2. Default login: admin/admin
+3. Add InfluxDB as a data source:
+   - URL: http://influxdb:8086
+   - Database: home_monitoring
+   - (Optional) Add credentials if configured
+
+#### SSL Setup
+
+For HTTPS support:
+
+1. Generate SSL certificates:
+```bash
+openssl req -x509 -newkey rsa:4096 -keyout grafana.key -out grafana.crt -days 365 -nodes
+```
+
+2. Update docker-compose.yml with SSL configuration:
+```yaml
+services:
+  grafana:
+    environment:
+      - GF_SERVER_PROTOCOL=https
+      - GF_SERVER_CERT_FILE=/etc/grafana/grafana.crt
+      - GF_SERVER_CERT_KEY=/etc/grafana/grafana.key
+    volumes:
+      - ./grafana.crt:/etc/grafana/grafana.crt
+      - ./grafana.key:/etc/grafana/grafana.key
+```
+
+## Data Collection
+
+### Configuration
+
+All services are configured via environment variables. See `.env.example` for required variables.
+
+### Running Data Collectors
+
+Data collectors and utilities are Python modules located in `src/home_monitoring/scripts/`. Run them from the project root directory with PYTHONPATH set:
+
+```bash
+# Data Collection
+PYTHONPATH=src python -m home_monitoring.scripts.collect_netatmo_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_solaredge_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_gardena_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_techem_data --serial-port /dev/ttyUSB0
+
+# DNS Updates
+PYTHONPATH=src python -m home_monitoring.scripts.update_dns
+```
+
+Note: The `-v` flag is not supported by all scripts.
+
+Additional options for specific collectors:
+- `collect_tankerkoenig_data.py`:
+  - `--cache-dir`: Directory to cache station details
+  - `--force-update`: Force update of station details from API
+- `collect_techem_data.py`:
+  - `--serial-port`: Serial port path (default: /dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0)
+  - `--serial-baudrate`: Baud rate (default: 38400)
+  - `--serial-timeout`: Timeout in seconds (default: 300)
+  - `--serial-num-packets`: Number of packets to collect (default: 5)
+
+### Scheduling Collections
+
+Create a crontab entry (`crontab -e`):
+
+```bash
+# Variables for all jobs
+PROJECT_DIR=/home/pi/src/github.com/BigCrunsh/home-monitoring
+PYTHON=/usr/local/bin/python3.12
+LOG_DIR=/var/log/home_monitoring
+
+# Ensure log directory exists
+mkdir -p $LOG_DIR
+
+# Collect data every 5 minutes
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_netatmo_data >> $LOG_DIR/netatmo.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_solaredge_data >> $LOG_DIR/solaredge.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir $PROJECT_DIR/cache >> $LOG_DIR/tankerkoenig.log 2>&1
+*/30 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_gardena_data >> $LOG_DIR/gardena.log 2>&1
+*/15 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tibber_data >> $LOG_DIR/tibber.log 2>&1
+0 1 * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_techem_data >> $LOG_DIR/techem.log 2>&1
+
+# Update DNS every hour
+0 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.update_dns >> $LOG_DIR/update_dns.log 2>&1
+```
+
+## Development
+
+### Project Structure
+
+```
+src/
+├── home_monitoring/
+│   ├── core/         # Core business logic
+│   ├── models/       # Data models
+│   ├── repositories/ # Data access layer
+│   ├── schemas/      # Data validation schemas
+│   ├── scripts/      # Data collection scripts
+│   ├── services/     # Service integrations
+│   └── utils/        # Utility functions
+tests/
+├── unit/            # Unit tests
+└── integration/     # Integration tests
+```
+
+### Development Commands
+
+```bash
+# Run all tests and quality checks
+make test
+
+# Run specific test suites
+make test-unit
+make test-integration
+
+# Code quality
+make lint          # Run all code quality checks
+make format        # Format code with black
+make type-check    # Run type checking
+make ruff          # Run linting with ruff
+
+# Clean up
+make clean         # Remove Python artifacts and caches
+```
+
+### Code Quality Standards
+
+- Black for code formatting
+- Ruff for linting
+- MyPy for type checking
+- 100% test coverage for core functionality
+- Docstrings required for public APIs
+- Type hints required for all functions
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting (`make test`)
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file
+
+## References
+
+- [InfluxDB Documentation](https://docs.influxdata.com/influxdb/v1.8/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Python asyncio](https://docs.python.org/3/library/asyncio.html)
+- [Black Code Style](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html)
+- [MyPy Type System](https://mypy.readthedocs.io/en/stable/)
