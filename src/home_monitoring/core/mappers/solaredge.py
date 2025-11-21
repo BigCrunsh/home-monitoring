@@ -57,6 +57,52 @@ class SolarEdgeMapper(BaseMapper):
                 )
             )
 
+            # Create electricity_energy_watthour measurements for energy totals
+            if "lastDayData" in data and "energy" in data["lastDayData"]:
+                measurements.append(
+                    Measurement(
+                        measurement="electricity_energy_watthour",
+                        tags={
+                            "period": "daily",
+                            "site_id": str(data.get("siteId", "unknown")),
+                        },
+                        timestamp=timestamp,
+                        fields={
+                            "energy": float(data["lastDayData"]["energy"]),
+                        },
+                    )
+                )
+
+            if "lastMonthData" in data and "energy" in data["lastMonthData"]:
+                measurements.append(
+                    Measurement(
+                        measurement="electricity_energy_watthour",
+                        tags={
+                            "period": "monthly",
+                            "site_id": str(data.get("siteId", "unknown")),
+                        },
+                        timestamp=timestamp,
+                        fields={
+                            "energy": float(data["lastMonthData"]["energy"]),
+                        },
+                    )
+                )
+
+            if "lastYearData" in data and "energy" in data["lastYearData"]:
+                measurements.append(
+                    Measurement(
+                        measurement="electricity_energy_watthour",
+                        tags={
+                            "period": "yearly",
+                            "site_id": str(data.get("siteId", "unknown")),
+                        },
+                        timestamp=timestamp,
+                        fields={
+                            "energy": float(data["lastYearData"]["energy"]),
+                        },
+                    )
+                )
+
         # Power flow data
         if power_flow and "siteCurrentPowerFlow" in power_flow:
             data = power_flow["siteCurrentPowerFlow"]
@@ -75,9 +121,9 @@ class SolarEdgeMapper(BaseMapper):
                     },
                 )
             )
-            
+
             # Also create individual power measurements for easier querying
-            # This creates electricity_power_watt measurements if that's what you're looking for
+            # This creates electricity_power_watt measurements
             unit = data.get("unit", "W")
             if unit == "W":
                 # Grid power (positive = consuming, negative = producing/feeding back)
@@ -95,7 +141,7 @@ class SolarEdgeMapper(BaseMapper):
                             },
                         )
                     )
-                
+
                 # PV production power
                 if "pv" in data and "currentPower" in data["pv"]:
                     measurements.append(
@@ -111,7 +157,7 @@ class SolarEdgeMapper(BaseMapper):
                             },
                         )
                     )
-                
+
                 # Load consumption power
                 if "load" in data and "currentPower" in data["load"]:
                     measurements.append(

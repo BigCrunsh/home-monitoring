@@ -19,14 +19,14 @@ async def main(args: argparse.Namespace) -> int:
         Exit code
     """
     configure_logging()
-    
+
     # Create serial configuration from command line arguments
     serial_config = SerialConfig(
         port=args.serial_port,
         baudrate=args.serial_baudrate,
         timeout=args.serial_timeout,
     )
-    
+
     service = TechemService(serial_config=serial_config)
 
     try:
