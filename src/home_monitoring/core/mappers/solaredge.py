@@ -75,5 +75,57 @@ class SolarEdgeMapper(BaseMapper):
                     },
                 )
             )
+            
+            # Also create individual power measurements for easier querying
+            # This creates electricity_power_watt measurements if that's what you're looking for
+            unit = data.get("unit", "W")
+            if unit == "W":
+                # Grid power (positive = consuming, negative = producing/feeding back)
+                if "grid" in data and "currentPower" in data["grid"]:
+                    measurements.append(
+                        Measurement(
+                            measurement="electricity_power_watt",
+                            tags={
+                                "source": "grid",
+                                "site_id": str(data.get("siteId", "unknown")),
+                            },
+                            timestamp=timestamp,
+                            fields={
+                                "power": float(data["grid"]["currentPower"]),
+                            },
+                        )
+                    )
+                
+                # PV production power
+                if "pv" in data and "currentPower" in data["pv"]:
+                    measurements.append(
+                        Measurement(
+                            measurement="electricity_power_watt",
+                            tags={
+                                "source": "pv",
+                                "site_id": str(data.get("siteId", "unknown")),
+                            },
+                            timestamp=timestamp,
+                            fields={
+                                "power": float(data["pv"]["currentPower"]),
+                            },
+                        )
+                    )
+                
+                # Load consumption power
+                if "load" in data and "currentPower" in data["load"]:
+                    measurements.append(
+                        Measurement(
+                            measurement="electricity_power_watt",
+                            tags={
+                                "source": "load",
+                                "site_id": str(data.get("siteId", "unknown")),
+                            },
+                            timestamp=timestamp,
+                            fields={
+                                "power": float(data["load"]["currentPower"]),
+                            },
+                        )
+                    )
 
         return measurements
