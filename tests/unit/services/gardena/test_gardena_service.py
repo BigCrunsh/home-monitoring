@@ -44,8 +44,8 @@ def mock_smart_system() -> MagicMock:
     system.locations = {"location1": location}
     system.authenticate = AsyncMock()
     system.update_locations = AsyncMock()
-    system.update_devices = MagicMock()
-    system.start_ws = MagicMock()
+    system.update_devices = AsyncMock()
+    system.start_ws = AsyncMock()
     system.quit = AsyncMock()
     return system
 
@@ -124,7 +124,8 @@ async def test_start_success(
 
     assert mock_smart_system.authenticate.await_count == 1
     assert mock_smart_system.update_locations.await_count == 1
-    assert mock_smart_system.start_ws.call_count == 1
+    assert mock_smart_system.update_devices.await_count == 1
+    assert mock_smart_system.start_ws.await_count == 1
 
 
 @pytest.mark.asyncio(scope="function")
