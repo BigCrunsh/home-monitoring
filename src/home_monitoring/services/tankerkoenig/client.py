@@ -76,10 +76,7 @@ class TankerkoenigClient:
             if details and details.get("ok", False):
                 stations[station_id] = details.get("station", {})
 
-        return {
-            "ok": True,
-            "stations": stations
-        }
+        return {"ok": True, "stations": stations}
 
     async def _get_station_detail(
         self,

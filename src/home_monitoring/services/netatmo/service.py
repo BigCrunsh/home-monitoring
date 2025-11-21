@@ -2,13 +2,12 @@
 
 from datetime import UTC, datetime
 
+import lnetatmo
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.core.mappers.netatmo import NetatmoMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
 from structlog.stdlib import BoundLogger
-
-import lnetatmo
 
 
 class NetatmoService:
@@ -25,10 +24,12 @@ class NetatmoService:
         self._logger: BoundLogger = get_logger(__name__)
 
         # Validate required credentials for new lnetatmo library
-        if not all([
-            self._settings.netatmo_client_id,
-            self._settings.netatmo_client_secret,
-        ]):
+        if not all(
+            [
+                self._settings.netatmo_client_id,
+                self._settings.netatmo_client_secret,
+            ]
+        ):
             raise ValueError(
                 "Missing Netatmo credentials. Please set NETATMO_CLIENT_ID, "
                 "NETATMO_CLIENT_SECRET, and NETATMO_REFRESH_TOKEN "
@@ -91,9 +92,9 @@ class NetatmoService:
             # Log authentication details (without sensitive info)
             self._logger.debug(
                 "lnetatmo_auth_info",
-                has_client_id=bool(getattr(self._auth, 'clientId', None)),
-                has_client_secret=bool(getattr(self._auth, 'clientSecret', None)),
-                has_access_token=bool(getattr(self._auth, 'accessToken', None))
+                has_client_id=bool(getattr(self._auth, "clientId", None)),
+                has_client_secret=bool(getattr(self._auth, "clientSecret", None)),
+                has_access_token=bool(getattr(self._auth, "accessToken", None)),
             )
 
             # The lnetatmo library handles authentication automatically
@@ -102,19 +103,17 @@ class NetatmoService:
             self._logger.debug(
                 "lnetatmo_api_result",
                 station_count=len(stations) if stations else 0,
-                has_access_token_after=bool(getattr(
-                    self._auth, 'accessToken', None
-                ))
+                has_access_token_after=bool(getattr(self._auth, "accessToken", None)),
             )
             return len(stations) > 0 if stations else False
         except lnetatmo.AuthFailure as e:
             self._logger.error(
                 "failed_to_get_weather_data",
-                error=f"Authentication failed: {str(e)}",
+                error=f"Authentication failed: {e!s}",
                 error_type="AuthFailure",
                 suggestion="Netatmo authentication failed. You may need to "
                 "generate a refresh token or check your client credentials. "
-                "See https://github.com/philippelt/netatmo-api-python"
+                "See https://github.com/philippelt/netatmo-api-python",
             )
             return False
         except Exception as e:
@@ -122,7 +121,7 @@ class NetatmoService:
                 "failed_to_get_weather_data",
                 error=str(e),
                 error_type=type(e).__name__,
-                suggestion="Check network connectivity and Netatmo API status."
+                suggestion="Check network connectivity and Netatmo API status.",
             )
             return False
 
@@ -141,8 +140,6 @@ class NetatmoService:
             return devices_data
         except Exception as e:
             self._logger.error(
-                "failed_to_get_devices_data",
-                error=str(e),
-                error_type=type(e).__name__
+                "failed_to_get_devices_data", error=str(e), error_type=type(e).__name__
             )
             return []

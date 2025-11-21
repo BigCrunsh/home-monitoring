@@ -87,14 +87,14 @@ class TechemMapper(BaseMapper):
 
                 measurements.append(
                     Measurement(
-                        measurement="techem",
+                        measurement="heat_energy_watthours",
                         tags={
                             "meter_id": meter_id,
                             "type": media_type,
                         },
                         timestamp=timestamp,
                         fields={
-                            "value": value,
+                            "energy": value,
                         },
                     )
                 )

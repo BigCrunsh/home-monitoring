@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from home_monitoring.core.mappers.base import BaseMapper
 from home_monitoring.models.base import Measurement
@@ -12,18 +12,18 @@ class NetatmoMapper(BaseMapper):
     """Mapper for Netatmo weather station data to InfluxDB measurements."""
 
     # Mapping from dashboard data fields to measurement names and units
-    FIELD_MAPPING = {
-        'Temperature': ('weather_temperature_celsius', 'Temperature'),
-        'Humidity': ('weather_humidity_percentage', 'Humidity'),
-        'CO2': ('weather_co2_ppm', 'CO2'),
-        'Noise': ('weather_noise_db', 'Noise'),
-        'Pressure': ('weather_pressure_mbar', 'Pressure'),
-        'AbsolutePressure': ('weather_absolute_pressure_mbar', 'AbsolutePressure'),
-        'Rain': ('weather_rain_mm', 'Rain'),
-        'WindStrength': ('weather_wind_strength_kph', 'WindStrength'),
-        'WindAngle': ('weather_wind_angle_degrees', 'WindAngle'),
-        'GustStrength': ('weather_gust_strength_kph', 'GustStrength'),
-        'GustAngle': ('weather_gust_angle_degrees', 'GustAngle'),
+    FIELD_MAPPING: ClassVar[dict[str, tuple[str, str]]] = {
+        "Temperature": ("weather_temperature_celsius", "Temperature"),
+        "Humidity": ("weather_humidity_percentage", "Humidity"),
+        "CO2": ("weather_co2_ppm", "CO2"),
+        "Noise": ("weather_noise_db", "Noise"),
+        "Pressure": ("weather_pressure_mbar", "Pressure"),
+        "AbsolutePressure": ("weather_absolute_pressure_mbar", "AbsolutePressure"),
+        "Rain": ("weather_rain_mm", "Rain"),
+        "WindStrength": ("weather_windstrength_kph", "WindStrength"),
+        "WindAngle": ("weather_windangle_angles", "WindAngle"),
+        "GustStrength": ("weather_guststrength_kph", "GustStrength"),
+        "GustAngle": ("weather_gustangle_angles", "GustAngle"),
     }
 
     @staticmethod
@@ -33,7 +33,7 @@ class NetatmoMapper(BaseMapper):
     ) -> list[Measurement]:
         """Map weather station data to InfluxDB measurements.
 
-        Creates separate measurements for each sensor type (temperature, 
+        Creates separate measurements for each sensor type (temperature,
         humidity, etc.) with descriptive names and appropriate units.
 
         Args:
@@ -44,13 +44,11 @@ class NetatmoMapper(BaseMapper):
             List of InfluxDB measurements
         """
         measurements = []
-        
+
         for device in devices:
             # Process base station data
-            measurements.extend(
-                NetatmoMapper._process_device_data(device, timestamp)
-            )
-            
+            measurements.extend(NetatmoMapper._process_device_data(device, timestamp))
+
             # Process module data
             for module in device.get("modules", []):
                 measurements.extend(
@@ -61,12 +59,11 @@ class NetatmoMapper(BaseMapper):
 
     @staticmethod
     def _process_device_data(
-        device: Mapping[str, Any], 
-        timestamp: datetime
+        device: Mapping[str, Any], timestamp: datetime
     ) -> list[Measurement]:
         """Process individual device/module data into measurements."""
         measurements = []
-        
+
         # Check required fields
         required_keys = ["_id", "type", "module_name"]
         if not all(key in device for key in required_keys):
@@ -75,13 +72,15 @@ class NetatmoMapper(BaseMapper):
         # Process dashboard data (sensor readings)
         if "dashboard_data" in device:
             dashboard_data = device["dashboard_data"]
-            
+
             for field_name, value in dashboard_data.items():
-                if not isinstance(value, (int, float)):
+                if not isinstance(value, int | float):
                     continue
-                    
+
                 if field_name in NetatmoMapper.FIELD_MAPPING:
-                    measurement_name, field_key = NetatmoMapper.FIELD_MAPPING[field_name]
+                    measurement_name, field_key = NetatmoMapper.FIELD_MAPPING[
+                        field_name
+                    ]
                     measurements.append(
                         Measurement(
                             measurement=measurement_name,

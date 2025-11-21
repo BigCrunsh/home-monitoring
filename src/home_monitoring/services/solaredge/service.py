@@ -28,10 +28,12 @@ class SolarEdgeService:
         self._logger: BoundLogger = get_logger(__name__)
 
         # Validate required credentials
-        if not all([
-            self._settings.solaredge_api_key,
-            self._settings.solaredge_site_id,
-        ]):
+        if not all(
+            [
+                self._settings.solaredge_api_key,
+                self._settings.solaredge_site_id,
+            ]
+        ):
             raise ValueError(
                 "Missing SolarEdge credentials. Please set SOLAREDGE_API_KEY "
                 "and SOLAREDGE_SITE_ID environment variables."
@@ -40,8 +42,7 @@ class SolarEdgeService:
     async def collect_and_store(self) -> None:
         """Collect current data from SolarEdge and store in InfluxDB."""
         self._logger.info(
-            "collecting_solaredge_data",
-            site_id=self._settings.solaredge_site_id
+            "collecting_solaredge_data", site_id=self._settings.solaredge_site_id
         )
 
         try:
@@ -51,15 +52,23 @@ class SolarEdgeService:
             self._logger.debug(
                 "overview_data_received",
                 has_overview=bool(overview.get("overview")),
-                overview_keys=list(overview.get("overview", {}).keys()) if overview.get("overview") else []
+                overview_keys=(
+                    list(overview.get("overview", {}).keys())
+                    if overview.get("overview")
+                    else []
+                ),
             )
 
             self._logger.debug("fetching_power_flow_data")
             power_flow = await self._get_power_flow()
             self._logger.debug(
-                "power_flow_data_received", 
+                "power_flow_data_received",
                 has_power_flow=bool(power_flow.get("siteCurrentPowerFlow")),
-                power_flow_keys=list(power_flow.get("siteCurrentPowerFlow", {}).keys()) if power_flow.get("siteCurrentPowerFlow") else []
+                power_flow_keys=(
+                    list(power_flow.get("siteCurrentPowerFlow", {}).keys())
+                    if power_flow.get("siteCurrentPowerFlow")
+                    else []
+                ),
             )
 
             # Map to InfluxDB measurements
@@ -72,7 +81,7 @@ class SolarEdgeService:
                 "measurements_created",
                 measurement_count=len(measurements),
                 measurement_names=[m.measurement for m in measurements],
-                measurement_types=[m.tags.get("type") for m in measurements]
+                measurement_types=[m.tags.get("type") for m in measurements],
             )
 
             # Log detailed measurement info for debugging
@@ -82,7 +91,7 @@ class SolarEdgeService:
                     name=measurement.measurement,
                     tags=measurement.tags,
                     fields=list(measurement.fields.keys()),
-                    field_values={k: v for k, v in measurement.fields.items()}
+                    field_values={k: v for k, v in measurement.fields.items()},
                 )
 
             # Store in InfluxDB
@@ -90,7 +99,7 @@ class SolarEdgeService:
             self._logger.info(
                 "solaredge_data_stored",
                 point_count=len(measurements),
-                site_id=self._settings.solaredge_site_id
+                site_id=self._settings.solaredge_site_id,
             )
         except Exception as e:
             self._logger.error(

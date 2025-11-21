@@ -39,21 +39,21 @@ class TankerkoenigMapper(BaseMapper):
 
             measurements.append(
                 Measurement(
-                    measurement="gas_prices",
+                    measurement="gas_prices_euro",
                     tags={
                         "station_id": station_id,
                         "name": station.get("name", "unknown"),
                         "brand": station.get("brand", "unknown"),
                         "street": station.get("street", "unknown"),
                         "place": station.get("place", "unknown"),
-                        "post_code": str(station.get("postCode", "unknown")),
+                        "postCode": str(station.get("postCode", "unknown")),
+                        "open": str(station.get("isOpen", False)),
                     },
                     timestamp=timestamp,
                     fields={
-                        "diesel": price_data.get("diesel", 0.0),
-                        "e5": price_data.get("e5", 0.0),
-                        "e10": price_data.get("e10", 0.0),
-                        "is_open": (price_data.get("status", "closed") == "open"),
+                        "diesel": float(station.get("diesel", 0.0)),
+                        "e5": float(station.get("e5", 0.0)),
+                        "e10": float(station.get("e10", 0.0)),
                     },
                 )
             )

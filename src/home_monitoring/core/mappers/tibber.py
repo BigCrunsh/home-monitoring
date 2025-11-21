@@ -26,7 +26,7 @@ class TibberMapper(BaseMapper):
             List of InfluxDB measurements
         """
         try:
-            return [
+            measurements = [
                 Measurement(
                     measurement="electricity_prices",
                     tags={
@@ -41,6 +41,26 @@ class TibberMapper(BaseMapper):
                     },
                 )
             ]
+
+            # Add currency-specific measurement if currency is EUR
+            currency = price_data.get("currency", "unknown")
+            if currency.upper() in ["EUR", "EURO"]:
+                measurements.append(
+                    Measurement(
+                        measurement="energy_prices_euro",
+                        tags={
+                            "level": price_data.get("level", "unknown"),
+                        },
+                        timestamp=timestamp,
+                        fields={
+                            "total": float(price_data.get("total", 0.0)),
+                            "energy": float(price_data.get("energy", 0.0)),
+                            "tax": float(price_data.get("tax", 0.0)),
+                        },
+                    )
+                )
+
+            return measurements
         except (TypeError, ValueError):
             return [
                 Measurement(

@@ -81,7 +81,7 @@ class TibberService:
             # current_price_data() returns tuple: (total, datetime, rank)
             price_tuple = home.current_price_data()
             total, starts_at, rank = price_tuple
-            
+
             # Convert tuple to expected dictionary format
             return {
                 "total": total,
@@ -90,7 +90,7 @@ class TibberService:
                 "currency": "EUR",  # Default currency
                 "level": "NORMAL",  # Default level
                 "energy": total * 0.8 if total else 0.0,  # Estimate energy portion
-                "tax": total * 0.2 if total else 0.0,     # Estimate tax portion
+                "tax": total * 0.2 if total else 0.0,  # Estimate tax portion
             }
         finally:
             await connection.close_connection()
