@@ -58,8 +58,8 @@ class GardenaService:
 
         location = next(iter(self._smart_system.locations.values()))
         self._smart_system.location = location
-        self._smart_system.update_devices(location)
-        self._smart_system.start_ws(location)
+        await self._smart_system.update_devices(location)
+        await self._smart_system.start_ws(location)
 
         self._logger.info(
             "devices_found",
