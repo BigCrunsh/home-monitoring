@@ -1,0 +1,177 @@
+"""SolarEdge data mapping utilities."""
+
+from collections.abc import Mapping
+from datetime import datetime
+from typing import Any
+
+from home_monitoring.core.mappers.base import BaseMapper
+from home_monitoring.models.base import Measurement
+
+
+class SolarEdgeMapper(BaseMapper):
+    """Mapper for SolarEdge data to InfluxDB measurements."""
+
+    @staticmethod
+    def to_measurements(
+        timestamp: datetime,
+        overview: Mapping[str, Any],
+        power_flow: Mapping[str, Any],
+    ) -> list[Measurement]:
+        """Map SolarEdge data to InfluxDB measurements.
+
+        Args:
+            timestamp: Measurement timestamp
+            overview: Overview data from API
+            power_flow: Power flow data from API
+
+        Returns:
+            List of InfluxDB measurements
+        """
+        measurements = []
+
+        # Overview data
+        if overview and "overview" in overview:
+            data = overview["overview"]
+            measurements.append(
+                Measurement(
+                    measurement="solaredge",
+                    tags={
+                        "type": "overview",
+                    },
+                    timestamp=timestamp,
+                    fields={
+                        "lifetime_energy": float(
+                            data.get("lifeTimeData", {}).get("energy", 0.0)
+                        ),
+                        "last_year_energy": float(
+                            data.get("lastYearData", {}).get("energy", 0.0)
+                        ),
+                        "last_month_energy": float(
+                            data.get("lastMonthData", {}).get("energy", 0.0)
+                        ),
+                        "last_day_energy": float(
+                            data.get("lastDayData", {}).get("energy", 0.0)
+                        ),
+                        "current_power": data.get("currentPower", {}).get("power", 0.0),
+                    },
+                )
+            )
+
+            # Create electricity_energy_watthour measurements for energy totals
+            if "lastDayData" in data and "energy" in data["lastDayData"]:
+                measurements.append(
+                    Measurement(
+                        measurement="electricity_energy_watthour",
+                        tags={
+                            "period": "daily",
+                            "site_id": str(data.get("siteId", "unknown")),
+                        },
+                        timestamp=timestamp,
+                        fields={
+                            "energy": float(data["lastDayData"]["energy"]),
+                        },
+                    )
+                )
+
+            if "lastMonthData" in data and "energy" in data["lastMonthData"]:
+                measurements.append(
+                    Measurement(
+                        measurement="electricity_energy_watthour",
+                        tags={
+                            "period": "monthly",
+                            "site_id": str(data.get("siteId", "unknown")),
+                        },
+                        timestamp=timestamp,
+                        fields={
+                            "energy": float(data["lastMonthData"]["energy"]),
+                        },
+                    )
+                )
+
+            if "lastYearData" in data and "energy" in data["lastYearData"]:
+                measurements.append(
+                    Measurement(
+                        measurement="electricity_energy_watthour",
+                        tags={
+                            "period": "yearly",
+                            "site_id": str(data.get("siteId", "unknown")),
+                        },
+                        timestamp=timestamp,
+                        fields={
+                            "energy": float(data["lastYearData"]["energy"]),
+                        },
+                    )
+                )
+
+        # Power flow data
+        if power_flow and "siteCurrentPowerFlow" in power_flow:
+            data = power_flow["siteCurrentPowerFlow"]
+            measurements.append(
+                Measurement(
+                    measurement="solaredge",
+                    tags={
+                        "type": "power_flow",
+                        "unit": data.get("unit", "W"),
+                    },
+                    timestamp=timestamp,
+                    fields={
+                        "grid_power": data.get("grid", {}).get("currentPower", 0.0),
+                        "load_power": data.get("load", {}).get("currentPower", 0.0),
+                        "pv_power": data.get("pv", {}).get("currentPower", 0.0),
+                    },
+                )
+            )
+
+            # Also create individual power measurements for easier querying
+            # This creates electricity_power_watt measurements
+            unit = data.get("unit", "W")
+            if unit == "W":
+                # Grid power (positive = consuming, negative = producing/feeding back)
+                if "grid" in data and "currentPower" in data["grid"]:
+                    measurements.append(
+                        Measurement(
+                            measurement="electricity_power_watt",
+                            tags={
+                                "source": "grid",
+                                "site_id": str(data.get("siteId", "unknown")),
+                            },
+                            timestamp=timestamp,
+                            fields={
+                                "power": float(data["grid"]["currentPower"]),
+                            },
+                        )
+                    )
+
+                # PV production power
+                if "pv" in data and "currentPower" in data["pv"]:
+                    measurements.append(
+                        Measurement(
+                            measurement="electricity_power_watt",
+                            tags={
+                                "source": "pv",
+                                "site_id": str(data.get("siteId", "unknown")),
+                            },
+                            timestamp=timestamp,
+                            fields={
+                                "power": float(data["pv"]["currentPower"]),
+                            },
+                        )
+                    )
+
+                # Load consumption power
+                if "load" in data and "currentPower" in data["load"]:
+                    measurements.append(
+                        Measurement(
+                            measurement="electricity_power_watt",
+                            tags={
+                                "source": "load",
+                                "site_id": str(data.get("siteId", "unknown")),
+                            },
+                            timestamp=timestamp,
+                            fields={
+                                "power": float(data["load"]["currentPower"]),
+                            },
+                        )
+                    )
+
+        return measurements
