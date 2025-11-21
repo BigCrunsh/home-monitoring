@@ -6,12 +6,13 @@ A centralized monitoring system for smart home devices and services. This projec
 
 ## Supported Systems
 
-- [Netatmo](https://www.netatmo.com/en-eu) - Smart home weather station
+- [Netatmo](https://www.netatmo.com/en-eu) - Smart home weather station (OAuth2 with lnetatmo library)
 - [SolarEdge](https://www.solaredge.com/) - Solar inverter and PV monitoring
 - [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart gardening system
 - [Tankerkoenig](https://creativecommons.tankerkoenig.de/) - Gas station price monitoring
 - [Tibber](https://tibber.com/) - Smart energy monitoring
-- Techem Compat V - Energy meter monitoring via nanoCUL USB Stick
+- Techem Compat V - Energy meter monitoring via nanoCUL USB Stick (requires pyserial)
+- Dynu DNS - Dynamic DNS updates for remote access
 
 ## Installation
 
@@ -106,24 +107,28 @@ Data collectors and utilities are Python modules located in `src/home_monitoring
 
 ```bash
 # Data Collection
-PYTHONPATH=src python -m home_monitoring.scripts.collect_netatmo_data -v
-PYTHONPATH=src python -m home_monitoring.scripts.collect_solaredge_data -v
-PYTHONPATH=src python -m home_monitoring.scripts.collect_gardena_data -v
-PYTHONPATH=src python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache -v
-PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data -v
-PYTHONPATH=src python -m home_monitoring.scripts.collect_techem_data -v
+PYTHONPATH=src python -m home_monitoring.scripts.collect_netatmo_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_solaredge_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_gardena_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_techem_data --serial-port /dev/ttyUSB0
 
 # DNS Updates
-PYTHONPATH=src python -m home_monitoring.scripts.update_dns -v
+PYTHONPATH=src python -m home_monitoring.scripts.update_dns
 ```
 
-Common options supported by all scripts:
-- `-v, --verbose`: Enable verbose logging
+Note: The `-v` flag is not supported by all scripts.
 
 Additional options for specific collectors:
 - `collect_tankerkoenig_data.py`:
   - `--cache-dir`: Directory to cache station details
   - `--force-update`: Force update of station details from API
+- `collect_techem_data.py`:
+  - `--serial-port`: Serial port path (default: /dev/serial/by-id/usb-SHK_NANO_CUL_868-if00-port0)
+  - `--serial-baudrate`: Baud rate (default: 38400)
+  - `--serial-timeout`: Timeout in seconds (default: 300)
+  - `--serial-num-packets`: Number of packets to collect (default: 5)
 
 ### Scheduling Collections
 
@@ -139,15 +144,15 @@ LOG_DIR=/var/log/home_monitoring
 mkdir -p $LOG_DIR
 
 # Collect data every 5 minutes
-*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_netatmo_data -v >> $LOG_DIR/netatmo.log 2>&1
-*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_solaredge_data -v >> $LOG_DIR/solaredge.log 2>&1
-*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir $PROJECT_DIR/cache -v >> $LOG_DIR/tankerkoenig.log 2>&1
-*/30 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_gardena_data -v >> $LOG_DIR/gardena.log 2>&1
-*/15 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tibber_data -v >> $LOG_DIR/tibber.log 2>&1
-0 1 * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_techem_data -v >> $LOG_DIR/techem.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_netatmo_data >> $LOG_DIR/netatmo.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_solaredge_data >> $LOG_DIR/solaredge.log 2>&1
+*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir $PROJECT_DIR/cache >> $LOG_DIR/tankerkoenig.log 2>&1
+*/30 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_gardena_data >> $LOG_DIR/gardena.log 2>&1
+*/15 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tibber_data >> $LOG_DIR/tibber.log 2>&1
+0 1 * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_techem_data >> $LOG_DIR/techem.log 2>&1
 
 # Update DNS every hour
-0 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.update_dns -v >> $LOG_DIR/update_dns.log 2>&1
+0 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.update_dns >> $LOG_DIR/update_dns.log 2>&1
 ```
 
 ## Development
