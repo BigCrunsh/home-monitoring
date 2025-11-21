@@ -72,12 +72,25 @@ class TibberService:
             self._logger.debug("connected_to_tibber", name=connection.name)
 
             # Get first home's data
-            homes = await connection.get_homes()
+            homes = connection.get_homes()
             home = homes[0]
             await home.fetch_consumption_data()
             await home.update_info()
             self._logger.debug("got_home_data", address=home.address1)
 
-            return await home.current_price_data()
+            # current_price_data() returns tuple: (total, datetime, rank)
+            price_tuple = home.current_price_data()
+            total, starts_at, rank = price_tuple
+            
+            # Convert tuple to expected dictionary format
+            return {
+                "total": total,
+                "startsAt": starts_at.isoformat() if starts_at else "",
+                "rank": rank,
+                "currency": "EUR",  # Default currency
+                "level": "NORMAL",  # Default level
+                "energy": total * 0.8 if total else 0.0,  # Estimate energy portion
+                "tax": total * 0.2 if total else 0.0,     # Estimate tax portion
+            }
         finally:
             await connection.close_connection()

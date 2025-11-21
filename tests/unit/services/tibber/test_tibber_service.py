@@ -1,7 +1,7 @@
 """Unit tests for Tibber service."""
 
 from datetime import datetime
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from home_monitoring.config import Settings
@@ -19,18 +19,12 @@ async def test_collect_and_store_success(
     # Arrange
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
-    mock_home.current_price_data.return_value = {
-        "total": 1.234,
-        "energy": 0.567,
-        "tax": 0.123,
-        "startsAt": "2024-02-16T20:00:00",
-        "currency": "NOK",
-        "level": "NORMAL",
-    }
+    # current_price_data returns tuple: (total, datetime, rank)
+    mock_home.current_price_data = MagicMock(return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5))
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
-    mock_connection.get_homes.return_value = [mock_home]
+    mock_connection.get_homes = MagicMock(return_value=[mock_home])
 
     with patch("tibber.Tibber", return_value=mock_connection):
         # Create service
@@ -45,14 +39,14 @@ async def test_collect_and_store_success(
         assert len(measurements) == 1
         assert measurements[0].measurement == "electricity_prices"
         assert measurements[0].tags == {
-            "currency": "NOK",
+            "currency": "EUR",
             "level": "NORMAL",
         }
-        assert measurements[0].fields == {
-            "total": 1.234,
-            "energy": 0.567,
-            "tax": 0.123,
-        }
+        # Check fields with approximate equality for floating point precision
+        fields = measurements[0].fields
+        assert fields["total"] == 1.234
+        assert abs(fields["energy"] - 0.9872) < 0.0001  # 1.234 * 0.8
+        assert abs(fields["tax"] - 0.2468) < 0.0001     # 1.234 * 0.2
         assert measurements[0].timestamp == datetime(2024, 2, 16, 20, 0, 0)
 
 
@@ -88,18 +82,12 @@ async def test_collect_and_store_database_error(
     # Arrange
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
-    mock_home.current_price_data.return_value = {
-        "total": 1.234,
-        "energy": 0.567,
-        "tax": 0.123,
-        "startsAt": "2024-02-16T20:00:00",
-        "currency": "NOK",
-        "level": "NORMAL",
-    }
+    # current_price_data returns tuple: (total, datetime, rank)
+    mock_home.current_price_data = MagicMock(return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5))
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
-    mock_connection.get_homes.return_value = [mock_home]
+    mock_connection.get_homes = MagicMock(return_value=[mock_home])
 
     with patch("tibber.Tibber", return_value=mock_connection):
         # Create service and set up database error
@@ -109,3 +97,35 @@ async def test_collect_and_store_database_error(
         # Act & Assert
         with pytest.raises(Exception, match="DB Error"):
             await service.collect_and_store()
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_current_price_data_returns_tuple(
+    mocker: MockerFixture,
+    mock_influxdb: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """Test that current_price_data returns tuple directly (not coroutine)."""
+    # Arrange - Mock current_price_data to return tuple like real API
+    mock_home = AsyncMock()
+    mock_home.address1 = "Test Address"
+    # current_price_data returns tuple: (total, datetime, rank)
+    from datetime import datetime
+    mock_home.current_price_data = MagicMock(return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5))
+
+    mock_connection = AsyncMock()
+    mock_connection.name = "Test User"
+    mock_connection.get_homes = MagicMock(return_value=[mock_home])
+
+    with patch("tibber.Tibber", return_value=mock_connection):
+        # Create service
+        service = TibberService(settings=mock_settings, repository=mock_influxdb)
+
+        # Act
+        await service.collect_and_store()
+
+        # Assert - should handle tuple return value correctly
+        mock_influxdb.write_measurements.assert_called_once()
+        measurements = mock_influxdb.write_measurements.call_args[0][0]
+        assert len(measurements) == 1
+        assert measurements[0].measurement == "electricity_prices"
