@@ -5,6 +5,7 @@ import asyncio
 import sys
 
 from home_monitoring.services.techem import TechemService
+from home_monitoring.services.techem.config import SerialConfig
 from home_monitoring.utils.logging import configure_logging
 
 
@@ -18,11 +19,15 @@ async def main(args: argparse.Namespace) -> int:
         Exit code
     """
     configure_logging()
-    service = TechemService(
+    
+    # Create serial configuration from command line arguments
+    serial_config = SerialConfig(
         port=args.serial_port,
         baudrate=args.serial_baudrate,
         timeout=args.serial_timeout,
     )
+    
+    service = TechemService(serial_config=serial_config)
 
     try:
         await service.collect_and_store(num_packets=args.serial_num_packets)
