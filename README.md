@@ -135,24 +135,21 @@ Additional options for specific collectors:
 Create a crontab entry (`crontab -e`):
 
 ```bash
-# Variables for all jobs
-PROJECT_DIR=/home/pi/src/github.com/BigCrunsh/home-monitoring
-PYTHON=/usr/local/bin/python3.12
-LOG_DIR=/var/log/home_monitoring
+chmod +x /home/pi/run_monitoring.sh
+```
 
-# Ensure log directory exists
-mkdir -p $LOG_DIR
-
+Then your crontab becomes much cleaner:
+```
 # Collect data every 5 minutes
-*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_netatmo_data >> $LOG_DIR/netatmo.log 2>&1
-*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_solaredge_data >> $LOG_DIR/solaredge.log 2>&1
-*/5 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir $PROJECT_DIR/cache >> $LOG_DIR/tankerkoenig.log 2>&1
-*/30 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_gardena_data >> $LOG_DIR/gardena.log 2>&1
-*/15 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_tibber_data >> $LOG_DIR/tibber.log 2>&1
-0 1 * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.collect_techem_data >> $LOG_DIR/techem.log 2>&1
+*/5 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_netatmo_data >> /var/log/home_monitoring/netatmo.log 2>&1
+*/5 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_solaredge_data >> /var/log/home_monitoring/solaredge.log 2>&1
+*/5 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /home/pi/src/github.com/BigCrunsh/home-monitoring/cache >> /var/log/home_monitoring/tankerkoenig.log 2>&1
+*/30 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_gardena_data >> /var/log/home_monitoring/gardena.log 2>&1
+*/15 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_tibber_data >> /var/log/home_monitoring/tibber.log 2>&1
+0 1 * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_techem_data >> /var/log/home_monitoring/techem.log 2>&1
 
 # Update DNS every hour
-0 * * * * cd $PROJECT_DIR && PYTHONPATH=src $PYTHON -m home_monitoring.scripts.update_dns >> $LOG_DIR/update_dns.log 2>&1
+0 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.update_dns >> /var/log/home_monitoring/update_dns.log 2>&1
 ```
 
 ## Development
