@@ -1,7 +1,7 @@
 # InfluxDB Measurements Documentation
 
 ## Overview
-This document provides comprehensive documentation of all InfluxDB measurements produced by the Home Monitoring system. The measurements are standardized across both the legacy master branch and the new refactored service architecture.
+This document provides comprehensive documentation of all InfluxDB measurements produced by the Home Monitoring system.
 
 ## Complete Measurement Catalog (24 measurements)
 
@@ -290,22 +290,11 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 
 ## Data Collection Architecture
 
-### Legacy System (Master Branch)
-- **Structure**: Individual collection scripts per service
-- **Scripts**: 
-  - `collect_data_solaredge.py`
-  - `collect_data_tibber.py`
-  - `collect_data_tankerkoenig.py`
-  - `collect_data_netatmo.py`
-  - `collect_data_gardena.py`
-  - `collect_data_techem.py`
-- **Scheduling**: Cron-based individual script execution
-
-### New System (Refactored Branch)
-- **Structure**: Unified service architecture with standardized interfaces
+### System Architecture
+- **Structure**: Service-based architecture with standardized interfaces
 - **Services**: Async services with consistent error handling and logging
 - **Scheduling**: Centralized service orchestration
-- **Benefits**: Better maintainability, unified monitoring, consistent data validation
+- **Benefits**: Maintainability, unified monitoring, consistent data validation
 
 ## Database Schema
 
@@ -361,10 +350,6 @@ All measurements follow standard InfluxDB line protocol and can be exported usin
 - InfluxDB CLI tools
 - Grafana data export
 - Custom scripts using InfluxDB client libraries
-
-## Version History
-- **v1.0**: Legacy individual collection scripts (master branch)
-- **v2.0**: Refactored service architecture with enhanced measurements (refactor/service-layer-improvements branch)
 
 ---
 *Last updated: November 2025*
