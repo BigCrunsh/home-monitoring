@@ -3,7 +3,7 @@
 ## Overview
 This document provides comprehensive documentation of all InfluxDB measurements produced by the Home Monitoring system.
 
-## Complete Measurement Catalog (24 measurements)
+## Complete Measurement Catalog (23 measurements)
 
 ### 1. Electricity & Energy (4 measurements)
 
@@ -154,18 +154,7 @@ This document provides comprehensive documentation of all InfluxDB measurements 
   - `id`: Meter ID
 - **Update Frequency**: Every 4 hours
 
-### 5. Weather (12 measurements)
-
-#### `weather_absolute_pressure_mbar`
-- **Source**: Netatmo Weather Station
-- **Description**: Absolute atmospheric pressure
-- **Fields**:
-  - `AbsolutePressure`: Absolute pressure (mbar)
-- **Tags**:
-  - `module_name`: Weather station module name
-  - `device_id`: Device identifier
-  - `type`: Device type
-- **Update Frequency**: Every 10 minutes
+### 5. Weather (11 measurements)
 
 #### `weather_co2_ppm`
 - **Source**: Netatmo Weather Station

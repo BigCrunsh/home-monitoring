@@ -18,7 +18,6 @@ class NetatmoMapper(BaseMapper):
         "CO2": ("weather_co2_ppm", "CO2"),
         "Noise": ("weather_noise_db", "Noise"),
         "Pressure": ("weather_pressure_mbar", "Pressure"),
-        "AbsolutePressure": ("weather_absolute_pressure_mbar", "AbsolutePressure"),
         "Rain": ("weather_rain_mm", "Rain"),
         "WindStrength": ("weather_windstrength_kph", "WindStrength"),
         "WindAngle": ("weather_windangle_angles", "WindAngle"),
