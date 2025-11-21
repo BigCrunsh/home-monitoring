@@ -33,7 +33,7 @@ class TankerkoenigMapper(BaseMapper):
                 continue
 
             # Get station details
-            station = stations.get(station_id, {})
+            station = stations.get("stations", {}).get(station_id, {})
             if not station:
                 continue
 
@@ -46,7 +46,7 @@ class TankerkoenigMapper(BaseMapper):
                         "brand": station.get("brand", "unknown"),
                         "street": station.get("street", "unknown"),
                         "place": station.get("place", "unknown"),
-                        "post_code": station.get("postCode", "unknown"),
+                        "post_code": str(station.get("postCode", "unknown")),
                     },
                     timestamp=timestamp,
                     fields={

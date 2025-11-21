@@ -69,14 +69,17 @@ class TankerkoenigClient:
             API response with station details
         """
         self._logger.debug("getting_station_details", station_ids=station_ids)
-        result = {}
+        stations = {}
 
         for station_id in station_ids:
             details = await self._get_station_detail(station_id, force_update)
-            if details:
-                result[station_id] = details
+            if details and details.get("ok", False):
+                stations[station_id] = details.get("station", {})
 
-        return result
+        return {
+            "ok": True,
+            "stations": stations
+        }
 
     async def _get_station_detail(
         self,
