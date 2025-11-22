@@ -7,7 +7,6 @@ from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.sam_digital.service import SamDigitalService
 
-
 EXPECTED_SAM_SERVICE_MEASUREMENT_COUNT = 2
 
 
@@ -99,6 +98,30 @@ async def test_collect_and_store_success(
         "heat_outdoor_temperature_celsius",
         "heat_return_temperature_celsius",
     }
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_collect_and_store_no_measurements(
+    service: SamDigitalService,
+    mock_client: MagicMock,
+    mock_db: AsyncMock,
+) -> None:
+    """No measurements should be written when mapper yields none."""
+    devices = [
+        {
+            "id": "device1",
+            "name": "Test Device",
+            "data": [
+                {"id": "UNKNOWN", "value": 1.0},
+            ],
+        }
+    ]
+
+    mock_client.get.return_value.json.return_value = {"items": devices}
+
+    await service.collect_and_store()
+
+    mock_db.write_measurements.assert_not_called()
 
 
 @pytest.mark.asyncio(scope="function")
