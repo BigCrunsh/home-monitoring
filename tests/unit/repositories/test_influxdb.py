@@ -129,3 +129,63 @@ async def test_write_measurements_error(
     # Act & Assert
     with pytest.raises(Exception, match="DB Error"):
         await repository.write_measurements(measurements)
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_get_latest_timestamp_string_timestamp(
+    mock_influxdb_client: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """get_latest_timestamp should handle ISO8601 string timestamps."""
+    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
+
+    iso_ts = "2025-11-22T17:38:04Z"
+    mock_influxdb_client.query.return_value = {
+        "results": [
+            {
+                "series": [
+                    {
+                        "values": [
+                            [iso_ts, 1.0],
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+
+    latest = await repository.get_latest_timestamp("test_measurement")
+
+    assert latest is not None
+    assert latest.tzinfo == UTC
+    assert latest == datetime(2025, 11, 22, 17, 38, 4, tzinfo=UTC)
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_get_latest_timestamp_epoch_seconds(
+    mock_influxdb_client: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """get_latest_timestamp should handle integer epoch timestamps in seconds."""
+    repository = InfluxDBRepository(settings=mock_settings, client=mock_influxdb_client)
+
+    epoch_seconds = 1_700_000_000
+    mock_influxdb_client.query.return_value = {
+        "results": [
+            {
+                "series": [
+                    {
+                        "values": [
+                            [epoch_seconds, 1.0],
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+
+    latest = await repository.get_latest_timestamp("test_measurement")
+
+    assert latest is not None
+    expected = datetime.fromtimestamp(epoch_seconds, tz=UTC)
+    assert latest == expected
