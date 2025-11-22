@@ -1,4 +1,5 @@
 """Tests for Gardena smart system service."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -38,9 +39,7 @@ def mock_smart_system() -> MagicMock:
             add_callback=MagicMock(),
         )
     }
-    location.find_device_by_type = MagicMock(
-        return_value=[location.devices["device1"]]
-    )
+    location.find_device_by_type = MagicMock(return_value=[location.devices["device1"]])
     system.locations = {"location1": location}
     system.authenticate = AsyncMock()
     system.update_locations = AsyncMock()
@@ -159,7 +158,9 @@ async def test_start_multiple_locations(
 
 
 @pytest.mark.asyncio(scope="function")
-async def test_stop_success(service: GardenaService, mock_smart_system: MagicMock) -> None:
+async def test_stop_success(
+    service: GardenaService, mock_smart_system: MagicMock
+) -> None:
     """Test successful service stop."""
     await service.stop()
 

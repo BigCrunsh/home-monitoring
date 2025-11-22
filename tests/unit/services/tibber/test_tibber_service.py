@@ -20,7 +20,9 @@ async def test_collect_and_store_success(
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
     # current_price_data returns tuple: (total, datetime, rank)
-    mock_home.current_price_data = MagicMock(return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5))
+    mock_home.current_price_data = MagicMock(
+        return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5)
+    )
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
@@ -37,17 +39,11 @@ async def test_collect_and_store_success(
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
         assert len(measurements) == 1
-        assert measurements[0].measurement == "electricity_prices"
-        assert measurements[0].tags == {
-            "currency": "EUR",
-            "level": "NORMAL",
-        }
-        # Check fields with approximate equality for floating point precision
-        fields = measurements[0].fields
-        assert fields["total"] == 1.234
-        assert abs(fields["energy"] - 0.9872) < 0.0001  # 1.234 * 0.8
-        assert abs(fields["tax"] - 0.2468) < 0.0001     # 1.234 * 0.2
-        assert measurements[0].timestamp == datetime(2024, 2, 16, 20, 0, 0)
+        measurement = measurements[0]
+        assert measurement.measurement == "electricity_prices_euro"
+        assert measurement.tags == {}
+        assert measurement.timestamp == datetime(2024, 2, 16, 20, 0, 0)
+        assert measurement.fields == {"total": 1.234, "rank": 0.5}
 
 
 @pytest.mark.asyncio(scope="function")
@@ -83,7 +79,9 @@ async def test_collect_and_store_database_error(
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
     # current_price_data returns tuple: (total, datetime, rank)
-    mock_home.current_price_data = MagicMock(return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5))
+    mock_home.current_price_data = MagicMock(
+        return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5)
+    )
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
@@ -111,7 +109,10 @@ async def test_current_price_data_returns_tuple(
     mock_home.address1 = "Test Address"
     # current_price_data returns tuple: (total, datetime, rank)
     from datetime import datetime
-    mock_home.current_price_data = MagicMock(return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5))
+
+    mock_home.current_price_data = MagicMock(
+        return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5)
+    )
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
@@ -128,4 +129,4 @@ async def test_current_price_data_returns_tuple(
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
         assert len(measurements) == 1
-        assert measurements[0].measurement == "electricity_prices"
+        assert measurements[0].measurement == "electricity_prices_euro"

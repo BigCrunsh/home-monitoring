@@ -14,26 +14,27 @@ class TankerkoenigMapper(BaseMapper):
     @staticmethod
     def to_measurements(
         timestamp: datetime,
-        prices: Mapping[str, Any],
-        stations: Mapping[str, Any],
+        data: Mapping[str, Any],
     ) -> list[Measurement]:
         """Map gas station data to InfluxDB points.
 
         Args:
             timestamp: Measurement timestamp
-            prices: Current prices for stations
-            stations: Station details
+            data: Combined Tankerkoenig data with 'prices' and 'stations' keys
 
         Returns:
             List of InfluxDB measurements
         """
         measurements = []
-        for station_id, price_data in prices.get("prices", {}).items():
+        prices = data.get("prices", {}) or {}
+        stations = data.get("stations", {}) or {}
+
+        for station_id, price_data in prices.items():
             if not price_data:
                 continue
 
             # Get station details
-            station = stations.get("stations", {}).get(station_id, {})
+            station = stations.get(station_id, {})
             if not station:
                 continue
 
@@ -42,18 +43,18 @@ class TankerkoenigMapper(BaseMapper):
                     measurement="gas_prices_euro",
                     tags={
                         "station_id": station_id,
-                        "name": station.get("name", "unknown"),
                         "brand": station.get("brand", "unknown"),
-                        "street": station.get("street", "unknown"),
                         "place": station.get("place", "unknown"),
-                        "postCode": str(station.get("postCode", "unknown")),
-                        "open": str(station.get("isOpen", False)),
+                        "street": station.get("street", "unknown"),
+                        "house_number": station.get("houseNumber", "unknown"),
+                        "lat": str(station.get("lat", "unknown")),
+                        "lng": str(station.get("lng", "unknown")),
                     },
                     timestamp=timestamp,
                     fields={
-                        "diesel": float(station.get("diesel", 0.0)),
-                        "e5": float(station.get("e5", 0.0)),
-                        "e10": float(station.get("e10", 0.0)),
+                        "e5": float(price_data.get("e5", 0.0)),
+                        "e10": float(price_data.get("e10", 0.0)),
+                        "diesel": float(price_data.get("diesel", 0.0)),
                     },
                 )
             )

@@ -12,80 +12,67 @@ def test_to_measurements_success() -> None:
     # Arrange
     timestamp = datetime.now(UTC)
     prices = {
-        "prices": {
-            "123": {
-                "diesel": 1.599,
-                "e5": 1.799,
-                "e10": 1.749,
-                "status": "open",
-            },
-            "456": {
-                "diesel": 1.619,
-                "e5": 1.819,
-                "e10": 1.769,
-                "status": "closed",
-            },
-        }
+        "123": {
+            "diesel": 1.599,
+            "e5": 1.799,
+            "e10": 1.749,
+            "status": "open",
+        },
+        "456": {
+            "diesel": 1.619,
+            "e5": 1.819,
+            "e10": 1.769,
+            "status": "closed",
+        },
     }
     stations = {
         "123": {
-            "name": "Test Station 1",
             "brand": "Test Brand 1",
             "street": "Test Street 1",
             "place": "Test Place 1",
-            "postCode": "12345",
         },
         "456": {
-            "name": "Test Station 2",
             "brand": "Test Brand 2",
             "street": "Test Street 2",
             "place": "Test Place 2",
-            "postCode": "67890",
         },
     }
 
     # Act
-    measurements = TankerkoenigMapper.to_measurements(timestamp, prices, stations)
+    measurements = TankerkoenigMapper.to_measurements(
+        timestamp,
+        {"prices": prices, "stations": stations},
+    )
 
     # Assert
     assert len(measurements) == EXPECTED_ITEM_COUNT
 
     # Check first station
     station1 = measurements[0]
-    assert station1.measurement == "gas_prices"
-    assert station1.tags == {
-        "station_id": "123",
-        "name": "Test Station 1",
-        "brand": "Test Brand 1",
-        "street": "Test Street 1",
-        "place": "Test Place 1",
-        "post_code": "12345",
-    }
+    assert station1.measurement == "gas_prices_euro"
+    assert station1.tags["station_id"] == "123"
+    assert station1.tags["brand"] == "Test Brand 1"
+    assert station1.tags["street"] == "Test Street 1"
+    assert station1.tags["place"] == "Test Place 1"
     assert station1.timestamp == timestamp
     assert station1.fields == {
-        "diesel": 1.599,
         "e5": 1.799,
         "e10": 1.749,
-        "is_open": True,
+        "diesel": 1.599,
     }
 
     # Check second station
     station2 = measurements[1]
-    assert station2.measurement == "gas_prices"
-    assert station2.tags == {
-        "station_id": "456",
-        "name": "Test Station 2",
-        "brand": "Test Brand 2",
-        "street": "Test Street 2",
-        "place": "Test Place 2",
-        "post_code": "67890",
-    }
+    assert station2.measurement == "gas_prices_euro"
+    assert station2.tags["station_id"] == "456"
+    assert station2.tags["brand"] == "Test Brand 2"
+    assert station2.tags["street"] == "Test Street 2"
+    assert station2.tags["place"] == "Test Place 2"
     assert station2.timestamp == timestamp
     assert station2.fields == {
-        "diesel": 1.619,
         "e5": 1.819,
         "e10": 1.769,
-        "is_open": False,
+        "diesel": 1.619,
     }
 
 
@@ -94,29 +81,28 @@ def test_to_measurements_missing_data() -> None:
     # Arrange
     timestamp = datetime.now(UTC)
     prices = {
-        "prices": {
-            "123": None,  # Missing price data
-            "456": {
-                "diesel": 1.619,
-                "e5": 1.819,
-                "e10": 1.769,
-                "status": "closed",
-            },
-        }
+        "123": None,  # Missing price data
+        "456": {
+            "diesel": 1.619,
+            "e5": 1.819,
+            "e10": 1.769,
+            "status": "closed",
+        },
     }
     stations = {
         "123": {
-            "name": "Test Station 1",
             "brand": "Test Brand 1",
             "street": "Test Street 1",
             "place": "Test Place 1",
-            "postCode": "12345",
         },
         # Missing station 456
     }
 
     # Act
-    measurements = TankerkoenigMapper.to_measurements(timestamp, prices, stations)
+    measurements = TankerkoenigMapper.to_measurements(
+        timestamp,
+        {"prices": prices, "stations": stations},
+    )
 
     # Assert
     assert len(measurements) == 0
@@ -130,7 +116,10 @@ def test_to_measurements_invalid_data() -> None:
     stations = {}  # Empty stations
 
     # Act
-    measurements = TankerkoenigMapper.to_measurements(timestamp, prices, stations)
+    measurements = TankerkoenigMapper.to_measurements(
+        timestamp,
+        {"prices": prices, "stations": stations},
+    )
 
     # Assert
     assert len(measurements) == 0

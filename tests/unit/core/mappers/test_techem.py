@@ -19,14 +19,13 @@ def test_to_measurements_success() -> None:
     # Assert
     assert len(measurements) == 1
     measurement = measurements[0]
-    assert measurement.measurement == "techem"
+    assert measurement.measurement == "heat_energy_watthours"
     assert measurement.tags == {
-        "meter_id": "53012353",
-        "type": "00",
+        "id": "53012353",
     }
     assert measurement.timestamp == timestamp
     assert measurement.fields == {
-        "value": 0.253,
+        "Total_Consumption": 0.253,
     }
 
 

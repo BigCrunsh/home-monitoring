@@ -4,6 +4,7 @@
 import asyncio
 import os
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # Add src to path so we can import our modules
@@ -30,9 +31,11 @@ async def main():
         print("  export SOLAREDGE_SITE_ID='your_site_id'")
         return 1
     
-    print(f"🔧 Testing SolarEdge data collection...")
+    print("🔧 Testing SolarEdge data collection...")
     print(f"   Site ID: {site_id}")
     print(f"   API Key: {api_key[:8]}...")
+    
+    now = datetime.now(UTC)
     
     try:
         # Create service with debug logging
@@ -44,26 +47,55 @@ async def main():
         
         service = SolarEdgeService(settings=settings)
         
-        print("\n🚀 Starting data collection...")
-        await service.collect_and_store()
+        print("\n🚀 Starting detailed energy collection (energyDetails)...")
+        energy_start = now - timedelta(days=30)
+        await service.collect_and_store_energy_details(
+            start_time=energy_start,
+            end_time=now,
+            time_unit="WEEK",
+            meters=[
+                "PRODUCTION",
+                "CONSUMPTION",
+                "SELFCONSUMPTION",
+                "FEEDIN",
+                "PURCHASED",
+            ],
+        )
+
+        print("\n🚀 Starting detailed power collection (powerDetails)...")
+        power_start = now - timedelta(hours=1)
+        await service.collect_and_store_power_details(
+            start_time=power_start,
+            end_time=now,
+            meters=[
+                "PRODUCTION",
+                "CONSUMPTION",
+                "SELFCONSUMPTION",
+                "FEEDIN",
+                "PURCHASED",
+            ],
+        )
         
         print("\n✅ Data collection completed successfully!")
         print("\n📊 Expected measurements in InfluxDB:")
-        print("   - Measurement name: 'solaredge'")
-        print("   - Overview type with fields:")
-        print("     * lifetime_energy, last_year_energy, last_month_energy")
-        print("     * last_day_energy, current_power")
-        print("   - Power flow type with fields:")
-        print("     * grid_power, load_power, pv_power")
-        print("\n💡 To query in InfluxDB:")
-        print("   SELECT * FROM solaredge WHERE type='power_flow' ORDER BY time DESC LIMIT 10")
-        print("   SELECT current_power FROM solaredge WHERE type='overview' ORDER BY time DESC LIMIT 10")
+        print("   - 'electricity_energy_watthour' with fields:")
+        print("     * Production, Consumption, FeedIn, Purchased, SelfConsumption")
+        print("   - 'electricity_power_watt' with fields:")
+        print("     * Production, Consumption, FeedIn, Purchased, SelfConsumption")
+        print("\n💡 Example InfluxDB queries:")
+        print(
+            "   SELECT SUM(Consumption) FROM electricity_energy_watthour "
+            "WHERE time >= now() - 30d GROUP BY time(1w)"
+        )
+        print(
+            "   SELECT LAST(Production) FROM electricity_power_watt "
+            "WHERE time >= now() - 1h"
+        )
         
         return 0
         
     except ValueError as e:
         print(f"❌ Configuration error: {e}")
-        return 1
     except Exception as e:
         print(f"❌ Data collection failed: {e}")
         print(f"   Error type: {type(e).__name__}")

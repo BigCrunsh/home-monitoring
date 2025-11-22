@@ -87,7 +87,7 @@ async def test_collect_and_store_success(
     mock_influxdb.write_measurements.assert_called_once()
     measurements = mock_influxdb.write_measurements.call_args[0][0]
     assert len(measurements) == 1
-    assert measurements[0].measurement == "gas_prices"
+    assert measurements[0].measurement == "gas_prices_euro"
     assert measurements[0].tags["station_id"] == TEST_STATION_ID
     assert measurements[0].fields["diesel"] == TEST_DIESEL_PRICE
 
@@ -297,7 +297,6 @@ async def test_collect_and_store_integer_postcode(
     mock_influxdb.write_measurements.assert_called_once()
     measurements = mock_influxdb.write_measurements.call_args[0][0]
     assert len(measurements) == 1
-    assert measurements[0].measurement == "gas_prices"
+    assert measurements[0].measurement == "gas_prices_euro"
     assert measurements[0].tags["station_id"] == TEST_STATION_ID
-    assert measurements[0].tags["post_code"] == "20535"  # Should be converted to string
     assert measurements[0].fields["diesel"] == TEST_DIESEL_PRICE
