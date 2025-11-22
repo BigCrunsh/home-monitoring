@@ -112,6 +112,7 @@ PYTHONPATH=src python -m home_monitoring.scripts.collect_solaredge_data
 PYTHONPATH=src python -m home_monitoring.scripts.collect_gardena_data
 PYTHONPATH=src python -m home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /path/to/cache
 PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_sam_digital_data
 PYTHONPATH=src python -m home_monitoring.scripts.collect_techem_data --serial-port /dev/ttyUSB0
 
 # DNS Updates
@@ -146,6 +147,7 @@ Then your crontab becomes much cleaner:
 */5 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /home/pi/src/github.com/BigCrunsh/home-monitoring/cache >> /var/log/home_monitoring/tankerkoenig.log 2>&1
 */30 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_gardena_data >> /var/log/home_monitoring/gardena.log 2>&1
 */15 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_tibber_data >> /var/log/home_monitoring/tibber.log 2>&1
+*/15 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_sam_digital_data >> /var/log/home_monitoring/sam_digital.log 2>&1
 0 1 * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_techem_data >> /var/log/home_monitoring/techem.log 2>&1
 
 # Update DNS every hour
