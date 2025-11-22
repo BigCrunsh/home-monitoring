@@ -79,6 +79,11 @@ class SamDigitalService:
             )
             raise APIError("Invalid Sam Digital API response format")
 
+        self._logger.info(
+            "sam_digital_devices_received",
+            device_count=len(items),
+        )
+
         return items
 
     async def collect_and_store(self) -> None:
@@ -89,8 +94,17 @@ class SamDigitalService:
         timestamp = datetime.now(UTC)
         measurements = SamDigitalMapper.to_measurements(timestamp, devices)
 
+        self._logger.info(
+            "sam_digital_mapping_result",
+            device_count=len(devices),
+            measurement_count=len(measurements),
+        )
+
         if not measurements:
-            self._logger.warning("no_sam_digital_measurements_created")
+            self._logger.warning(
+                "no_sam_digital_measurements_created",
+                device_count=len(devices),
+            )
             return
 
         try:
