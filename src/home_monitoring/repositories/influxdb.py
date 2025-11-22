@@ -11,6 +11,10 @@ from home_monitoring.models.base import Measurement
 from home_monitoring.utils.logging import get_logger
 from structlog.stdlib import BoundLogger
 
+EPOCH_DIGITS_NS = 19
+EPOCH_DIGITS_US = 16
+EPOCH_DIGITS_MS = 13
+
 
 class InfluxDBRepository:
     """Repository for InfluxDB operations."""
@@ -86,16 +90,16 @@ class InfluxDBRepository:
                 return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
 
             # Integer/float epoch timestamp (ns/us/ms/s)
-            if isinstance(raw_time, (int, float)):
+            if isinstance(raw_time, int | float):
                 epoch = int(raw_time)
                 digits = len(str(abs(epoch)))
 
                 # Heuristic based on digit count
-                if digits >= 19:  # nanoseconds
+                if digits >= EPOCH_DIGITS_NS:  # nanoseconds
                     seconds = epoch / 1_000_000_000
-                elif digits >= 16:  # microseconds
+                elif digits >= EPOCH_DIGITS_US:  # microseconds
                     seconds = epoch / 1_000_000
-                elif digits >= 13:  # milliseconds
+                elif digits >= EPOCH_DIGITS_MS:  # milliseconds
                     seconds = epoch / 1_000
                 else:  # seconds
                     seconds = float(epoch)

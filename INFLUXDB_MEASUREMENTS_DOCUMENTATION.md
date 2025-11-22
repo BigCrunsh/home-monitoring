@@ -144,6 +144,46 @@ This document provides comprehensive documentation of all InfluxDB measurements 
   - `id`: Meter ID
 - **Update Frequency**: Every 4 hours
 
+#### `heat_outdoor_temperature_celsius`
+- **Source**: Sam Digital reader (sam-digital.net)
+- **Description**: Outdoor temperature (Außentemperatur AF1)
+- **Fields**:
+  - `temperature`: Temperature (°C)
+- **Tags**:
+  - `id`: Sam Digital datapoint identifier (e.g. MBR_10)
+  - `label`: Human-readable label from Sam Digital
+- **Update Frequency**: Depends on scheduler
+
+#### `heat_return_temperature_celsius`
+- **Source**: Sam Digital reader (sam-digital.net)
+- **Description**: Return flow temperature (Rücklauftemperatur RüF2)
+- **Fields**:
+  - `temperature`: Temperature (°C)
+- **Tags**:
+  - `id`: Sam Digital datapoint identifier (e.g. MBR_18)
+  - `label`: Human-readable label from Sam Digital
+- **Update Frequency**: Depends on scheduler
+
+#### `heat_storage_temperature_celsius`
+- **Source**: Sam Digital reader (sam-digital.net)
+- **Description**: Storage tank temperature (Speichertemperatur SF1)
+- **Fields**:
+  - `temperature`: Temperature (°C)
+- **Tags**:
+  - `id`: Sam Digital datapoint identifier (e.g. MBR_23)
+  - `label`: Human-readable label from Sam Digital
+- **Update Frequency**: Depends on scheduler
+
+#### `heat_valve_signal_percentage`
+- **Source**: Sam Digital reader (sam-digital.net)
+- **Description**: Control valve signal (Stellsignal HK2)
+- **Fields**:
+  - `signal`: Valve control signal (%)
+- **Tags**:
+  - `id`: Sam Digital datapoint identifier (e.g. MBR_109)
+  - `label`: Human-readable label from Sam Digital
+- **Update Frequency**: Depends on scheduler
+
 ### 5. Weather
 
 #### `weather_co2_ppm`
