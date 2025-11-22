@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from aioinflux import InfluxDBClient as BaseInfluxDBClient
@@ -60,7 +60,7 @@ class InfluxDBRepository:
         Returns:
             Latest timestamp or None if no data exists
         """
-        query = f"SELECT * from {measurement} ORDER BY DESC LIMIT 1"
+        query = f"SELECT * from {measurement} ORDER BY time DESC LIMIT 1"
         try:
             result = await self._client.query(query)
             if not result:
@@ -70,7 +70,45 @@ class InfluxDBRepository:
             if not points:
                 return None
 
-            return datetime.fromisoformat(points[0][0].rstrip("Z"))
+            raw_time = points[0][0]
+
+            # InfluxDB may return the timestamp either as an ISO8601 string
+            # (e.g. "2025-11-22T17:38:04Z") or as an integer epoch value.
+            # Handle both cases and always return a timezone-aware UTC
+            # datetime so callers can safely compare it with other UTC times.
+
+            # String timestamp (RFC3339/ISO8601)
+            if isinstance(raw_time, str):
+                value = raw_time
+                if value.endswith("Z"):
+                    value = value.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(value)
+                return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+            # Integer/float epoch timestamp (ns/us/ms/s)
+            if isinstance(raw_time, (int, float)):
+                epoch = int(raw_time)
+                digits = len(str(abs(epoch)))
+
+                # Heuristic based on digit count
+                if digits >= 19:  # nanoseconds
+                    seconds = epoch / 1_000_000_000
+                elif digits >= 16:  # microseconds
+                    seconds = epoch / 1_000_000
+                elif digits >= 13:  # milliseconds
+                    seconds = epoch / 1_000
+                else:  # seconds
+                    seconds = float(epoch)
+
+                return datetime.fromtimestamp(seconds, tz=UTC)
+
+            self._logger.error(
+                "unexpected_timestamp_type",
+                measurement=measurement,
+                raw_time=raw_time,
+                raw_type=type(raw_time).__name__,
+            )
+            return None
         except Exception as e:
             self._logger.error(
                 "failed_to_get_latest_timestamp",
