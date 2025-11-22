@@ -90,9 +90,11 @@ class TankerkoenigService:
 
             # Map to InfluxDB measurements
             timestamp = datetime.now(UTC)
-            measurements = TankerkoenigMapper.to_measurements(
-                timestamp, prices_response, stations_response
-            )
+            combined_data = {
+                "prices": prices_response.get("prices", {}),
+                "stations": stations_response.get("stations", {}),
+            }
+            measurements = TankerkoenigMapper.to_measurements(timestamp, combined_data)
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)

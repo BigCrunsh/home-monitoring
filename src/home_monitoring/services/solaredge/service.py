@@ -39,135 +39,212 @@ class SolarEdgeService:
                 "and SOLAREDGE_SITE_ID environment variables."
             )
 
-    async def collect_and_store(self) -> None:
-        """Collect current data from SolarEdge and store in InfluxDB."""
+    async def _get_energy_details(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        time_unit: str,
+        meters: list[str] | None = None,
+    ) -> dict:
+        """Get detailed energy data from SolarEdge energyDetails API.
+
+        Args:
+            start_time: Start of the interval to query.
+            end_time: End of the interval to query.
+            time_unit: Requested time unit (e.g. DAY, WEEK, HOUR).
+            meters: Optional list of meter types to request.
+
+        Returns:
+            Energy details response data.
+
+        Raises:
+            APIError: If the API request fails or response format is invalid.
+        """
+        url = (
+            "https://monitoringapi.solaredge.com/site/"
+            f"{self._settings.solaredge_site_id}/energyDetails"
+        )
+        params: dict[str, str] = {
+            "api_key": self._settings.solaredge_api_key,
+            "timeUnit": time_unit,
+            "startTime": start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "endTime": end_time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        if meters:
+            params["meters"] = ",".join(meters)
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                if "energyDetails" not in data:
+                    raise APIError("Invalid response format")
+                return data
+        except Exception as e:
+            self._logger.error(
+                "solaredge_api_request_failed",
+                endpoint="energy_details",
+                error=str(e),
+            )
+            raise APIError("SolarEdge API request failed") from e
+
+    async def collect_and_store_energy_details(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        time_unit: str,
+        meters: list[str] | None = None,
+    ) -> None:
+        """Collect energy details from SolarEdge and store in InfluxDB.
+
+        This uses the /energyDetails endpoint to retrieve detailed energy
+        data for the requested meters and writes them as
+        electricity_energy_watthour measurements with fields FeedIn,
+        SelfConsumption, Purchased, Consumption, and Production.
+        """
         self._logger.info(
-            "collecting_solaredge_data", site_id=self._settings.solaredge_site_id
+            "collecting_solaredge_energy_details",
+            site_id=self._settings.solaredge_site_id,
+            start_time=start_time,
+            end_time=end_time,
+            time_unit=time_unit,
+            meters=meters,
         )
 
         try:
-            # Get current data
-            self._logger.debug("fetching_overview_data")
-            overview = await self._get_overview()
-            self._logger.debug(
-                "overview_data_received",
-                has_overview=bool(overview.get("overview")),
-                overview_keys=(
-                    list(overview.get("overview", {}).keys())
-                    if overview.get("overview")
-                    else []
-                ),
+            energy_details = await self._get_energy_details(
+                start_time,
+                end_time,
+                time_unit,
+                meters,
             )
-
-            self._logger.debug("fetching_power_flow_data")
-            power_flow = await self._get_power_flow()
-            self._logger.debug(
-                "power_flow_data_received",
-                has_power_flow=bool(power_flow.get("siteCurrentPowerFlow")),
-                power_flow_keys=(
-                    list(power_flow.get("siteCurrentPowerFlow", {}).keys())
-                    if power_flow.get("siteCurrentPowerFlow")
-                    else []
-                ),
-            )
-
-            # Map to InfluxDB measurements
-            timestamp = datetime.now(UTC)
             measurements = SolarEdgeMapper.to_measurements(
-                timestamp, overview, power_flow
+                datetime.now(UTC),
+                energy_details,
+                site_id=str(self._settings.solaredge_site_id),
             )
 
             self._logger.info(
-                "measurements_created",
+                "energy_details_measurements_created",
                 measurement_count=len(measurements),
-                measurement_names=[m.measurement for m in measurements],
-                measurement_types=[m.tags.get("type") for m in measurements],
             )
 
-            # Log detailed measurement info for debugging
-            for i, measurement in enumerate(measurements):
-                self._logger.debug(
-                    f"measurement_{i+1}_details",
-                    name=measurement.measurement,
-                    tags=measurement.tags,
-                    fields=list(measurement.fields.keys()),
-                    field_values={k: v for k, v in measurement.fields.items()},
-                )
+            if not measurements:
+                return
 
-            # Store in InfluxDB
             await self._db.write_measurements(measurements)
             self._logger.info(
-                "solaredge_data_stored",
+                "solaredge_energy_details_stored",
                 point_count=len(measurements),
                 site_id=self._settings.solaredge_site_id,
             )
         except Exception as e:
             self._logger.error(
-                "solaredge_data_collection_failed",
+                "solaredge_energy_details_collection_failed",
                 error=str(e),
                 error_type=type(e).__name__,
                 site_id=self._settings.solaredge_site_id,
             )
             raise
 
-    async def _get_overview(self) -> dict:
-        """Get current overview data from SolarEdge API.
+
+    async def _get_power_details(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        meters: list[str] | None = None,
+    ) -> dict:
+        """Get detailed power data from SolarEdge powerDetails API.
+
+        Args:
+            start_time: Start of the interval to query.
+            end_time: End of the interval to query.
+            meters: Optional list of meter types to request.
 
         Returns:
-            Overview data response
+            Power details response data.
 
         Raises:
-            APIError: If the API request fails or response format is invalid
+            APIError: If the API request fails or response format is invalid.
         """
         url = (
             "https://monitoringapi.solaredge.com/site/"
-            f"{self._settings.solaredge_site_id}/overview"
+            f"{self._settings.solaredge_site_id}/powerDetails"
         )
-        params = {"api_key": self._settings.solaredge_api_key}
+        params: dict[str, str] = {
+            "api_key": self._settings.solaredge_api_key,
+            "startTime": start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "endTime": end_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "timeUnit": "QUARTER_OF_AN_HOUR",
+        }
+        if meters:
+            params["meters"] = ",".join(meters)
 
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
                 response.raise_for_status()
                 data = response.json()
-                if "overview" not in data:
+                if "powerDetails" not in data:
                     raise APIError("Invalid response format")
                 return data
         except Exception as e:
             self._logger.error(
                 "solaredge_api_request_failed",
-                endpoint="overview",
+                endpoint="power_details",
                 error=str(e),
             )
             raise APIError("SolarEdge API request failed") from e
 
-    async def _get_power_flow(self) -> dict:
-        """Get current power flow data from SolarEdge API.
+    async def collect_and_store_power_details(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        meters: list[str] | None = None,
+    ) -> None:
+        """Collect power details from SolarEdge and store in InfluxDB.
 
-        Returns:
-            Power flow data response
-
-        Raises:
-            APIError: If the API request fails or response format is invalid
+        This uses the /powerDetails endpoint to retrieve quarter-hour
+        resolution power data for the requested meters and writes them as
+        electricity_power_watt measurements with fields FeedIn,
+        SelfConsumption, Purchased, Consumption, and Production.
         """
-        url = (
-            "https://monitoringapi.solaredge.com/site/"
-            f"{self._settings.solaredge_site_id}/currentPowerFlow"
+        self._logger.info(
+            "collecting_solaredge_power_details",
+            site_id=self._settings.solaredge_site_id,
+            start_time=start_time,
+            end_time=end_time,
+            meters=meters,
         )
-        params = {"api_key": self._settings.solaredge_api_key}
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, params=params)
-                response.raise_for_status()
-                data = response.json()
-                if "siteCurrentPowerFlow" not in data:
-                    raise APIError("Invalid response format")
-                return data
+            power_details = await self._get_power_details(start_time, end_time, meters)
+            measurements = SolarEdgeMapper.to_measurements(
+                datetime.now(UTC),
+                power_details,
+                site_id=str(self._settings.solaredge_site_id),
+            )
+
+            self._logger.info(
+                "power_details_measurements_created",
+                measurement_count=len(measurements),
+            )
+
+            if not measurements:
+                return
+
+            await self._db.write_measurements(measurements)
+            self._logger.info(
+                "solaredge_power_details_stored",
+                point_count=len(measurements),
+                site_id=self._settings.solaredge_site_id,
+            )
         except Exception as e:
             self._logger.error(
-                "solaredge_api_request_failed",
-                endpoint="power_flow",
+                "solaredge_power_details_collection_failed",
                 error=str(e),
+                error_type=type(e).__name__,
+                site_id=self._settings.solaredge_site_id,
             )
-            raise APIError("SolarEdge API request failed") from e
+            raise

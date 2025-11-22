@@ -3,45 +3,37 @@
 ## Overview
 This document provides comprehensive documentation of all InfluxDB measurements produced by the Home Monitoring system.
 
-## Complete Measurement Catalog (23 measurements)
+## Complete Measurement Catalog
 
-### 1. Electricity & Energy (4 measurements)
+### 1. Electricity & Energy
 
 #### `electricity_energy_watthour`
-- **Source**: SolarEdge API
-- **Description**: Solar energy production and consumption totals
+- **Source**: SolarEdge API (`/site/{siteId}/energyDetails`)
+- **Description**: Detailed solar energy per meter (production, consumption, feed-in, purchase, self-consumption)
 - **Fields**: 
   - `Consumption`: Energy consumed (Wh)
-  - `Production`: Energy produced (Wh) 
+  - `Production`: Energy produced (Wh)
+  - `FeedIn`: Energy exported to the grid (Wh)
+  - `Purchased`: Energy imported from the grid (Wh)
   - `SelfConsumption`: Self-consumed energy (Wh)
 - **Tags**: 
   - `site_id`: SolarEdge site identifier
-  - `period`: daily/monthly/yearly
-- **Update Frequency**: Daily
+- **Update Frequency**: Depends on configured `timeUnit` (DAY/WEEK/HOUR/etc.) and scheduler
 
 #### `electricity_power_watt`
-- **Source**: SolarEdge API
-- **Description**: Real-time power measurements
+- **Source**: SolarEdge API (`/site/{siteId}/powerDetails`)
+- **Description**: Detailed real-time power per meter (production, consumption, feed-in, purchase, self-consumption)
 - **Fields**:
-  - `grid_power`: Grid power (W, positive=consuming, negative=producing)
-  - `load_power`: Load power consumption (W)
-  - `pv_power`: Photovoltaic power generation (W)
+  - `Consumption`: Power consumed (W)
+  - `Production`: Power produced (W)
+  - `FeedIn`: Power exported to the grid (W)
+  - `Purchased`: Power imported from the grid (W)
+  - `SelfConsumption`: Self-consumed power (W)
 - **Tags**:
-  - `source`: grid/pv/load
   - `site_id`: SolarEdge site identifier
-- **Update Frequency**: Every 15 minutes
+- **Update Frequency**: Depends on scheduler; typically every 15 minutes for detailed power
 
-#### `electricity_prices`
-- **Source**: Tibber API
-- **Description**: Electricity prices in original currency
-- **Fields**:
-  - `total`: Total price including taxes
-  - `rank`: Price ranking (0.0-1.0, where 0.0 is cheapest)
-- **Tags**:
-  - `currency`: Price currency (NOK, SEK, etc.)
-- **Update Frequency**: Hourly
-
-#### `energy_prices_euro`
+#### `electricity_prices_euro`
 - **Source**: Tibber API
 - **Description**: Electricity prices in EUR
 - **Fields**:
@@ -50,7 +42,7 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 - **Tags**: None
 - **Update Frequency**: Hourly
 
-### 2. Garden & Irrigation (6 measurements)
+### 2. Garden & Irrigation
 
 #### `garden_humidity_percentage`
 - **Source**: Gardena Smart System API
@@ -120,11 +112,9 @@ This document provides comprehensive documentation of all InfluxDB measurements 
   - `name`: Control name
   - `id`: Control ID
   - `type`: Control type
-  - `valve_name`: Valve name
-  - `valve_id`: Valve ID
 - **Update Frequency**: Every 6 hours
 
-### 3. Fuel Prices (1 measurement)
+### 3. Fuel Prices
 
 #### `gas_prices_euro`
 - **Source**: TankerKoenig API
@@ -143,7 +133,7 @@ This document provides comprehensive documentation of all InfluxDB measurements 
   - `station_id`: Station identifier
 - **Update Frequency**: Every 30 minutes
 
-### 4. Heating (1 measurement)
+### 4. Heating
 
 #### `heat_energy_watthours`
 - **Source**: Techem Energy Meter (wireless M-Bus)
@@ -154,7 +144,7 @@ This document provides comprehensive documentation of all InfluxDB measurements 
   - `id`: Meter ID
 - **Update Frequency**: Every 4 hours
 
-### 5. Weather (11 measurements)
+### 5. Weather
 
 #### `weather_co2_ppm`
 - **Source**: Netatmo Weather Station

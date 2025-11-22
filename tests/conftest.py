@@ -40,8 +40,6 @@ def mock_settings() -> Settings:
     )
 
 
-
-
 @pytest.fixture
 def mock_influxdb_client() -> AsyncMock:
     """Mock InfluxDB client."""

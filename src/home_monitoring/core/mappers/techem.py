@@ -89,12 +89,11 @@ class TechemMapper(BaseMapper):
                     Measurement(
                         measurement="heat_energy_watthours",
                         tags={
-                            "meter_id": meter_id,
-                            "type": media_type,
+                            "id": meter_id,
                         },
                         timestamp=timestamp,
                         fields={
-                            "energy": value,
+                            "Total_Consumption": value,
                         },
                     )
                 )

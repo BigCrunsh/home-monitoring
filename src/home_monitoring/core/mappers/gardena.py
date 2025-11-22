@@ -30,27 +30,35 @@ class GardenaMapper(BaseMapper):
 
         # Common tags for all device types
         base_tags = {
-            "device_id": device.id,
+            "id": device.id,
             "name": device.name,
             "type": device.type,
         }
 
         if device.type == "SMART_IRRIGATION_CONTROL":
             # Valve activity measurement
+            # Map state to 0/1 (inactive/active)
+            state_value = 1 if device.state == "active" else 0
             measurements.append(
                 Measurement(
                     measurement="garden_valves_activity",
-                    tags=base_tags,
+                    tags={
+                        **base_tags,
+                        "activity": (
+                            device.activity
+                            if hasattr(device, "activity")
+                            else "UNKNOWN"
+                        ),
+                    },
                     timestamp=timestamp,
                     fields={
-                        "state": device.state,
-                        "activity": device.activity,
+                        "state": state_value,
                     },
                 )
             )
 
         elif device.type == "SENSOR":
-            # Temperature measurement
+            # Ambient temperature measurement
             if (
                 hasattr(device, "ambient_temperature")
                 and device.ambient_temperature is not None
@@ -58,7 +66,10 @@ class GardenaMapper(BaseMapper):
                 measurements.append(
                     Measurement(
                         measurement="garden_temperature_celsius",
-                        tags=base_tags,
+                        tags={
+                            **base_tags,
+                            "environment": "ambient",
+                        },
                         timestamp=timestamp,
                         fields={"temperature": float(device.ambient_temperature)},
                     )
@@ -69,7 +80,10 @@ class GardenaMapper(BaseMapper):
                 measurements.append(
                     Measurement(
                         measurement="garden_humidity_percentage",
-                        tags=base_tags,
+                        tags={
+                            **base_tags,
+                            "environment": "soil",
+                        },
                         timestamp=timestamp,
                         fields={"humidity": float(device.soil_humidity)},
                     )
@@ -120,7 +134,11 @@ class GardenaMapper(BaseMapper):
                 measurements.append(
                     Measurement(
                         measurement="garden_temperature_celsius",
-                        tags={**base_tags, "sensor_type": "soil"},
+                        tags={
+                            **base_tags,
+                            "environment": "soil",
+                            "sensor_type": "soil",
+                        },
                         timestamp=timestamp,
                         fields={"temperature": float(device.soil_temperature)},
                     )
@@ -131,7 +149,10 @@ class GardenaMapper(BaseMapper):
                 measurements.append(
                     Measurement(
                         measurement="garden_humidity_percentage",
-                        tags={**base_tags, "sensor_type": "soil"},
+                        tags={
+                            **base_tags,
+                            "environment": "soil",
+                        },
                         timestamp=timestamp,
                         fields={"humidity": float(device.soil_humidity)},
                     )

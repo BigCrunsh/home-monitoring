@@ -4,144 +4,193 @@ from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 
-from tests.unit.core.mappers.constants import (
-    EXPECTED_POINT_COUNT,
-    SOLAREDGE_GRID_POWER,
-    SOLAREDGE_POWER,
-    ZERO,
-)
+EXPECTED_POWER_DETAIL_POINTS = 2
 
 
-def test_to_measurements_success() -> None:
-    """Test successful mapping of valid data."""
-    # Arrange
-    timestamp = datetime.now(UTC)
-    overview = {
-        "overview": {
-            "lastUpdateTime": "2024-02-16 20:00:00",
-            "lifeTimeData": {"energy": SOLAREDGE_POWER},
-            "lastYearData": {"energy": 1000000.0},
-            "lastMonthData": {"energy": 300000.0},
-            "lastDayData": {"energy": 10000.0},
-            "currentPower": {"power": 1500.0},
-        }
-    }
-    power_flow = {
-        "siteCurrentPowerFlow": {
+def test_power_details_to_measurements_success() -> None:
+    """Test successful mapping of powerDetails data."""
+    power_details = {
+        "powerDetails": {
+            "timeUnit": "QUARTER_OF_AN_HOUR",
             "unit": "W",
-            "connections": [],
-            "grid": {"currentPower": SOLAREDGE_GRID_POWER},
-            "load": {"currentPower": 1600.0},
-            "pv": {"currentPower": 1500.0},
+            "meters": [
+                {
+                    "type": "Consumption",
+                    "values": [
+                        {"date": "2015-11-21 11:00:00", "value": 619.8288},
+                        {"date": "2015-11-21 11:15:00", "value": 474.87576},
+                    ],
+                },
+                {
+                    "type": "Purchased",
+                    "values": [
+                        {"date": "2015-11-21 11:00:00", "value": 619.8288},
+                        {"date": "2015-11-21 11:15:00", "value": 474.87576},
+                    ],
+                },
+                {
+                    "type": "Production",
+                    "values": [
+                        {"date": "2015-11-21 11:00:00", "value": 0},
+                        {"date": "2015-11-21 11:15:00", "value": 0},
+                    ],
+                },
+                {
+                    "type": "SelfConsumption",
+                    "values": [
+                        {"date": "2015-11-21 11:00:00", "value": 0},
+                        {"date": "2015-11-21 11:15:00", "value": 0},
+                    ],
+                },
+                {
+                    "type": "FeedIn",
+                    "values": [
+                        {"date": "2015-11-21 11:00:00", "value": 0},
+                        {"date": "2015-11-21 11:15:00", "value": 0},
+                    ],
+                },
+            ],
         }
     }
 
-    # Act
-    points = SolarEdgeMapper.to_measurements(timestamp, overview, power_flow)
+    points = SolarEdgeMapper.to_measurements(
+        datetime.now(UTC),
+        power_details,
+        site_id="1",
+    )
 
-    # Assert
-    assert len(points) == EXPECTED_POINT_COUNT
+    assert len(points) == EXPECTED_POWER_DETAIL_POINTS
 
-    # Check overview point
-    overview_point = points[0]
-    assert overview_point.measurement == "solaredge"
-    assert overview_point.tags["type"] == "overview"
-    assert overview_point.timestamp == timestamp
-    assert overview_point.fields == {
-        "lifetime_energy": SOLAREDGE_POWER,
-        "last_year_energy": 1000000.0,
-        "last_month_energy": 300000.0,
-        "last_day_energy": 10000.0,
-        "current_power": 1500.0,
-    }
-
-    # Check power flow point
-    power_point = points[1]
-    assert power_point.measurement == "solaredge"
-    assert power_point.tags["type"] == "power_flow"
-    assert power_point.tags["unit"] == "W"
-    assert power_point.timestamp == timestamp
-    assert power_point.fields == {
-        "grid_power": SOLAREDGE_GRID_POWER,
-        "load_power": 1600.0,
-        "pv_power": 1500.0,
+    first = points[0]
+    assert first.measurement == "electricity_power_watt"
+    assert first.tags["site_id"] == "1"
+    assert first.timestamp == datetime(2015, 11, 21, 11, 0, 0)
+    assert first.fields == {
+        "FeedIn": 0.0,
+        "SelfConsumption": 0.0,
+        "Purchased": 619.8288,
+        "Consumption": 619.8288,
+        "Production": 0.0,
     }
 
 
-def test_to_measurements_missing_overview() -> None:
-    """Test handling of missing overview data."""
-    # Arrange
-    timestamp = datetime.now(UTC)
-    overview = {}
-    power_flow = {
-        "siteCurrentPowerFlow": {
-            "unit": "W",
-            "connections": [],
-            "grid": {"currentPower": SOLAREDGE_GRID_POWER},
-            "load": {"currentPower": 1600.0},
-            "pv": {"currentPower": 1500.0},
+def test_power_details_to_measurements_missing_root() -> None:
+    """Test handling of missing powerDetails root element."""
+    power_details: dict = {}
+
+    points = SolarEdgeMapper.to_measurements(
+        datetime.now(UTC),
+        power_details,
+        site_id="1",
+    )
+
+    assert points == []
+
+
+def test_energy_details_to_measurements_success() -> None:
+    """Test successful mapping of energyDetails data."""
+    energy_details = {
+        "energyDetails": {
+            "timeUnit": "WEEK",
+            "unit": "Wh",
+            "meters": [
+                {
+                    "type": "Production",
+                    "values": [
+                        {"date": "2015-11-16 00:00:00", "value": 2953},
+                    ],
+                },
+                {
+                    "type": "Consumption",
+                    "values": [
+                        {"date": "2015-11-16 00:00:00", "value": 29885},
+                    ],
+                },
+            ],
         }
     }
 
-    # Act
-    points = SolarEdgeMapper.to_measurements(timestamp, overview, power_flow)
+    points = SolarEdgeMapper.to_measurements(
+        datetime.now(UTC),
+        energy_details,
+        site_id="1",
+    )
 
-    # Assert
     assert len(points) == 1
-    assert points[0].tags["type"] == "power_flow"
 
-
-def test_to_measurements_missing_power_flow() -> None:
-    """Test handling of missing power flow data."""
-    # Arrange
-    timestamp = datetime.now(UTC)
-    overview = {
-        "overview": {
-            "lastUpdateTime": "2024-02-16 20:00:00",
-            "lifeTimeData": {"energy": SOLAREDGE_POWER},
-            "lastYearData": {"energy": 1000000.0},
-            "lastMonthData": {"energy": 300000.0},
-            "lastDayData": {"energy": 10000.0},
-            "currentPower": {"power": 1500.0},
-        }
+    point = points[0]
+    assert point.measurement == "electricity_energy_watthour"
+    assert point.tags["site_id"] == "1"
+    assert point.timestamp == datetime(2015, 11, 16, 0, 0, 0)
+    assert point.fields == {
+        "FeedIn": 0.0,
+        "SelfConsumption": 0.0,
+        "Purchased": 0.0,
+        "Consumption": 29885.0,
+        "Production": 2953.0,
     }
-    power_flow = {}
-
-    # Act
-    points = SolarEdgeMapper.to_measurements(timestamp, overview, power_flow)
-
-    # Assert
-    assert len(points) == 1
-    assert points[0].tags["type"] == "overview"
 
 
-def test_to_measurements_missing_fields() -> None:
-    """Test handling of missing data fields."""
-    # Arrange
-    timestamp = datetime.now(UTC)
-    overview = {
-        "overview": {
-            "lastUpdateTime": "2024-02-16 20:00:00",
-            # Missing some fields
-            "lifeTimeData": {"energy": SOLAREDGE_POWER},
-            "currentPower": {"power": 1500.0},
-        }
-    }
-    power_flow = {
-        "siteCurrentPowerFlow": {
-            "unit": "W",
-            "connections": [],
-            # Missing some fields
-            "grid": {"currentPower": SOLAREDGE_GRID_POWER},
+def test_energy_details_to_measurements_missing_root() -> None:
+    """Test handling of missing energyDetails root element."""
+    energy_details: dict = {}
+
+    points = SolarEdgeMapper.to_measurements(
+        datetime.now(UTC),
+        energy_details,
+        site_id="1",
+    )
+
+    assert points == []
+
+
+def test_energy_details_to_measurements_invalid_unit() -> None:
+    """Test handling of unsupported units in energyDetails."""
+    energy_details = {
+        "energyDetails": {
+            "timeUnit": "WEEK",
+            "unit": "kWh",
+            "meters": [
+                {
+                    "type": "Production",
+                    "values": [
+                        {"date": "2015-11-16 00:00:00", "value": 2953},
+                    ],
+                }
+            ],
         }
     }
 
-    # Act
-    points = SolarEdgeMapper.to_measurements(timestamp, overview, power_flow)
+    points = SolarEdgeMapper.to_measurements(
+        datetime.now(UTC),
+        energy_details,
+        site_id="1",
+    )
 
-    # Assert
-    assert len(points) == EXPECTED_POINT_COUNT
-    assert points[0].fields["lifetime_energy"] == SOLAREDGE_POWER
-    assert points[0].fields["last_year_energy"] == ZERO
-    assert points[1].fields["grid_power"] == SOLAREDGE_GRID_POWER
-    assert points[1].fields["load_power"] == ZERO
+    assert points == []
+
+
+def test_power_details_to_measurements_invalid_unit() -> None:
+    """Test handling of unsupported units in powerDetails."""
+    power_details = {
+        "powerDetails": {
+            "timeUnit": "QUARTER_OF_AN_HOUR",
+            "unit": "kW",
+            "meters": [
+                {
+                    "type": "Consumption",
+                    "values": [
+                        {"date": "2015-11-21 11:00:00", "value": 100.0},
+                    ],
+                }
+            ],
+        }
+    }
+
+    points = SolarEdgeMapper.to_measurements(
+        datetime.now(UTC),
+        power_details,
+        site_id="1",
+    )
+
+    assert points == []

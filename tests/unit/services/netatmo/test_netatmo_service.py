@@ -65,7 +65,7 @@ def mock_api() -> MagicMock:
             }
         ],
     }
-    
+
     api.stationById = MagicMock(return_value=station_data)
     return api
 
@@ -81,15 +81,15 @@ def service(
     """Create test service."""
     monkeypatch.setattr(
         "home_monitoring.services.netatmo.service.InfluxDBRepository",
-        lambda *args, **kwargs: mock_db
+        lambda *args, **kwargs: mock_db,
     )
     monkeypatch.setattr(
         "home_monitoring.services.netatmo.service.lnetatmo.ClientAuth",
-        lambda *args, **kwargs: mock_auth
+        lambda *args, **kwargs: mock_auth,
     )
     monkeypatch.setattr(
         "home_monitoring.services.netatmo.service.lnetatmo.WeatherStationData",
-        lambda *args, **kwargs: mock_api
+        lambda *args, **kwargs: mock_api,
     )
     return NetatmoService(settings=settings)
 
@@ -101,7 +101,7 @@ async def test_collect_and_store_success(
     """Test successful data collection and storage."""
     # Mock successful station access
     mock_api.stations = ["test_station"]
-    
+
     await service.collect_and_store()
 
     assert mock_api.stationById.called
@@ -116,9 +116,7 @@ async def test_collect_and_store_api_error(
     # Mock no stations available
     mock_api.stations = []
 
-    with pytest.raises(
-        RuntimeError, match="Failed to get weather station data"
-    ):
+    with pytest.raises(RuntimeError, match="Failed to get weather station data"):
         await service.collect_and_store()
 
     assert not mock_db.write_measurements.called

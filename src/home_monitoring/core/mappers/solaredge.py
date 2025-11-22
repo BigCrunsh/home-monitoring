@@ -14,164 +14,159 @@ class SolarEdgeMapper(BaseMapper):
     @staticmethod
     def to_measurements(
         timestamp: datetime,
-        overview: Mapping[str, Any],
-        power_flow: Mapping[str, Any],
+        data: Mapping[str, Any],
+        site_id: str | None = None,
     ) -> list[Measurement]:
-        """Map SolarEdge data to InfluxDB measurements.
+        """Map SolarEdge detailed data to InfluxDB measurements.
 
-        Args:
-            timestamp: Measurement timestamp
-            overview: Overview data from API
-            power_flow: Power flow data from API
-
-        Returns:
-            List of InfluxDB measurements
+        This function supports both /energyDetails and /powerDetails
+        responses. It inspects the provided data for the corresponding
+        root element and maps it to electricity_* measurements.
         """
-        measurements = []
+        measurements: list[Measurement] = []
 
-        # Overview data
-        if overview and "overview" in overview:
-            data = overview["overview"]
+        if "powerDetails" in data:
+            measurements.extend(
+                SolarEdgeMapper._power_details_to_measurements(
+                    data,
+                    site_id=site_id,
+                )
+            )
+
+        if "energyDetails" in data:
+            measurements.extend(
+                SolarEdgeMapper._energy_details_to_measurements(
+                    data,
+                    site_id=site_id,
+                )
+            )
+
+        return measurements
+
+    @staticmethod
+    def _power_details_to_measurements(
+        power_details: Mapping[str, Any],
+        site_id: str | None = None,
+    ) -> list[Measurement]:
+        measurements: list[Measurement] = []
+
+        if not power_details or "powerDetails" not in power_details:
+            return measurements
+
+        details = power_details["powerDetails"]
+        unit = details.get("unit")
+        if unit != "W":
+            return measurements
+
+        resolved_site_id = str(site_id or details.get("siteId", "unknown"))
+
+        values_by_time: dict[datetime, dict[str, float]] = {}
+
+        for meter in details.get("meters", []):
+            meter_type = meter.get("type")
+            if meter_type not in {
+                "FeedIn",
+                "SelfConsumption",
+                "Purchased",
+                "Consumption",
+                "Production",
+            }:
+                continue
+
+            for point in meter.get("values", []):
+                date_str = point.get("date")
+                value = point.get("value")
+                if date_str is None or value is None:
+                    continue
+
+                try:
+                    sample_time = datetime.fromisoformat(date_str)
+                except ValueError:
+                    continue
+
+                per_time = values_by_time.setdefault(sample_time, {})
+                per_time[meter_type] = float(value)
+
+        for sample_time, meter_values in sorted(values_by_time.items()):
             measurements.append(
                 Measurement(
-                    measurement="solaredge",
-                    tags={
-                        "type": "overview",
-                    },
-                    timestamp=timestamp,
+                    measurement="electricity_power_watt",
+                    tags={"site_id": resolved_site_id},
+                    timestamp=sample_time,
                     fields={
-                        "lifetime_energy": float(
-                            data.get("lifeTimeData", {}).get("energy", 0.0)
+                        "FeedIn": float(meter_values.get("FeedIn", 0.0)),
+                        "SelfConsumption": float(
+                            meter_values.get("SelfConsumption", 0.0)
                         ),
-                        "last_year_energy": float(
-                            data.get("lastYearData", {}).get("energy", 0.0)
-                        ),
-                        "last_month_energy": float(
-                            data.get("lastMonthData", {}).get("energy", 0.0)
-                        ),
-                        "last_day_energy": float(
-                            data.get("lastDayData", {}).get("energy", 0.0)
-                        ),
-                        "current_power": data.get("currentPower", {}).get("power", 0.0),
+                        "Purchased": float(meter_values.get("Purchased", 0.0)),
+                        "Consumption": float(meter_values.get("Consumption", 0.0)),
+                        "Production": float(meter_values.get("Production", 0.0)),
                     },
                 )
             )
 
-            # Create electricity_energy_watthour measurements for energy totals
-            if "lastDayData" in data and "energy" in data["lastDayData"]:
-                measurements.append(
-                    Measurement(
-                        measurement="electricity_energy_watthour",
-                        tags={
-                            "period": "daily",
-                            "site_id": str(data.get("siteId", "unknown")),
-                        },
-                        timestamp=timestamp,
-                        fields={
-                            "energy": float(data["lastDayData"]["energy"]),
-                        },
-                    )
-                )
+        return measurements
 
-            if "lastMonthData" in data and "energy" in data["lastMonthData"]:
-                measurements.append(
-                    Measurement(
-                        measurement="electricity_energy_watthour",
-                        tags={
-                            "period": "monthly",
-                            "site_id": str(data.get("siteId", "unknown")),
-                        },
-                        timestamp=timestamp,
-                        fields={
-                            "energy": float(data["lastMonthData"]["energy"]),
-                        },
-                    )
-                )
+    @staticmethod
+    def _energy_details_to_measurements(
+        energy_details: Mapping[str, Any],
+        site_id: str | None = None,
+    ) -> list[Measurement]:
+        measurements: list[Measurement] = []
 
-            if "lastYearData" in data and "energy" in data["lastYearData"]:
-                measurements.append(
-                    Measurement(
-                        measurement="electricity_energy_watthour",
-                        tags={
-                            "period": "yearly",
-                            "site_id": str(data.get("siteId", "unknown")),
-                        },
-                        timestamp=timestamp,
-                        fields={
-                            "energy": float(data["lastYearData"]["energy"]),
-                        },
-                    )
-                )
+        if not energy_details or "energyDetails" not in energy_details:
+            return measurements
 
-        # Power flow data
-        if power_flow and "siteCurrentPowerFlow" in power_flow:
-            data = power_flow["siteCurrentPowerFlow"]
+        details = energy_details["energyDetails"]
+        unit = details.get("unit")
+        if unit != "Wh":
+            return measurements
+
+        resolved_site_id = str(site_id or details.get("siteId", "unknown"))
+
+        values_by_time: dict[datetime, dict[str, float]] = {}
+
+        for meter in details.get("meters", []):
+            meter_type = meter.get("type")
+            if meter_type not in {
+                "FeedIn",
+                "SelfConsumption",
+                "Purchased",
+                "Consumption",
+                "Production",
+            }:
+                continue
+
+            for point in meter.get("values", []):
+                date_str = point.get("date")
+                value = point.get("value")
+                if date_str is None or value is None:
+                    continue
+
+                try:
+                    sample_time = datetime.fromisoformat(date_str)
+                except ValueError:
+                    continue
+
+                per_time = values_by_time.setdefault(sample_time, {})
+                per_time[meter_type] = float(value)
+
+        for sample_time, meter_values in sorted(values_by_time.items()):
             measurements.append(
                 Measurement(
-                    measurement="solaredge",
-                    tags={
-                        "type": "power_flow",
-                        "unit": data.get("unit", "W"),
-                    },
-                    timestamp=timestamp,
+                    measurement="electricity_energy_watthour",
+                    tags={"site_id": resolved_site_id},
+                    timestamp=sample_time,
                     fields={
-                        "grid_power": data.get("grid", {}).get("currentPower", 0.0),
-                        "load_power": data.get("load", {}).get("currentPower", 0.0),
-                        "pv_power": data.get("pv", {}).get("currentPower", 0.0),
+                        "FeedIn": float(meter_values.get("FeedIn", 0.0)),
+                        "SelfConsumption": float(
+                            meter_values.get("SelfConsumption", 0.0)
+                        ),
+                        "Purchased": float(meter_values.get("Purchased", 0.0)),
+                        "Consumption": float(meter_values.get("Consumption", 0.0)),
+                        "Production": float(meter_values.get("Production", 0.0)),
                     },
                 )
             )
-
-            # Also create individual power measurements for easier querying
-            # This creates electricity_power_watt measurements
-            unit = data.get("unit", "W")
-            if unit == "W":
-                # Grid power (positive = consuming, negative = producing/feeding back)
-                if "grid" in data and "currentPower" in data["grid"]:
-                    measurements.append(
-                        Measurement(
-                            measurement="electricity_power_watt",
-                            tags={
-                                "source": "grid",
-                                "site_id": str(data.get("siteId", "unknown")),
-                            },
-                            timestamp=timestamp,
-                            fields={
-                                "power": float(data["grid"]["currentPower"]),
-                            },
-                        )
-                    )
-
-                # PV production power
-                if "pv" in data and "currentPower" in data["pv"]:
-                    measurements.append(
-                        Measurement(
-                            measurement="electricity_power_watt",
-                            tags={
-                                "source": "pv",
-                                "site_id": str(data.get("siteId", "unknown")),
-                            },
-                            timestamp=timestamp,
-                            fields={
-                                "power": float(data["pv"]["currentPower"]),
-                            },
-                        )
-                    )
-
-                # Load consumption power
-                if "load" in data and "currentPower" in data["load"]:
-                    measurements.append(
-                        Measurement(
-                            measurement="electricity_power_watt",
-                            tags={
-                                "source": "load",
-                                "site_id": str(data.get("siteId", "unknown")),
-                            },
-                            timestamp=timestamp,
-                            fields={
-                                "power": float(data["load"]["currentPower"]),
-                            },
-                        )
-                    )
 
         return measurements
