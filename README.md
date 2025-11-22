@@ -141,7 +141,6 @@ chmod +x /home/pi/run_monitoring.sh
 
 Then your crontab becomes much cleaner:
 ```
-# Collect data every 5 minutes
 */5 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_netatmo_data >> /var/log/home_monitoring/netatmo.log 2>&1
 */5 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_solaredge_data >> /var/log/home_monitoring/solaredge.log 2>&1
 */5 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /home/pi/src/github.com/BigCrunsh/home-monitoring/cache >> /var/log/home_monitoring/tankerkoenig.log 2>&1
@@ -149,8 +148,6 @@ Then your crontab becomes much cleaner:
 */15 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_tibber_data >> /var/log/home_monitoring/tibber.log 2>&1
 */15 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_sam_digital_data >> /var/log/home_monitoring/sam_digital.log 2>&1
 0 1 * * * /home/pi/run_monitoring.sh home_monitoring.scripts.collect_techem_data >> /var/log/home_monitoring/techem.log 2>&1
-
-# Update DNS every hour
 0 * * * * /home/pi/run_monitoring.sh home_monitoring.scripts.update_dns >> /var/log/home_monitoring/update_dns.log 2>&1
 ```
 
