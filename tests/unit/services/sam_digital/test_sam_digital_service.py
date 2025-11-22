@@ -7,7 +7,10 @@ from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.sam_digital.service import SamDigitalService
 
+
 EXPECTED_SAM_SERVICE_MEASUREMENT_COUNT = 2
+
+
 @pytest.fixture
 def settings() -> Settings:
     """Create test settings."""
@@ -105,7 +108,9 @@ async def test_collect_and_store_api_error(
     mock_db: AsyncMock,
 ) -> None:
     """Test handling of API errors."""
-    mock_client.get.return_value.raise_for_status.side_effect = Exception("API error")
+    mock_client.get.return_value.raise_for_status.side_effect = Exception(
+        "API error",
+    )
 
     with pytest.raises(APIError, match="Sam Digital API request failed"):
         await service.collect_and_store()

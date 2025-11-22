@@ -143,7 +143,10 @@ class InfluxDBRepository:
             )
             raise
 
-    async def write_measurements(self, measurements: list[Measurement]) -> None:
+    async def write_measurements(
+        self,
+        measurements: list[Measurement],
+    ) -> None:
         """Write multiple measurements to InfluxDB.
 
         Args:
