@@ -282,3 +282,38 @@ async def test_collect_and_store_power_details_database_error(
 
     assert mock_client.get.call_count == 1
     assert mock_db.write_measurements.called
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_collect_and_store_power_details_no_measurements(
+    service: SolarEdgeService,
+    mock_client: MagicMock,
+    mock_db: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Service should fail when mapper yields no measurements for power details."""
+    start_time = datetime(2015, 11, 21, 11, 0, 0, tzinfo=UTC)
+    end_time = datetime(2015, 11, 21, 11, 30, 0, tzinfo=UTC)
+
+    power_details_response = {
+        "powerDetails": {
+            "timeUnit": "QUARTER_OF_AN_HOUR",
+            "unit": "W",
+            "meters": [],
+        }
+    }
+
+    mock_client.get.return_value.json.return_value = power_details_response
+
+    monkeypatch.setattr(
+        "home_monitoring.services.solaredge.service.SolarEdgeMapper.to_measurements",
+        lambda *args, **kwargs: [],
+    )
+
+    with pytest.raises(
+        APIError,
+        match="No SolarEdge power details measurements created",
+    ):
+        await service.collect_and_store_power_details(start_time, end_time)
+
+    assert not mock_db.write_measurements.called

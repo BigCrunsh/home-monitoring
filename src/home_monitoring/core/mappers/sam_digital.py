@@ -49,6 +49,19 @@ class SamDigitalMapper(BaseMapper):
     }
 
     @staticmethod
+    def _to_float_or_none(value: Any) -> float | None:
+        if isinstance(value, int | float):
+            return float(value)
+
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return None
+
+        return None
+
+    @staticmethod
     def to_measurements(
         timestamp: datetime,
         devices: Sequence[Mapping[str, Any]],
@@ -77,8 +90,9 @@ class SamDigitalMapper(BaseMapper):
                 if dp_id not in SamDigitalMapper.DATA_POINT_MAPPING:
                     continue
 
-                value = datapoint.get("value")
-                if not isinstance(value, int | float):
+                value_raw = datapoint.get("value")
+                value = SamDigitalMapper._to_float_or_none(value_raw)
+                if value is None:
                     continue
 
                 (
@@ -95,7 +109,7 @@ class SamDigitalMapper(BaseMapper):
                             "label": label,
                         },
                         timestamp=timestamp,
-                        fields={field_key: float(value)},
+                        fields={field_key: value},
                     )
                 )
 

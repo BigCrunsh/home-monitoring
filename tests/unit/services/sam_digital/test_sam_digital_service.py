@@ -119,7 +119,8 @@ async def test_collect_and_store_no_measurements(
 
     mock_client.get.return_value.json.return_value = {"items": devices}
 
-    await service.collect_and_store()
+    with pytest.raises(APIError, match="No Sam Digital measurements created"):
+        await service.collect_and_store()
 
     mock_db.write_measurements.assert_not_called()
 

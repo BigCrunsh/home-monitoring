@@ -131,7 +131,9 @@ class SolarEdgeService:
             )
 
             if not measurements:
-                return
+                raise APIError(
+                    "No SolarEdge energy details measurements created",
+                )
 
             await self._db.write_measurements(measurements)
             self._logger.info(
@@ -232,7 +234,9 @@ class SolarEdgeService:
             )
 
             if not measurements:
-                return
+                raise APIError(
+                    "No SolarEdge power details measurements created",
+                )
 
             await self._db.write_measurements(measurements)
             self._logger.info(

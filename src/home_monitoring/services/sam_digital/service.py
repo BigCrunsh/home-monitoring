@@ -101,11 +101,11 @@ class SamDigitalService:
         )
 
         if not measurements:
-            self._logger.warning(
+            self._logger.error(
                 "no_sam_digital_measurements_created",
                 device_count=len(devices),
             )
-            return
+            raise APIError("No Sam Digital measurements created")
 
         try:
             await self._db.write_measurements(measurements)
