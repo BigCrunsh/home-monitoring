@@ -200,6 +200,91 @@ make clean         # Remove Python artifacts and caches
 - Docstrings required for public APIs
 - Type hints required for all functions
 
+## InfluxDB Measurements
+
+The system writes all metrics to InfluxDB using a consistent
+`<domain>_<metric>_<unit>` naming scheme (for example
+`electricity_power_watt` or `garden_humidity_percentage`).
+
+High-level categories:
+- **Electricity & energy**: `electricity_energy_watthour`, `electricity_power_watt`, `electricity_prices_euro`
+- **Garden & irrigation**: `garden_temperature_celsius`, `garden_humidity_percentage`, `garden_light_intensity_lux`, `garden_rf_link_level_percentage`, `garden_system_battery_percentage`, `garden_valves_activity`
+- **Fuel prices**: `gas_prices_euro`
+- **Heating**: `heat_energy_watthours`
+- **Weather**: `weather_temperature_celsius`, `weather_humidity_percentage`, `weather_pressure_mbar`, `weather_windstrength_kph`, `weather_windangle_angles`, `weather_guststrength_kph`, `weather_gustangle_angles`, `weather_rain_mm`, `weather_noise_db`, `weather_system_battery_percentage`
+
+For full details (fields, tags, update frequency) see
+`INFLUXDB_MEASUREMENTS_DOCUMENTATION.md`.
+
+## Querying InfluxDB
+
+Once InfluxDB is running and populated, you can query it either
+from **Grafana** or via the **InfluxDB CLI**.
+
+### Using the InfluxDB CLI
+
+If you run InfluxDB via Docker Compose as described above, you can
+open a shell in the container and start the Influx shell:
+
+```bash
+docker exec -it home-monitoring-influxdb-1 influx
+USE home_monitoring;
+SHOW MEASUREMENTS;
+```
+
+Replace `home_monitoring` with the database name you configured in
+your `.env` file if it differs.
+
+### Example InfluxQL queries
+
+- **Daily solar energy consumption for the last 30 days**
+
+  ```sql
+  SELECT SUM("Consumption")
+  FROM "electricity_energy_watthour"
+  WHERE time >= now() - 30d
+  GROUP BY time(1d)
+  ```
+
+- **Latest solar power reading**
+
+  ```sql
+  SELECT LAST("Consumption")
+  FROM "electricity_power_watt"
+  WHERE time >= now() - 1h
+  ```
+
+- **Average indoor temperature from a Netatmo module**
+
+  ```sql
+  SELECT MEAN("Temperature")
+  FROM "weather_temperature_celsius"
+  WHERE "module_name" = 'Living Room'
+    AND time >= now() - 24h
+  GROUP BY time(1h)
+  ```
+
+- **Latest soil humidity from a Gardena soil sensor**
+
+  ```sql
+  SELECT LAST("humidity")
+  FROM "garden_humidity_percentage"
+  WHERE "name" = 'Soil Sensor'
+  ```
+
+- **Last 24 hours of electricity price from Tibber**
+
+  ```sql
+  SELECT "total"
+  FROM "electricity_prices_euro"
+  WHERE time >= now() - 24h
+  ORDER BY time DESC
+  LIMIT 24
+  ```
+
+These queries can be pasted directly into Grafana's InfluxDB query
+editor (InfluxQL mode) or the InfluxDB CLI.
+
 ## Contributing
 
 1. Fork the repository

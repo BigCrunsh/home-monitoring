@@ -278,7 +278,7 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 ## Database Schema
 
 ### InfluxDB Configuration
-- **Database**: `homemonitoring`
+- **Database**: `home_monitoring`
 - **Retention Policy**: Default (configurable)
 - **Precision**: Nanosecond timestamps
 
@@ -312,16 +312,21 @@ All measurements include contextual tags for filtering and grouping:
 ### Grafana Queries
 ```sql
 -- Average temperature over last 24 hours
-SELECT mean("Temperature") FROM "weather_temperature_celsius" 
-WHERE time >= now() - 24h GROUP BY time(1h)
+SELECT MEAN("Temperature")
+FROM "weather_temperature_celsius"
+WHERE time >= now() - 24h
+GROUP BY time(1h)
 
 -- Current solar power production
-SELECT last("pv_power") FROM "electricity_power_watt" 
-WHERE "source" = 'pv'
+SELECT LAST("Production")
+FROM "electricity_power_watt"
+WHERE time >= now() - 1h
 
 -- Daily energy consumption
-SELECT sum("Consumption") FROM "electricity_energy_watthour" 
-WHERE time >= now() - 1d AND "period" = 'daily'
+SELECT SUM("Consumption")
+FROM "electricity_energy_watthour"
+WHERE time >= now() - 1d
+GROUP BY time(1d)
 ```
 
 ### Data Export
