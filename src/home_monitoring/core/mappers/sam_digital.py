@@ -28,6 +28,12 @@ class SamDigitalMapper(BaseMapper):
             "temperature",
             "Außentemperatur AF1",
         ),
+        # Vorlauftemperatur VF1
+        "MBR_13": (
+            "heat_flow_temperature_celsius",
+            "temperature",
+            "Vorlauftemperatur VF1",
+        ),
         # Rücklauftemperatur RüF2
         "MBR_18": (
             "heat_return_temperature_celsius",

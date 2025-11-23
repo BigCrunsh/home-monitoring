@@ -174,6 +174,16 @@ This document provides comprehensive documentation of all InfluxDB measurements 
   - `label`: Human-readable label from Sam Digital
 - **Update Frequency**: Depends on scheduler
 
+#### `heat_flow_temperature_celsius`
+- **Source**: Sam Digital reader (sam-digital.net)
+- **Description**: Flow temperature at VF1 (Vorlauftemperatur VF1, e.g. Vorlaufsensor Heizkreis 1/2)
+- **Fields**:
+  - `temperature`: Temperature (°C)
+- **Tags**:
+  - `id`: Sam Digital datapoint identifier (e.g. MBR_13)
+  - `label`: Human-readable label from Sam Digital
+- **Update Frequency**: Depends on scheduler
+
 #### `heat_valve_signal_percentage`
 - **Source**: Sam Digital reader (sam-digital.net)
 - **Description**: Control valve signal (Stellsignal HK2)
