@@ -17,8 +17,11 @@ def test_to_measurements_success() -> None:
             "name": "Test Device",
             "data": [
                 {"id": "MBR_10", "value": 5.0},
+                {"id": "MBR_13", "value": 40.0},
+                {"id": "MBR_17", "value": 41.0},
                 {"id": "MBR_18", "value": 35.5},
                 {"id": "MBR_23", "value": 45.0},
+                {"id": "MBR_107", "value": 10.0},
                 {"id": "MBR_109", "value": 75.0},
             ],
         }
@@ -42,8 +45,14 @@ def test_to_measurements_success() -> None:
     assert temp.timestamp == timestamp
     assert valve.timestamp == timestamp
 
-    assert set(temp.fields.keys()) == {"outdoor", "return", "storage"}
-    assert set(valve.fields.keys()) == {"signal"}
+    assert set(temp.fields.keys()) == {
+        "outdoor",
+        "heating_flow",
+        "heating_return",
+        "hotwater_return",
+        "hotwater_storage",
+    }
+    assert set(valve.fields.keys()) == {"heating", "hotwater"}
 
     assert temp.tags["device_id"] == "device1"
     assert temp.tags["device_name"] == "Test Device"
@@ -69,7 +78,7 @@ def test_to_measurements_accepts_numeric_strings() -> None:
     assert names == {"heat_temperature_celsius"}
 
     temp = measurements[0]
-    assert set(temp.fields.keys()) == {"outdoor", "return"}
+    assert set(temp.fields.keys()) == {"outdoor", "hotwater_return"}
 
 
 def test_to_measurements_ignores_unknown_ids() -> None:
