@@ -20,8 +20,9 @@ async def test_main_no_existing_data_uses_30_day_window() -> None:
         patch(
             "home_monitoring.scripts.collect_solaredge_data.InfluxDBRepository"
         ) as mock_repo_cls,
-        patch("home_monitoring.scripts.collect_solaredge_data.datetime")
-        as mock_datetime,
+        patch(
+            "home_monitoring.scripts.collect_solaredge_data.datetime"
+        ) as mock_datetime,
     ):
         mock_datetime.now.return_value = fixed_now
 
@@ -75,16 +76,15 @@ async def test_main_clamps_latest_timestamp_to_30_day_window() -> None:
         patch(
             "home_monitoring.scripts.collect_solaredge_data.InfluxDBRepository"
         ) as mock_repo_cls,
-        patch("home_monitoring.scripts.collect_solaredge_data.datetime")
-        as mock_datetime,
+        patch(
+            "home_monitoring.scripts.collect_solaredge_data.datetime"
+        ) as mock_datetime,
     ):
         mock_datetime.now.return_value = fixed_now
 
         mock_repo = mock_repo_cls.return_value
         # Same old timestamp for both energy and power measurements
-        mock_repo.get_latest_timestamp = AsyncMock(
-            side_effect=[latest_ts, latest_ts]
-        )
+        mock_repo.get_latest_timestamp = AsyncMock(side_effect=[latest_ts, latest_ts])
 
         mock_service = mock_service_cls.return_value
         mock_service.collect_and_store_energy_details = AsyncMock()

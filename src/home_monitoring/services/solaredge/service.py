@@ -150,7 +150,6 @@ class SolarEdgeService:
             )
             raise
 
-
     async def _get_power_details(
         self,
         start_time: datetime,

@@ -51,9 +51,9 @@ def test_to_measurements_missing_data() -> None:
     assert measurement.measurement == "electricity_prices_euro"
     assert measurement.tags == {}
     assert measurement.fields == {
-		"total": ZERO,
-		"rank": 0.5,
-	}
+        "total": ZERO,
+        "rank": 0.5,
+    }
 
 
 def test_to_measurements_invalid_data() -> None:
@@ -78,6 +78,6 @@ def test_to_measurements_invalid_data() -> None:
     assert measurement.measurement == "electricity_prices_euro"
     assert measurement.tags == {}
     assert measurement.fields == {
-		"total": ZERO,
-		"rank": 0.5,
-	}
+        "total": ZERO,
+        "rank": 0.5,
+    }

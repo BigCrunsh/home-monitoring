@@ -44,9 +44,7 @@ async def main() -> int:
         )
 
         # Collect detailed power data starting from latest stored timestamp
-        latest_power = await repository.get_latest_timestamp(
-            "electricity_power_watt"
-        )
+        latest_power = await repository.get_latest_timestamp("electricity_power_watt")
         power_window_start = now - timedelta(days=30)
         power_start = max(latest_power or power_window_start, power_window_start)
         power_meters = [

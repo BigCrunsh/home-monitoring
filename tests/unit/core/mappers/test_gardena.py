@@ -7,6 +7,8 @@ from home_monitoring.core.mappers.gardena import GardenaMapper
 
 EXPECTED_SENSOR_MEASUREMENT_COUNT = 5
 EXPECTED_SOIL_SENSOR_MEASUREMENT_COUNT = 2
+
+
 def test_to_measurements_control_data() -> None:
     """Test mapping of irrigation control data."""
     # Arrange

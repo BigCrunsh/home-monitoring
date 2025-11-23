@@ -2,7 +2,7 @@
 
 # Home Monitoring
 
-A centralized monitoring system for smart home devices and services. This project provides a unified interface to collect, store, and visualize metrics from various smart home systems using InfluxDB and Grafana.
+A centralized monitoring system for smart home devices and services. This project focuses on collecting and storing metrics in InfluxDB; visualization is handled by external tools (for example Grafana or ioBroker) that read from InfluxDB.
 
 ## Supported Systems
 
@@ -19,7 +19,7 @@ A centralized monitoring system for smart home devices and services. This projec
 ### Prerequisites
 
 - Python 3.12.3 or higher
-- Docker and Docker Compose
+- Docker
 - Git
 
 ### Setup Development Environment
@@ -44,56 +44,32 @@ nano .env
 
 ### Infrastructure Setup
 
-Use Docker Compose to set up the monitoring infrastructure:
+Run InfluxDB via Docker (no Grafana container by default):
 
 ```bash
-# Create required volumes
-make init-docker
+# Create persistent volume for InfluxDB data
+docker volume create influxdb-storage
 
-# Start all services
-make start-docker
-
-# View logs
-make logs-docker
-
-# Stop services
-make stop-docker
+# Start the InfluxDB container
+docker run -d \
+  --restart unless-stopped \
+  -p 8086:8086 \
+  --name=influxdb \
+  --volume influxdb-storage:/var/lib/influxdb/ \
+  influxdb:1.8
 ```
 
-Services:
+Alternatively, you can use the Makefile helpers, which wrap the same commands:
+
+```bash
+make init-docker   # create influxdb-storage volume
+make start-docker  # start (or create) the influxdb container
+make logs-docker   # follow InfluxDB logs
+make stop-docker   # stop the influxdb container
+```
+
+Service:
 - InfluxDB: Time-series database (port 8086)
-- Grafana: Visualization dashboard (port 3000)
-
-#### Grafana Configuration
-
-1. Access Grafana at http://localhost:3000
-2. Default login: admin/admin
-3. Add InfluxDB as a data source:
-   - URL: http://influxdb:8086
-   - Database: home_monitoring
-   - (Optional) Add credentials if configured
-
-#### SSL Setup
-
-For HTTPS support:
-
-1. Generate SSL certificates:
-```bash
-openssl req -x509 -newkey rsa:4096 -keyout grafana.key -out grafana.crt -days 365 -nodes
-```
-
-2. Update docker-compose.yml with SSL configuration:
-```yaml
-services:
-  grafana:
-    environment:
-      - GF_SERVER_PROTOCOL=https
-      - GF_SERVER_CERT_FILE=/etc/grafana/grafana.crt
-      - GF_SERVER_CERT_KEY=/etc/grafana/grafana.key
-    volumes:
-      - ./grafana.crt:/etc/grafana/grafana.crt
-      - ./grafana.key:/etc/grafana/grafana.key
-```
 
 ## Data Collection
 
@@ -217,18 +193,20 @@ For full details (fields, tags, update frequency) see
 
 ## Querying InfluxDB
 
-Once InfluxDB is running and populated, you can query it either
-from **Grafana** or via the **InfluxDB CLI**.
+Once InfluxDB is running and populated, you can query it via the
+**InfluxDB CLI**.
 
 ### Using the InfluxDB CLI
 
-If you run InfluxDB via Docker Compose as described above, you can
-open a shell in the container and start the Influx shell:
+If you run InfluxDB via the single-container Docker setup described
+above, you can open a shell in the container and start the Influx
+shell:
 
 ```bash
-docker exec -it home-monitoring-influxdb-1 influx
-USE home_monitoring;
-SHOW MEASUREMENTS;
+docker exec -it influxdb /bin/bash
+influx
+USE home_monitoring
+SHOW MEASUREMENTS
 ```
 
 Replace `home_monitoring` with the database name you configured in
@@ -281,8 +259,9 @@ your `.env` file if it differs.
   LIMIT 24
   ```
 
-These queries can be pasted directly into Grafana's InfluxDB query
-editor (InfluxQL mode) or the InfluxDB CLI.
+These queries can be pasted directly into the InfluxDB CLI, or into
+external visualization tools such as Grafana (InfluxDB data source,
+InfluxQL mode) or ioBroker, if you choose to use them.
 
 ## Contributing
 

@@ -139,12 +139,12 @@ async def test_solaredge_data_collection_and_storage() -> None:
 
         print(f"Measurement names: {measurement_names}")
 
-        assert "electricity_energy_watthour" in measurement_names, (
-            "Expected 'electricity_energy_watthour' measurement"
-        )
-        assert "electricity_power_watt" in measurement_names, (
-            "Expected 'electricity_power_watt' measurement"
-        )
+        assert (
+            "electricity_energy_watthour" in measurement_names
+        ), "Expected 'electricity_energy_watthour' measurement"
+        assert (
+            "electricity_power_watt" in measurement_names
+        ), "Expected 'electricity_power_watt' measurement"
 
         # Check energy measurement fields
         energy_measurement = next(
@@ -161,9 +161,7 @@ async def test_solaredge_data_collection_and_storage() -> None:
 
         # Check power measurements
         power_measurements = [
-            m
-            for m in stored_measurements
-            if m.measurement == "electricity_power_watt"
+            m for m in stored_measurements if m.measurement == "electricity_power_watt"
         ]
         print("=== POWER MEASUREMENTS ===")
         print(f"Count: {len(power_measurements)}")

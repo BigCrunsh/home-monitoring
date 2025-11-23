@@ -7,6 +7,8 @@ from home_monitoring.core.mappers.netatmo import NetatmoMapper
 EXPECTED_TOTAL_POINTS = 7
 EXPECTED_BASE_POINTS = 5
 EXPECTED_MODULE_POINTS = 2
+
+
 def test_to_measurements_success() -> None:
     """Test successful mapping of valid data."""
     # Arrange
