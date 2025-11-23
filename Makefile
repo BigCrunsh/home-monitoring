@@ -64,19 +64,23 @@ ruff:
 .PHONY: init-docker
 init-docker:
 	docker volume create influxdb-storage
-	docker volume create grafana-storage
 
 .PHONY: start-docker
 start-docker:
-	docker compose up -d
+	docker start influxdb || docker run -d \
+		--restart unless-stopped \
+		-p 8086:8086 \
+		--name=influxdb \
+		--volume influxdb-storage:/var/lib/influxdb/ \
+		influxdb:1.8
 
 .PHONY: stop-docker
 stop-docker:
-	docker compose down
+	docker stop influxdb || true
 
 .PHONY: logs-docker
 logs-docker:
-	docker compose logs -f
+	docker logs -f influxdb
 
 .PHONY: scripts-exec
 scripts-exec:

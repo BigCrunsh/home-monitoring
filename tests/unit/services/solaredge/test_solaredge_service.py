@@ -63,8 +63,6 @@ def service(
     return SolarEdgeService(settings=settings)
 
 
-
-
 def test_init_with_missing_credentials() -> None:
     """Test service initialization with missing credentials."""
     settings = Settings()
