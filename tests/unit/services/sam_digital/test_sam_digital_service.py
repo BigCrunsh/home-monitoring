@@ -7,7 +7,7 @@ from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.sam_digital.service import SamDigitalService
 
-EXPECTED_SAM_SERVICE_MEASUREMENT_COUNT = 2
+EXPECTED_SAM_SERVICE_MEASUREMENT_COUNT = 1
 
 
 @pytest.fixture
@@ -94,10 +94,7 @@ async def test_collect_and_store_success(
     measurements = mock_db.write_measurements.call_args.args[0]
     assert len(measurements) == EXPECTED_SAM_SERVICE_MEASUREMENT_COUNT
     names = {m.measurement for m in measurements}
-    assert names == {
-        "heat_outdoor_temperature_celsius",
-        "heat_return_temperature_celsius",
-    }
+    assert names == {"heat_temperature_celsius"}
 
 
 @pytest.mark.asyncio(scope="function")
