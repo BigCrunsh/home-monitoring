@@ -1,6 +1,7 @@
 """Netatmo weather station service implementation."""
 
 from datetime import UTC, datetime
+from typing import Any
 
 import lnetatmo
 from home_monitoring.config import Settings, get_settings
@@ -125,7 +126,7 @@ class NetatmoService:
             )
             return False
 
-    def _get_devices_data(self) -> list:
+    def _get_devices_data(self) -> list[dict[str, Any]]:
         """Get device data in format compatible with NetatmoMapper.
         Returns:
             List of device data compatible with the existing mapper

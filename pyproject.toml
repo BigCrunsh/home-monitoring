@@ -58,6 +58,14 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 check_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = [
+    "lnetatmo",
+    "gardena.smart_system",
+    "aioinflux",
+]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
