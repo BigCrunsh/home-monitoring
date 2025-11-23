@@ -19,40 +19,22 @@ class SamDigitalMapper(BaseMapper):
     Unknown or non-numeric values are ignored.
     """
 
-    # Mapping from Sam Digital datapoint ID to
-    # (measurement_name, field_key, human_readable_label)
-    DATA_POINT_MAPPING: ClassVar[dict[str, tuple[str, str, str]]] = {
+    # Mapping from Sam Digital datapoint ID to temperature field keys.
+    # All temperatures are written into a single
+    # `heat_temperature_celsius` measurement with multiple fields.
+    TEMPERATURE_FIELDS: ClassVar[dict[str, str]] = {
         # Außentemperatur AF1
-        "MBR_10": (
-            "heat_outdoor_temperature_celsius",
-            "temperature",
-            "Außentemperatur AF1",
-        ),
+        "MBR_10": "outdoor",
         # Vorlauftemperatur VF1
-        "MBR_13": (
-            "heat_flow_temperature_celsius",
-            "temperature",
-            "Vorlauftemperatur VF1",
-        ),
+        "MBR_13": "flow",
         # Rücklauftemperatur RüF2
-        "MBR_18": (
-            "heat_return_temperature_celsius",
-            "temperature",
-            "Rücklauftemperatur RüF2",
-        ),
+        "MBR_18": "return",
         # Speichertemperatur SF1
-        "MBR_23": (
-            "heat_storage_temperature_celsius",
-            "temperature",
-            "Speichertemperatur SF1",
-        ),
-        # Stellsignal HK2
-        "MBR_109": (
-            "heat_valve_signal_percentage",
-            "signal",
-            "Stellsignal HK2",
-        ),
+        "MBR_23": "storage",
     }
+
+    # Datapoint ID for the valve signal (Stellsignal HK2)
+    VALVE_SIGNAL_ID: ClassVar[str] = "MBR_109"
 
     @staticmethod
     def _to_float_or_none(value: Any) -> float | None:
@@ -88,12 +70,12 @@ class SamDigitalMapper(BaseMapper):
             if not isinstance(data_points, list):
                 continue
 
+            temperature_fields: dict[str, float] = {}
+            valve_signal: float | None = None
+
             for datapoint in data_points:
                 dp_id = datapoint.get("id")
                 if not isinstance(dp_id, str):
-                    continue
-
-                if dp_id not in SamDigitalMapper.DATA_POINT_MAPPING:
                     continue
 
                 value_raw = datapoint.get("value")
@@ -101,22 +83,51 @@ class SamDigitalMapper(BaseMapper):
                 if value is None:
                     continue
 
-                (
-                    measurement_name,
-                    field_key,
-                    label,
-                ) = SamDigitalMapper.DATA_POINT_MAPPING[dp_id]
+                if dp_id in SamDigitalMapper.TEMPERATURE_FIELDS:
+                    field_key = SamDigitalMapper.TEMPERATURE_FIELDS[dp_id]
+                    temperature_fields[field_key] = value
+                elif dp_id == SamDigitalMapper.VALVE_SIGNAL_ID:
+                    valve_signal = value
 
+            tags = SamDigitalMapper._build_tags(device)
+
+            if temperature_fields:
                 measurements.append(
                     Measurement(
-                        measurement=measurement_name,
-                        tags={
-                            "id": dp_id,
-                            "label": label,
-                        },
+                        measurement="heat_temperature_celsius",
+                        tags=tags,
                         timestamp=timestamp,
-                        fields={field_key: value},
+                        fields=temperature_fields,
+                    )
+                )
+
+            if valve_signal is not None:
+                measurements.append(
+                    Measurement(
+                        measurement="heat_valve_signal_percentage",
+                        tags=tags,
+                        timestamp=timestamp,
+                        fields={"signal": valve_signal},
                     )
                 )
 
         return measurements
+
+    @staticmethod
+    def _build_tags(device: Mapping[str, Any]) -> dict[str, str]:
+        """Build common tags for Sam Digital measurements.
+
+        We attach device-level context rather than per-datapoint labels to
+        match the aggregated measurement style used in SolarEdgeMapper.
+        """
+        tags: dict[str, str] = {}
+
+        device_id = device.get("id")
+        device_name = device.get("name")
+
+        if device_id is not None:
+            tags["device_id"] = str(device_id)
+        if device_name is not None:
+            tags["device_name"] = str(device_name)
+
+        return tags

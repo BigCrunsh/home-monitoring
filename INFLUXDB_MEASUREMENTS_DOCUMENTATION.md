@@ -144,44 +144,17 @@ This document provides comprehensive documentation of all InfluxDB measurements 
   - `id`: Meter ID
 - **Update Frequency**: Every 4 hours
 
-#### `heat_outdoor_temperature_celsius`
+#### `heat_temperature_celsius`
 - **Source**: Sam Digital reader (sam-digital.net)
-- **Description**: Outdoor temperature (Außentemperatur AF1)
+- **Description**: Aggregated heating circuit temperatures from Sam Digital
 - **Fields**:
-  - `temperature`: Temperature (°C)
+  - `outdoor`: Outdoor temperature AF1 (°C)
+  - `flow`: Flow temperature VF1 (°C)
+  - `return`: Return flow temperature RüF2 (°C)
+  - `storage`: Storage tank temperature SF1 (°C)
 - **Tags**:
-  - `id`: Sam Digital datapoint identifier (e.g. MBR_10)
-  - `label`: Human-readable label from Sam Digital
-- **Update Frequency**: Depends on scheduler
-
-#### `heat_return_temperature_celsius`
-- **Source**: Sam Digital reader (sam-digital.net)
-- **Description**: Return flow temperature (Rücklauftemperatur RüF2)
-- **Fields**:
-  - `temperature`: Temperature (°C)
-- **Tags**:
-  - `id`: Sam Digital datapoint identifier (e.g. MBR_18)
-  - `label`: Human-readable label from Sam Digital
-- **Update Frequency**: Depends on scheduler
-
-#### `heat_storage_temperature_celsius`
-- **Source**: Sam Digital reader (sam-digital.net)
-- **Description**: Storage tank temperature (Speichertemperatur SF1)
-- **Fields**:
-  - `temperature`: Temperature (°C)
-- **Tags**:
-  - `id`: Sam Digital datapoint identifier (e.g. MBR_23)
-  - `label`: Human-readable label from Sam Digital
-- **Update Frequency**: Depends on scheduler
-
-#### `heat_flow_temperature_celsius`
-- **Source**: Sam Digital reader (sam-digital.net)
-- **Description**: Flow temperature at VF1 (Vorlauftemperatur VF1, e.g. Vorlaufsensor Heizkreis 1/2)
-- **Fields**:
-  - `temperature`: Temperature (°C)
-- **Tags**:
-  - `id`: Sam Digital datapoint identifier (e.g. MBR_13)
-  - `label`: Human-readable label from Sam Digital
+  - `device_id`: Sam Digital device identifier
+  - `device_name`: Human-readable device name from Sam Digital
 - **Update Frequency**: Depends on scheduler
 
 #### `heat_valve_signal_percentage`

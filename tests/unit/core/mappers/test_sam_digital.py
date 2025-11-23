@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 from home_monitoring.core.mappers.sam_digital import SamDigitalMapper
 
-EXPECTED_SAM_MEASUREMENT_COUNT = 4
-EXPECTED_SAM_NUMERIC_STRING_COUNT = 2
+EXPECTED_SAM_MEASUREMENT_COUNT = 2
+EXPECTED_SAM_NUMERIC_STRING_COUNT = 1
 
 
 def test_to_measurements_success() -> None:
@@ -30,17 +30,23 @@ def test_to_measurements_success() -> None:
 
     names = {m.measurement for m in measurements}
     assert names == {
-        "heat_outdoor_temperature_celsius",
-        "heat_return_temperature_celsius",
-        "heat_storage_temperature_celsius",
+        "heat_temperature_celsius",
         "heat_valve_signal_percentage",
     }
 
-    for m in measurements:
-        assert m.timestamp == timestamp
-        assert m.tags["id"] in {"MBR_10", "MBR_18", "MBR_23", "MBR_109"}
-        assert "label" in m.tags
-        assert len(m.fields) == 1
+    temp = next(m for m in measurements if m.measurement == "heat_temperature_celsius")
+    valve = next(
+        m for m in measurements if m.measurement == "heat_valve_signal_percentage"
+    )
+
+    assert temp.timestamp == timestamp
+    assert valve.timestamp == timestamp
+
+    assert set(temp.fields.keys()) == {"outdoor", "return", "storage"}
+    assert set(valve.fields.keys()) == {"signal"}
+
+    assert temp.tags["device_id"] == "device1"
+    assert temp.tags["device_name"] == "Test Device"
 
 
 def test_to_measurements_accepts_numeric_strings() -> None:
@@ -60,10 +66,10 @@ def test_to_measurements_accepts_numeric_strings() -> None:
 
     assert len(measurements) == EXPECTED_SAM_NUMERIC_STRING_COUNT
     names = {m.measurement for m in measurements}
-    assert names == {
-        "heat_outdoor_temperature_celsius",
-        "heat_return_temperature_celsius",
-    }
+    assert names == {"heat_temperature_celsius"}
+
+    temp = measurements[0]
+    assert set(temp.fields.keys()) == {"outdoor", "return"}
 
 
 def test_to_measurements_ignores_unknown_ids() -> None:
