@@ -25,16 +25,25 @@ class SamDigitalMapper(BaseMapper):
     TEMPERATURE_FIELDS: ClassVar[dict[str, str]] = {
         # Außentemperatur AF1
         "MBR_10": "outdoor",
-        # Vorlauftemperatur VF1
-        "MBR_13": "flow",
-        # Rücklauftemperatur RüF2
-        "MBR_18": "return",
-        # Speichertemperatur SF1
-        "MBR_23": "storage",
+        # Heizkreislauf: Vorlauftemperatur VF1
+        "MBR_13": "heating_flow",
+        # Heizkreislauf: Rücklauftemperatur RüF1
+        "MBR_17": "heating_return",
+        # Warmwasserkreislauf: Rücklauftemperatur RüF2
+        "MBR_18": "hotwater_return",
+        # Warmwasserkreislauf: Speichertemperatur SF1
+        "MBR_23": "hotwater_storage",
     }
 
-    # Datapoint ID for the valve signal (Stellsignal HK2)
-    VALVE_SIGNAL_ID: ClassVar[str] = "MBR_109"
+    # Mapping from Sam Digital datapoint ID to valve signal field keys.
+    # All valve signals are written into a single
+    # `heat_valve_signal_percentage` measurement with multiple fields.
+    VALVE_FIELDS: ClassVar[dict[str, str]] = {
+        # Heizkreislauf: Stellsignal HK1
+        "MBR_107": "heating",
+        # Warmwasserkreislauf: Stellsignal HK2
+        "MBR_109": "hotwater",
+    }
 
     @staticmethod
     def _to_float_or_none(value: Any) -> float | None:
@@ -71,7 +80,7 @@ class SamDigitalMapper(BaseMapper):
                 continue
 
             temperature_fields: dict[str, float] = {}
-            valve_signal: float | None = None
+            valve_fields: dict[str, float] = {}
 
             for datapoint in data_points:
                 dp_id = datapoint.get("id")
@@ -86,8 +95,9 @@ class SamDigitalMapper(BaseMapper):
                 if dp_id in SamDigitalMapper.TEMPERATURE_FIELDS:
                     field_key = SamDigitalMapper.TEMPERATURE_FIELDS[dp_id]
                     temperature_fields[field_key] = value
-                elif dp_id == SamDigitalMapper.VALVE_SIGNAL_ID:
-                    valve_signal = value
+                elif dp_id in SamDigitalMapper.VALVE_FIELDS:
+                    field_key = SamDigitalMapper.VALVE_FIELDS[dp_id]
+                    valve_fields[field_key] = value
 
             tags = SamDigitalMapper._build_tags(device)
 
@@ -101,13 +111,13 @@ class SamDigitalMapper(BaseMapper):
                     )
                 )
 
-            if valve_signal is not None:
+            if valve_fields:
                 measurements.append(
                     Measurement(
                         measurement="heat_valve_signal_percentage",
                         tags=tags,
                         timestamp=timestamp,
-                        fields={"signal": valve_signal},
+                        fields=valve_fields,
                     )
                 )
 

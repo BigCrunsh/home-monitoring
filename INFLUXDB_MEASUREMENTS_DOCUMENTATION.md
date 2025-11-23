@@ -149,9 +149,10 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 - **Description**: Aggregated heating circuit temperatures from Sam Digital
 - **Fields**:
   - `outdoor`: Outdoor temperature AF1 (°C)
-  - `flow`: Flow temperature VF1 (°C)
-  - `return`: Return flow temperature RüF2 (°C)
-  - `storage`: Storage tank temperature SF1 (°C)
+  - `heating_flow`: Heating circuit flow temperature VF1 (°C)
+  - `heating_return`: Heating circuit return temperature RüF1 (°C)
+  - `hotwater_return`: Hot water circuit return temperature RüF2 (°C)
+  - `hotwater_storage`: Hot water storage temperature SF1 (°C)
 - **Tags**:
   - `device_id`: Sam Digital device identifier
   - `device_name`: Human-readable device name from Sam Digital
@@ -161,10 +162,11 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 - **Source**: Sam Digital reader (sam-digital.net)
 - **Description**: Control valve signal (Stellsignal HK2)
 - **Fields**:
-  - `signal`: Valve control signal (%)
+  - `heating`: Heating circuit valve signal HK1 (%)
+  - `hotwater`: Hot water circuit valve signal HK2 (%)
 - **Tags**:
-  - `id`: Sam Digital datapoint identifier (e.g. MBR_109)
-  - `label`: Human-readable label from Sam Digital
+  - `device_id`: Sam Digital device identifier
+  - `device_name`: Human-readable device name from Sam Digital
 - **Update Frequency**: Depends on scheduler
 
 ### 5. Weather
