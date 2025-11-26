@@ -1,4 +1,4 @@
-![Example Dashboard](static/grafana.png)
+![Example Dashboard](static/iobroker.jpg)
 
 # Home Monitoring
 
