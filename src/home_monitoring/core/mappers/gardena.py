@@ -25,14 +25,14 @@ class GardenaMapper(BaseMapper):
             device: Gardena device instance. The mapper recognises three
                 ``device.type`` values:
 
-                * ``"SMART_IRRIGATION_CONTROL"`` – uses ``state`` and
+                * ``"SMART_IRRIGATION_CONTROL"`` - uses ``state`` and
                   optional ``activity`` attributes to create
                   ``garden_valves_activity`` measurements.
-                * ``"SENSOR"`` – uses attributes such as
+                * ``"SENSOR"`` - uses attributes such as
                   ``ambient_temperature``, ``soil_humidity``,
                   ``light_intensity``, ``rf_link_level``, and
                   ``battery_level`` when present.
-                * ``"SOIL_SENSOR"`` – uses ``soil_temperature`` and
+                * ``"SOIL_SENSOR"`` - uses ``soil_temperature`` and
                   ``soil_humidity`` when present.
 
         Returns:

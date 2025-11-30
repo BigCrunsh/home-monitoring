@@ -1,7 +1,7 @@
 """Tibber service implementation."""
 
 from datetime import UTC, datetime
-from typing import Any, TypedDict
+from typing import TypedDict
 
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
@@ -9,6 +9,7 @@ from home_monitoring.core.mappers.tibber import TibberMapper
 from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.services.base import BaseService
+
 import tibber
 
 
@@ -42,367 +43,141 @@ class TibberService(BaseService):
         super().__init__(settings=settings, repository=repository)
         self._user_agent = user_agent
 
-    async def collect_and_store(
-        self,
-        include_price: bool = True,
-        include_summaries: bool = False,
-    ) -> None:
-        """Collect Tibber electricity data and store in InfluxDB.
+    async def collect_and_store(self) -> None:  # noqa: PLR0912, PLR0915
+        """Collect Tibber price and summary data and store in InfluxDB."""
+        self._logger.info("collecting_electricity_data")
 
-        By default, only the current price is collected to preserve the
-        existing behaviour. Set ``include_summaries`` to ``True`` to also
-        collect aggregated consumption and cost data for the last hour,
-        yesterday, and the last 24 hours.
-        """
-        self._logger.info(
-            "collecting_electricity_data",
-            include_price=include_price,
-            include_summaries=include_summaries,
+        connection = tibber.Tibber(  # type: ignore[attr-defined]
+            self._settings.tibber_access_token,
+            user_agent=self._user_agent,
         )
 
-        measurements: list[Measurement] = []
+        try:
+            # Connect to Tibber and get home
+            await connection.update_info()
+            self._logger.debug("connected_to_tibber", name=connection.name)
 
-        if include_price:
-            price_data = await self._get_price_data()
-            starts_at = price_data.get("startsAt")
+            homes = connection.get_homes()
+            home = homes[0]
+            await home.fetch_consumption_data()
+            await home.update_info()
+            self._logger.debug("got_home_data", address=home.address1)
+
+            measurements: list[Measurement] = []
+
+            # Collect current price data
+            total, starts_at, rank = home.current_price_data()
             if not starts_at:
                 price_timestamp = datetime.now(UTC)
+            elif starts_at.tzinfo is None:
+                price_timestamp = starts_at.replace(tzinfo=UTC)
             else:
-                parsed_timestamp = datetime.fromisoformat(starts_at)
-                if parsed_timestamp.tzinfo is None:
-                    price_timestamp = parsed_timestamp.replace(tzinfo=UTC)
-                else:
-                    price_timestamp = parsed_timestamp.astimezone(UTC)
+                price_timestamp = starts_at.astimezone(UTC)
 
+            price_data = {
+                "total": total,
+                "startsAt": starts_at.isoformat() if starts_at else "",
+                "rank": rank,
+                "currency": "EUR",
+                "level": "NORMAL",
+                "energy": total * 0.8 if total else 0.0,
+                "tax": total * 0.2 if total else 0.0,
+            }
             measurements.extend(
-                TibberMapper.to_measurements(
-                    price_timestamp,
-                    price_data,
-                )
+                TibberMapper.to_measurements(price_timestamp, price_data)
             )
 
-        if include_summaries:
+            # Collect consumption summaries
             summary_timestamp = datetime.now(UTC)
-            summary_measurements = await self._collect_consumption_measurements(
-                summary_timestamp,
-            )
-            measurements.extend(summary_measurements)
 
-        if not measurements:
-            self._logger.warning("no_tibber_measurements_to_store")
-            return
+            # Last hour
+            try:
+                hourly_data = await home.fetch_consumption(resolution="HOURLY", last=1)
+                if hourly_data:
+                    node = hourly_data[0]
+                    measurements.extend(
+                        TibberMapper.to_measurements(
+                            summary_timestamp,
+                            {"cost": node.cost or 0.0, "period": "last_hour"},
+                        )
+                    )
+                    measurements.extend(
+                        TibberMapper.to_measurements(
+                            summary_timestamp,
+                            {
+                                "consumption": node.consumption or 0.0,
+                                "period": "last_hour",
+                            },
+                        )
+                    )
+            except Exception as e:
+                self._logger.warning("failed_to_get_last_hour_data", error=str(e))
 
-        try:
+            # Yesterday
+            try:
+                daily_data = await home.fetch_consumption(resolution="DAILY", last=1)
+                if daily_data:
+                    node = daily_data[0]
+                    measurements.extend(
+                        TibberMapper.to_measurements(
+                            summary_timestamp,
+                            {"cost": node.cost or 0.0, "period": "yesterday"},
+                        )
+                    )
+                    measurements.extend(
+                        TibberMapper.to_measurements(
+                            summary_timestamp,
+                            {
+                                "consumption": node.consumption or 0.0,
+                                "period": "yesterday",
+                            },
+                        )
+                    )
+            except Exception as e:
+                self._logger.warning("failed_to_get_yesterday_data", error=str(e))
+
+            # Last 24h
+            try:
+                hourly_24h_data = await home.fetch_consumption(
+                    resolution="HOURLY", last=24
+                )
+                if hourly_24h_data:
+                    total_cost = sum(node.cost or 0.0 for node in hourly_24h_data)
+                    total_consumption = sum(
+                        node.consumption or 0.0 for node in hourly_24h_data
+                    )
+                    measurements.extend(
+                        TibberMapper.to_measurements(
+                            summary_timestamp,
+                            {"cost": total_cost, "period": "last_24h"},
+                        )
+                    )
+                    measurements.extend(
+                        TibberMapper.to_measurements(
+                            summary_timestamp,
+                            {"consumption": total_consumption, "period": "last_24h"},
+                        )
+                    )
+            except Exception as e:
+                self._logger.warning("failed_to_get_last_24h_data", error=str(e))
+
+            if not measurements:
+                self._logger.warning("no_tibber_measurements_to_store")
+                return
+
             await self._db.write_measurements(measurements)
             self._logger.info(
                 "tibber_data_stored",
                 point_count=len(measurements),
             )
-        except Exception as e:
+
+        except Exception as exc:
             self._logger.error(
-                "failed_to_store_electricity_data",
-                error=str(e),
-                error_type=type(e).__name__,
-                points=measurements,
+                "tibber_api_request_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
             )
-            raise
-
-    async def collect_and_store_consumption_data(self) -> None:
-        """Collect and store consumption and cost data for all periods in InfluxDB."""
-        self._logger.info("collecting_consumption_and_cost_data")
-        timestamp = datetime.now(UTC)
-
-        try:
-            measurements = await self._collect_consumption_measurements(timestamp)
-
-            if measurements:
-                await self._db.write_measurements(measurements)
-                self._logger.info(
-                    "consumption_and_cost_data_stored",
-                    point_count=len(measurements),
-                )
-            else:
-                self._logger.warning("no_consumption_or_cost_data_to_store")
-
-        except Exception as e:
-            self._logger.error(
-                "failed_to_store_consumption_and_cost_data",
-                error=str(e),
-                error_type=type(e).__name__,
-            )
-            raise
-
-    async def _collect_consumption_measurements(
-        self,
-        timestamp: datetime,
-    ) -> list[Measurement]:
-        """Collect consumption and cost summary measurements for all periods."""
-        measurements: list[Measurement] = []
-
-        # Collect last hour data
-        try:
-            last_hour_cost = await self.get_last_hour_cost()
-            measurements.extend(
-                TibberMapper.to_measurements(
-                    timestamp,
-                    {"cost": last_hour_cost, "period": "last_hour"},
-                )
-            )
-        except ValueError as e:
-            self._logger.warning("failed_to_get_last_hour_cost", error=str(e))
-
-        try:
-            last_hour_consumption = await self.get_last_hour_consumption()
-            measurements.extend(
-                TibberMapper.to_measurements(
-                    timestamp,
-                    {"consumption": last_hour_consumption, "period": "last_hour"},
-                )
-            )
-        except ValueError as e:
-            self._logger.warning(
-                "failed_to_get_last_hour_consumption",
-                error=str(e),
-            )
-
-        # Collect yesterday data
-        try:
-            yesterday_cost = await self.get_yesterday_cost()
-            measurements.extend(
-                TibberMapper.to_measurements(
-                    timestamp,
-                    {"cost": yesterday_cost, "period": "yesterday"},
-                )
-            )
-        except ValueError as e:
-            self._logger.warning("failed_to_get_yesterday_cost", error=str(e))
-
-        try:
-            yesterday_consumption = await self.get_yesterday_consumption()
-            measurements.extend(
-                TibberMapper.to_measurements(
-                    timestamp,
-                    {"consumption": yesterday_consumption, "period": "yesterday"},
-                )
-            )
-        except ValueError as e:
-            self._logger.warning(
-                "failed_to_get_yesterday_consumption",
-                error=str(e),
-            )
-
-        # Collect last 24h data
-        try:
-            last_24h_cost = await self.get_last_24h_cost()
-            measurements.extend(
-                TibberMapper.to_measurements(
-                    timestamp,
-                    {"cost": last_24h_cost, "period": "last_24h"},
-                )
-            )
-        except ValueError as e:
-            self._logger.warning("failed_to_get_last_24h_cost", error=str(e))
-
-        try:
-            last_24h_consumption = await self.get_last_24h_consumption()
-            measurements.extend(
-                TibberMapper.to_measurements(
-                    timestamp,
-                    {"consumption": last_24h_consumption, "period": "last_24h"},
-                )
-            )
-        except ValueError as e:
-            self._logger.warning(
-                "failed_to_get_last_24h_consumption",
-                error=str(e),
-            )
-
-        return measurements
-
-    async def _get_price_data(self) -> dict[str, Any]:
-        """Get current price data from Tibber API.
-
-        Returns:
-            Current price data
-        """
-        connection = tibber.Tibber(  # type: ignore[attr-defined]
-            self._settings.tibber_access_token,
-            user_agent=self._user_agent,
-        )
-
-        try:
-            try:
-                await connection.update_info()
-                self._logger.debug("connected_to_tibber", name=connection.name)
-
-                # Get first home's data
-                homes = connection.get_homes()
-                home = homes[0]
-                await home.fetch_consumption_data()
-                await home.update_info()
-                self._logger.debug("got_home_data", address=home.address1)
-
-                # current_price_data() returns tuple: (total, datetime, rank)
-                total, starts_at, rank = home.current_price_data()
-
-                # Convert tuple to expected dictionary format
-                return {
-                    "total": total,
-                    "startsAt": starts_at.isoformat() if starts_at else "",
-                    "rank": rank,
-                    "currency": "EUR",  # Default currency
-                    "level": "NORMAL",  # Default level
-                    "energy": total * 0.8 if total else 0.0,  # Estimate energy portion
-                    "tax": total * 0.2 if total else 0.0,  # Estimate tax portion
-                }
-            except Exception as exc:  # pragma: no cover - network issues
-                self._logger.error(
-                    "tibber_api_request_failed",
-                    error=str(exc),
-                    error_type=type(exc).__name__,
-                )
-                raise APIError("Tibber API request failed") from exc
+            raise APIError("Tibber API request failed") from exc
         finally:
             await connection.close_connection()
 
-    async def get_last_hour_cost(self) -> float:
-        """Get total energy cost for the last hour.
-
-        Returns:
-            Total cost in EUR for the last complete hour
-
-        Raises:
-            ValueError: If no consumption data is available
-        """
-        consumption_data = await self._fetch_consumption_data("HOURLY", last=1)
-        if not consumption_data:
-            raise ValueError("No hourly consumption data available")
-        return consumption_data[0]["cost"]
-
-    async def get_last_hour_consumption(self) -> float:
-        """Get total energy consumption for the last hour.
-
-        Returns:
-            Total consumption in kWh for the last complete hour
-
-        Raises:
-            ValueError: If no consumption data is available
-        """
-        consumption_data = await self._fetch_consumption_data("HOURLY", last=1)
-        if not consumption_data:
-            raise ValueError("No hourly consumption data available")
-        return consumption_data[0]["consumption"]
-
-    async def get_yesterday_cost(self) -> float:
-        """Get total energy cost for yesterday.
-
-        Returns:
-            Total cost in EUR for the previous day
-
-        Raises:
-            ValueError: If no consumption data is available
-        """
-        consumption_data = await self._fetch_consumption_data("DAILY", last=1)
-        if not consumption_data:
-            raise ValueError("No daily consumption data available")
-        return consumption_data[0]["cost"]
-
-    async def get_yesterday_consumption(self) -> float:
-        """Get total energy consumption for yesterday.
-
-        Returns:
-            Total consumption in kWh for the previous day
-
-        Raises:
-            ValueError: If no consumption data is available
-        """
-        consumption_data = await self._fetch_consumption_data("DAILY", last=1)
-        if not consumption_data:
-            raise ValueError("No daily consumption data available")
-        return consumption_data[0]["consumption"]
-
-    async def get_last_24h_cost(self) -> float:
-        """Get total energy cost for the last 24 hours.
-
-        Returns:
-            Total cost in EUR for the last 24 hours (sum of hourly costs)
-
-        Raises:
-            ValueError: If no consumption data is available
-        """
-        consumption_data = await self._fetch_consumption_data("HOURLY", last=24)
-        if not consumption_data:
-            raise ValueError("No hourly consumption data available")
-        return sum(hour["cost"] for hour in consumption_data)
-
-    async def get_last_24h_consumption(self) -> float:
-        """Get total energy consumption for the last 24 hours.
-
-        Returns:
-            Total consumption in kWh for the last 24 hours (sum of hourly consumption)
-
-        Raises:
-            ValueError: If no consumption data is available
-        """
-        consumption_data = await self._fetch_consumption_data("HOURLY", last=24)
-        if not consumption_data:
-            raise ValueError("No hourly consumption data available")
-        return sum(hour["consumption"] for hour in consumption_data)
-
-    async def _fetch_consumption_data(
-        self,
-        resolution: str,
-        last: int,
-    ) -> list[ConsumptionData]:
-        """Fetch consumption data from Tibber API.
-
-        Args:
-            resolution: Time resolution (HOURLY, DAILY, WEEKLY, MONTHLY)
-            last: Number of periods to fetch
-
-        Returns:
-            List of consumption data dictionaries
-        """
-        connection = tibber.Tibber(  # type: ignore[attr-defined]
-            self._settings.tibber_access_token,
-            user_agent=self._user_agent,
-        )
-
-        try:
-            try:
-                await connection.update_info()
-                homes = connection.get_homes()
-                home = homes[0]
-
-                # Fetch consumption data
-                consumption_nodes = await home.fetch_consumption(
-                    resolution=resolution,
-                    last=last,
-                )
-
-                # Convert to our format
-                result: list[ConsumptionData] = []
-                for node in consumption_nodes:
-                    result.append(
-                        {
-                            "from_time": node.from_time,
-                            "to_time": node.to_time,
-                            "consumption": node.consumption or 0.0,
-                            "cost": node.cost or 0.0,
-                            "unit_price": node.unit_price or 0.0,
-                            "currency": node.currency or "EUR",
-                        }
-                    )
-
-                return result
-            except Exception as exc:  # pragma: no cover - network issues
-                self._logger.error(
-                    "tibber_api_request_failed",
-                    error=str(exc),
-                    error_type=type(exc).__name__,
-                    resolution=resolution,
-                    last=last,
-                )
-                raise APIError("Tibber API request failed") from exc
-        finally:
-            await connection.close_connection()

@@ -3,9 +3,7 @@
 Provides shared initialization for settings, repository, and logger.
 """
 
-from abc import ABC
 from importlib import import_module
-from typing import Optional
 
 from home_monitoring.config import Settings, get_settings
 from home_monitoring.repositories.influxdb import InfluxDBRepository
@@ -13,7 +11,7 @@ from home_monitoring.utils.logging import get_logger
 from structlog.stdlib import BoundLogger
 
 
-class BaseService(ABC):
+class BaseService:
     """Common base class for services.
 
     This class centralizes initialization of application settings,
@@ -22,8 +20,8 @@ class BaseService(ABC):
 
     def __init__(
         self,
-        settings: Optional[Settings] = None,
-        repository: Optional[InfluxDBRepository] = None,
+        settings: Settings | None = None,
+        repository: InfluxDBRepository | None = None,
     ) -> None:
         """Initialize core service dependencies.
 
