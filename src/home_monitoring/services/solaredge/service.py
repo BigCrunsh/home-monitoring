@@ -14,17 +14,22 @@ from structlog.stdlib import BoundLogger
 class SolarEdgeService:
     """Service for interacting with SolarEdge API."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        repository: InfluxDBRepository | None = None,
+    ) -> None:
         """Initialize the service.
 
         Args:
             settings: Application settings. If not provided, loaded from env.
+            repository: InfluxDB repository. If not provided, created.
 
         Raises:
             ValueError: If required credentials are missing.
         """
         self._settings = settings or get_settings()
-        self._db = InfluxDBRepository()
+        self._db = repository or InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
 
         # Validate required credentials
