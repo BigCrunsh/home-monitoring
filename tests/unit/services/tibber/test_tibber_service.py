@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from home_monitoring.config import Settings
+from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.tibber.service import TibberService
 from pytest_mock import MockerFixture
 
@@ -81,7 +82,7 @@ async def test_collect_and_store_api_error(
         service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act & Assert
-        with pytest.raises(Exception, match="API Error"):
+        with pytest.raises(APIError, match="Tibber API request failed"):
             await service.collect_and_store()
 
         assert not mock_influxdb.write_measurements.called
@@ -218,13 +219,13 @@ async def test_get_last_hour_cost_api_error(
     """Test get_last_hour_cost when API fails (unhappy path)."""
     # Arrange
     mock_connection = AsyncMock()
-    mock_connection.update_info.side_effect = Exception("API connection failed")
+    mock_connection.update_info.side_effect = APIError("Tibber API request failed")
 
     with patch("tibber.Tibber", return_value=mock_connection):
         service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act & Assert
-        with pytest.raises(Exception, match="API connection failed"):
+        with pytest.raises(APIError, match="Tibber API request failed"):
             await service.get_last_hour_cost()
 
 
@@ -327,13 +328,13 @@ async def test_get_last_hour_consumption_api_error(
     """Test get_last_hour_consumption when API fails (unhappy path)."""
     # Arrange
     mock_connection = AsyncMock()
-    mock_connection.update_info.side_effect = Exception("API connection failed")
+    mock_connection.update_info.side_effect = APIError("Tibber API request failed")
 
     with patch("tibber.Tibber", return_value=mock_connection):
         service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act & Assert
-        with pytest.raises(Exception, match="API connection failed"):
+        with pytest.raises(APIError, match="Tibber API request failed"):
             await service.get_last_hour_consumption()
 
 
@@ -436,7 +437,7 @@ async def test_get_yesterday_cost_api_error(
     """Test get_yesterday_cost when API fails (unhappy path)."""
     # Arrange
     mock_home = AsyncMock()
-    mock_home.fetch_consumption.side_effect = Exception("Fetch failed")
+    mock_home.fetch_consumption.side_effect = APIError("Tibber API request failed")
 
     mock_connection = AsyncMock()
     mock_connection.get_homes = MagicMock(return_value=[mock_home])
@@ -445,7 +446,7 @@ async def test_get_yesterday_cost_api_error(
         service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act & Assert
-        with pytest.raises(Exception, match="Fetch failed"):
+        with pytest.raises(APIError, match="Tibber API request failed"):
             await service.get_yesterday_cost()
 
 
@@ -548,7 +549,7 @@ async def test_get_yesterday_consumption_api_error(
     """Test get_yesterday_consumption when API fails (unhappy path)."""
     # Arrange
     mock_home = AsyncMock()
-    mock_home.fetch_consumption.side_effect = Exception("Fetch failed")
+    mock_home.fetch_consumption.side_effect = APIError("Tibber API request failed")
 
     mock_connection = AsyncMock()
     mock_connection.get_homes = MagicMock(return_value=[mock_home])
@@ -557,7 +558,7 @@ async def test_get_yesterday_consumption_api_error(
         service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act & Assert
-        with pytest.raises(Exception, match="Fetch failed"):
+        with pytest.raises(APIError, match="Tibber API request failed"):
             await service.get_yesterday_consumption()
 
 
@@ -818,13 +819,13 @@ async def test_get_last_24h_consumption_api_error(
     """Test get_last_24h_consumption when API fails (unhappy path)."""
     # Arrange
     mock_connection = AsyncMock()
-    mock_connection.update_info.side_effect = Exception("API connection failed")
+    mock_connection.update_info.side_effect = APIError("Tibber API request failed")
 
     with patch("tibber.Tibber", return_value=mock_connection):
         service = TibberService(settings=mock_settings, repository=mock_influxdb)
 
         # Act & Assert
-        with pytest.raises(Exception, match="API connection failed"):
+        with pytest.raises(APIError, match="Tibber API request failed"):
             await service.get_last_24h_consumption()
 
 
