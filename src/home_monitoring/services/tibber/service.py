@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 from home_monitoring.config import Settings, get_settings
+from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.tibber import TibberMapper
 from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
@@ -183,30 +184,37 @@ class TibberService:
         )
 
         try:
-            await connection.update_info()
-            self._logger.debug("connected_to_tibber", name=connection.name)
+            try:
+                await connection.update_info()
+                self._logger.debug("connected_to_tibber", name=connection.name)
 
-            # Get first home's data
-            homes = connection.get_homes()
-            home = homes[0]
-            await home.fetch_consumption_data()
-            await home.update_info()
-            self._logger.debug("got_home_data", address=home.address1)
+                # Get first home's data
+                homes = connection.get_homes()
+                home = homes[0]
+                await home.fetch_consumption_data()
+                await home.update_info()
+                self._logger.debug("got_home_data", address=home.address1)
 
-            # current_price_data() returns tuple: (total, datetime, rank)
-            price_tuple = home.current_price_data()
-            total, starts_at, rank = price_tuple
+                # current_price_data() returns tuple: (total, datetime, rank)
+                total, starts_at, rank = home.current_price_data()
 
-            # Convert tuple to expected dictionary format
-            return {
-                "total": total,
-                "startsAt": starts_at.isoformat() if starts_at else "",
-                "rank": rank,
-                "currency": "EUR",  # Default currency
-                "level": "NORMAL",  # Default level
-                "energy": total * 0.8 if total else 0.0,  # Estimate energy portion
-                "tax": total * 0.2 if total else 0.0,  # Estimate tax portion
-            }
+                # Convert tuple to expected dictionary format
+                return {
+                    "total": total,
+                    "startsAt": starts_at.isoformat() if starts_at else "",
+                    "rank": rank,
+                    "currency": "EUR",  # Default currency
+                    "level": "NORMAL",  # Default level
+                    "energy": total * 0.8 if total else 0.0,  # Estimate energy portion
+                    "tax": total * 0.2 if total else 0.0,  # Estimate tax portion
+                }
+            except Exception as exc:  # pragma: no cover - network issues
+                self._logger.error(
+                    "tibber_api_request_failed",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+                raise APIError("Tibber API request failed") from exc
         finally:
             await connection.close_connection()
 
@@ -314,30 +322,40 @@ class TibberService:
         )
 
         try:
-            await connection.update_info()
-            homes = connection.get_homes()
-            home = homes[0]
+            try:
+                await connection.update_info()
+                homes = connection.get_homes()
+                home = homes[0]
 
-            # Fetch consumption data
-            consumption_nodes = await home.fetch_consumption(
-                resolution=resolution,
-                last=last,
-            )
-
-            # Convert to our format
-            result: list[ConsumptionData] = []
-            for node in consumption_nodes:
-                result.append(
-                    {
-                        "from_time": node.from_time,
-                        "to_time": node.to_time,
-                        "consumption": node.consumption or 0.0,
-                        "cost": node.cost or 0.0,
-                        "unit_price": node.unit_price or 0.0,
-                        "currency": node.currency or "EUR",
-                    }
+                # Fetch consumption data
+                consumption_nodes = await home.fetch_consumption(
+                    resolution=resolution,
+                    last=last,
                 )
 
-            return result
+                # Convert to our format
+                result: list[ConsumptionData] = []
+                for node in consumption_nodes:
+                    result.append(
+                        {
+                            "from_time": node.from_time,
+                            "to_time": node.to_time,
+                            "consumption": node.consumption or 0.0,
+                            "cost": node.cost or 0.0,
+                            "unit_price": node.unit_price or 0.0,
+                            "currency": node.currency or "EUR",
+                        }
+                    )
+
+                return result
+            except Exception as exc:  # pragma: no cover - network issues
+                self._logger.error(
+                    "tibber_api_request_failed",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                    resolution=resolution,
+                    last=last,
+                )
+                raise APIError("Tibber API request failed") from exc
         finally:
             await connection.close_connection()

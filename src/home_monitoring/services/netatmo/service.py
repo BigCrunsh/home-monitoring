@@ -5,6 +5,7 @@ from typing import Any
 
 import lnetatmo
 from home_monitoring.config import Settings, get_settings
+from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.netatmo import NetatmoMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.utils.logging import get_logger
@@ -66,7 +67,7 @@ class NetatmoService:
         self._logger.info("collecting_weather_data")
 
         if not await self._get_data():
-            raise RuntimeError("Failed to get weather station data")
+            raise APIError("Netatmo API request failed")
 
         timestamp = datetime.now(UTC)
         # Get device data from lnetatmo API

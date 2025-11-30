@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from home_monitoring.config import Settings
+from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.netatmo.service import NetatmoService
 
 
@@ -116,7 +117,7 @@ async def test_collect_and_store_api_error(
     # Mock no stations available
     mock_api.stations = []
 
-    with pytest.raises(RuntimeError, match="Failed to get weather station data"):
+    with pytest.raises(APIError, match="Netatmo API request failed"):
         await service.collect_and_store()
 
     assert not mock_db.write_measurements.called
