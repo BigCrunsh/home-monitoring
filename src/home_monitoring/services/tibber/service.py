@@ -1,6 +1,6 @@
 """Tibber service implementation."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, TypedDict
 
 from home_monitoring.config import Settings, get_settings
@@ -52,7 +52,16 @@ class TibberService:
 
         # Get price data from Tibber API
         price_data = await self._get_price_data()
-        timestamp = datetime.fromisoformat(price_data.get("startsAt", ""))
+        starts_at = price_data.get("startsAt")
+        if not starts_at:
+            timestamp = datetime.now(UTC)
+        else:
+            parsed_timestamp = datetime.fromisoformat(starts_at)
+            if parsed_timestamp.tzinfo is None:
+                timestamp = parsed_timestamp.replace(tzinfo=UTC)
+            else:
+                timestamp = parsed_timestamp.astimezone(UTC)
+
         points = TibberMapper.to_measurements(timestamp, price_data)
 
         try:
@@ -73,7 +82,7 @@ class TibberService:
     async def collect_and_store_consumption_data(self) -> None:
         """Collect and store consumption and cost data for all periods in InfluxDB."""
         self._logger.info("collecting_consumption_and_cost_data")
-        timestamp = datetime.now()
+        timestamp = datetime.now(UTC)
         measurements: list[Measurement] = []
 
         try:

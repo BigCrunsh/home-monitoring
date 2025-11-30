@@ -1,6 +1,6 @@
 """Unit tests for Tibber service."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -62,7 +62,8 @@ async def test_collect_and_store_success(
         measurement = measurements[0]
         assert measurement.measurement == "electricity_prices_euro"
         assert measurement.tags == {}
-        assert measurement.timestamp == datetime(2024, 2, 16, 20, 0, 0)
+        expected_timestamp = datetime(2024, 2, 16, 20, 0, 0, tzinfo=UTC)
+        assert measurement.timestamp == expected_timestamp
         assert measurement.fields == {"total": 1.234, "rank": 0.5}
 
 
