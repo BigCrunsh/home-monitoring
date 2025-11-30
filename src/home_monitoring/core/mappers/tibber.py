@@ -20,12 +20,27 @@ class TibberMapper(BaseMapper):
         """Map Tibber data to InfluxDB measurements.
 
         Args:
-            timestamp: Measurement timestamp
-            data: Data from Tibber API (price, cost, or consumption)
-            data_type: Type of data - "price", "cost", or "consumption"
+            timestamp: Measurement timestamp (typically UTC-aware).
+            data: Tibber data payload whose expected structure depends on
+                ``data_type``:
+
+                * ``"price"`` (default): mapping with at least ``"total"``
+                  (numeric). Optionally contains ``"level"`` with one of
+                  ``VERY_CHEAP``, ``CHEAP``, ``NORMAL``, ``EXPENSIVE``, or
+                  ``VERY_EXPENSIVE``. Other keys are ignored.
+                * ``"cost"``: mapping with keys ``"cost"`` (numeric) and
+                  ``"period"`` (string tag such as ``"last_hour"``,
+                  ``"yesterday"``, or ``"last_24h"``).
+                * ``"consumption"``: mapping with keys ``"consumption"``
+                  (numeric) and ``"period"`` (string tag as for
+                  ``"cost"``).
+
+            data_type: Type of data: ``"price"``, ``"cost"``, or
+                ``"consumption"``.
 
         Returns:
-            List of InfluxDB measurements
+            List of InfluxDB :class:`Measurement` instances representing the
+            given Tibber data.
         """
         if data_type == "cost":
             return [

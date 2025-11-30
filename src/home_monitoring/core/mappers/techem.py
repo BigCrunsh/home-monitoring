@@ -22,11 +22,16 @@ class TechemMapper(BaseMapper):
         """Map meter data to InfluxDB measurements.
 
         Args:
-            timestamp: Measurement timestamp
-            responses: Raw responses from meter
+            timestamp: Measurement timestamp applied to all parsed readings.
+            responses: Raw meter responses as ASCII-encoded hex byte strings
+                (e.g. ``b"364468..."``). Each response is expected to have a
+                fixed length of :data:`EXPECTED_RESPONSE_LENGTH` characters and
+                to follow the Techem WMBUS frame layout documented in the
+                module comments.
 
         Returns:
-            List of InfluxDB measurements
+            List of InfluxDB measurements. Invalid or unparsable responses are
+            skipped and logged at debug level.
         """
         measurements = []
         for response in responses:

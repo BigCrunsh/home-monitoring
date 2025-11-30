@@ -17,14 +17,27 @@ class GardenaMapper(BaseMapper):
     ) -> list[Measurement]:
         """Map Gardena device data to InfluxDB measurements.
 
-        Creates separate measurements for each sensor type with proper naming.
+        Creates separate measurements for each supported device/sensor type
+        with descriptive measurement names.
 
         Args:
-            timestamp: Measurement timestamp
-            device: Gardena device (irrigation control, sensor, or soil sensor)
+            timestamp: Measurement timestamp for all created points.
+            device: Gardena device instance. The mapper recognises three
+                ``device.type`` values:
+
+                * ``"SMART_IRRIGATION_CONTROL"`` – uses ``state`` and
+                  optional ``activity`` attributes to create
+                  ``garden_valves_activity`` measurements.
+                * ``"SENSOR"`` – uses attributes such as
+                  ``ambient_temperature``, ``soil_humidity``,
+                  ``light_intensity``, ``rf_link_level``, and
+                  ``battery_level`` when present.
+                * ``"SOIL_SENSOR"`` – uses ``soil_temperature`` and
+                  ``soil_humidity`` when present.
 
         Returns:
-            List of InfluxDB measurements
+            List of InfluxDB :class:`Measurement` instances for the given
+            device. For unsupported device types an empty list is returned.
         """
         measurements = []
 

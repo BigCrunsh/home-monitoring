@@ -19,9 +19,32 @@ class SolarEdgeMapper(BaseMapper):
     ) -> list[Measurement]:
         """Map SolarEdge detailed data to InfluxDB measurements.
 
-        This function supports both /energyDetails and /powerDetails
-        responses. It inspects the provided data for the corresponding
-        root element and maps it to electricity_* measurements.
+        This function supports both ``/energyDetails`` and ``/powerDetails``
+        API responses. It inspects the provided ``data`` mapping for the
+        corresponding root element (``"energyDetails"`` or
+        ``"powerDetails"``) and delegates to specialised helpers.
+
+        Args:
+            timestamp: Unused placeholder timestamp kept for interface
+                compatibility; individual points use timestamps from the
+                SolarEdge payload.
+            data: Mapping representing the SolarEdge API response. Expected
+                structure:
+
+                * ``{"powerDetails": {"unit": "W", "meters": [...]}}`` for
+                  power measurements.
+                * ``{"energyDetails": {"unit": "Wh", "meters": [...]}}`` for
+                  energy measurements.
+
+                Each meter entry should provide ``"type"`` and ``"values"``
+                with ``{"date": <ISO8601>, "value": <number>}`` objects.
+
+            site_id: Optional site identifier; overrides the ``siteId`` value
+                contained in the payload when provided.
+
+        Returns:
+            List of InfluxDB :class:`Measurement` instances for all recognised
+            meters.
         """
         measurements: list[Measurement] = []
 

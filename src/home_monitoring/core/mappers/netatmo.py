@@ -30,17 +30,26 @@ class NetatmoMapper(BaseMapper):
         timestamp: datetime,
         devices: Sequence[Mapping[str, Any]],
     ) -> list[Measurement]:
-        """Map weather station data to InfluxDB measurements.
+        """Map Netatmo weather station data to InfluxDB measurements.
 
         Creates separate measurements for each sensor type (temperature,
-        humidity, etc.) with descriptive names and appropriate units.
+        humidity, pressure, rain, wind, etc.) using the mapping defined in
+        :data:`FIELD_MAPPING`.
 
         Args:
-            timestamp: Measurement timestamp
-            devices: List of Netatmo devices with their data
+            timestamp: Measurement timestamp applied to all created points.
+            devices: Sequence of Netatmo device mappings as returned by the
+                Netatmo API. Each device is expected to provide:
+
+                * base keys: ``"_id"``, ``"type"``, ``"module_name"``;
+                * optional ``"dashboard_data"`` mapping with numeric sensor
+                  values;
+                * optional ``"modules"`` list containing additional module
+                  dicts with the same shape.
 
         Returns:
-            List of InfluxDB measurements
+            List of InfluxDB :class:`Measurement` instances for all recognised
+            sensor fields.
         """
         measurements = []
 
