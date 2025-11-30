@@ -24,9 +24,9 @@ class TankerkoenigMapper(BaseMapper):
                 ``"stations"`` keys. Both values are expected to be mappings
                 keyed by station ID:
 
-                * ``prices[station_id]`` – mapping with fuel type fields such
+                * ``prices[station_id]`` - mapping with fuel type fields such
                   as ``"e5"``, ``"e10"``, and ``"diesel"``.
-                * ``stations[station_id]`` – mapping with station metadata
+                * ``stations[station_id]`` - mapping with station metadata
                   like ``"brand"``, ``"place"``, ``"street"``,
                   ``"houseNumber"``, ``"lat"``, and ``"lng"``.
 
