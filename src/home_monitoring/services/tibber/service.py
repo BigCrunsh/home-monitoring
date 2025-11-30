@@ -65,6 +65,7 @@ class TibberService:
             self._logger.error(
                 "failed_to_store_electricity_data",
                 error=str(e),
+                error_type=type(e).__name__,
                 points=points,
             )
             raise
@@ -169,6 +170,7 @@ class TibberService:
             self._logger.error(
                 "failed_to_store_consumption_and_cost_data",
                 error=str(e),
+                error_type=type(e).__name__,
             )
             raise
 

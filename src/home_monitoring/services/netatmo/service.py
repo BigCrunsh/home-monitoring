@@ -84,6 +84,7 @@ class NetatmoService:
             self._logger.error(
                 "failed_to_store_weather_data",
                 error=str(e),
+                error_type=type(e).__name__,
                 measurements=measurements,
             )
             raise

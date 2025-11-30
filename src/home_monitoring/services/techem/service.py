@@ -68,6 +68,7 @@ class TechemService:
             self._logger.error(
                 "failed_to_collect_meter_data",
                 error=str(e),
+                error_type=type(e).__name__,
             )
             raise
 
@@ -131,6 +132,7 @@ class TechemService:
             self._logger.error(
                 "failed_to_get_meter_data",
                 error=str(e),
+                error_type=type(e).__name__,
             )
             if isinstance(e, APIError):
                 raise e
