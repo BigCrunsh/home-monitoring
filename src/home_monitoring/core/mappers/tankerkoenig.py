@@ -19,8 +19,16 @@ class TankerkoenigMapper(BaseMapper):
         """Map gas station data to InfluxDB points.
 
         Args:
-            timestamp: Measurement timestamp
-            data: Combined Tankerkoenig data with 'prices' and 'stations' keys
+            timestamp: Measurement timestamp applied to all station points.
+            data: Combined Tankerkoenig response data with ``"prices"`` and
+                ``"stations"`` keys. Both values are expected to be mappings
+                keyed by station ID:
+
+                * ``prices[station_id]`` – mapping with fuel type fields such
+                  as ``"e5"``, ``"e10"``, and ``"diesel"``.
+                * ``stations[station_id]`` – mapping with station metadata
+                  like ``"brand"``, ``"place"``, ``"street"``,
+                  ``"houseNumber"``, ``"lat"``, and ``"lng"``.
 
         Returns:
             List of InfluxDB measurements

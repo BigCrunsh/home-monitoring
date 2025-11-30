@@ -67,7 +67,11 @@ class SamDigitalMapper(BaseMapper):
 
         Args:
             timestamp: Measurement timestamp to use for all datapoints.
-            devices: Iterable of devices returned by the Sam Digital API.
+            devices: Iterable of devices as returned by the Sam Digital
+                ``/devices`` API. Each device is expected to contain a
+                ``"data"`` list with items holding ``"id"`` and ``"value"``
+                keys. Only known numeric IDs from :data:`TEMPERATURE_FIELDS`
+                and :data:`VALVE_FIELDS` are mapped.
 
         Returns:
             List of InfluxDB measurements.
