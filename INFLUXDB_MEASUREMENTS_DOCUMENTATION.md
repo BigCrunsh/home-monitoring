@@ -42,6 +42,24 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 - **Tags**: None
 - **Update Frequency**: Hourly
 
+#### `electricity_costs_euro`
+- **Source**: Tibber API (calculated from consumption data)
+- **Description**: Total electricity costs for different time periods
+- **Fields**:
+  - `cost`: Total cost in EUR
+- **Tags**:
+  - `period`: Time period (last_hour, yesterday, last_24h)
+- **Update Frequency**: Configurable (recommended: hourly or daily)
+
+#### `electricity_consumption_kwh`
+- **Source**: Tibber API
+- **Description**: Total electricity consumption for different time periods
+- **Fields**:
+  - `consumption`: Total consumption in kWh
+- **Tags**:
+  - `period`: Time period (last_hour, yesterday, last_24h)
+- **Update Frequency**: Configurable (recommended: hourly or daily)
+
 ### 2. Garden & Irrigation
 
 #### `garden_humidity_percentage`
