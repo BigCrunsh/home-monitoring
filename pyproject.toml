@@ -63,6 +63,7 @@ module = [
     "lnetatmo",
     "gardena.smart_system",
     "aioinflux",
+    "tibber",
 ]
 ignore_missing_imports = true
 

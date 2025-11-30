@@ -98,6 +98,18 @@ PYTHONPATH=src python -m home_monitoring.scripts.update_dns
 Note: The `-v` flag is not supported by all scripts.
 
 Additional options for specific collectors:
+
+**Tibber:**
+```bash
+# Collect both prices and consumption data (default)
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data
+
+# Collect only current prices
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data --prices-only
+
+# Collect only consumption and cost data
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data --consumption-only
+```
 - `collect_tankerkoenig_data.py`:
   - `--cache-dir`: Directory to cache station details
   - `--force-update`: Force update of station details from API
@@ -258,6 +270,41 @@ your `.env` file if it differs.
   ORDER BY time DESC
   LIMIT 24
   ```
+
+### Programmatic Access
+
+The Tibber service provides methods to retrieve energy cost and consumption data:
+
+```python
+from home_monitoring.services.tibber.service import TibberService
+
+# Initialize service
+service = TibberService()
+
+# Get cost for the last complete hour
+last_hour_cost = await service.get_last_hour_cost()
+print(f"Last hour cost: {last_hour_cost:.2f} EUR")
+
+# Get consumption for the last complete hour
+last_hour_consumption = await service.get_last_hour_consumption()
+print(f"Last hour consumption: {last_hour_consumption:.2f} kWh")
+
+# Get cost for yesterday
+yesterday_cost = await service.get_yesterday_cost()
+print(f"Yesterday's total cost: {yesterday_cost:.2f} EUR")
+
+# Get consumption for yesterday
+yesterday_consumption = await service.get_yesterday_consumption()
+print(f"Yesterday's total consumption: {yesterday_consumption:.2f} kWh")
+
+# Get cost for the last 24 hours
+last_24h_cost = await service.get_last_24h_cost()
+print(f"Last 24h cost: {last_24h_cost:.2f} EUR")
+
+# Get consumption for the last 24 hours
+last_24h_consumption = await service.get_last_24h_consumption()
+print(f"Last 24h consumption: {last_24h_consumption:.2f} kWh")
+```
 
 These queries can be pasted directly into the InfluxDB CLI, or into
 external visualization tools such as Grafana (InfluxDB data source,
