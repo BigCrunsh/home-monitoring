@@ -3,14 +3,12 @@
 from datetime import UTC, datetime
 from typing import Any, TypedDict
 
-from home_monitoring.config import Settings, get_settings
+from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.tibber import TibberMapper
 from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
-
+from home_monitoring.services.base import BaseService
 import tibber
 
 
@@ -25,7 +23,7 @@ class ConsumptionData(TypedDict):
     currency: str
 
 
-class TibberService:
+class TibberService(BaseService):
     """Service for interacting with Tibber API."""
 
     def __init__(
@@ -41,9 +39,7 @@ class TibberService:
             repository: InfluxDB repository. If not provided, created.
             user_agent: User agent string to use for API requests
         """
-        self._settings = settings or get_settings()
-        self._db = repository or InfluxDBRepository(settings=self._settings)
-        self._logger: BoundLogger = get_logger(__name__)
+        super().__init__(settings=settings, repository=repository)
         self._user_agent = user_agent
 
     async def collect_and_store(self) -> None:

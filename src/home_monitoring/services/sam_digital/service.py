@@ -5,15 +5,14 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from home_monitoring.config import Settings, get_settings
+from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.sam_digital import SamDigitalMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
+from home_monitoring.services.base import BaseService
 
 
-class SamDigitalService:
+class SamDigitalService(BaseService):
     """Service for interacting with the Sam Digital reader API."""
 
     def __init__(
@@ -32,9 +31,7 @@ class SamDigitalService:
         Raises:
             ValueError: If the required API key is missing.
         """
-        self._settings = settings or get_settings()
-        self._db = repository or InfluxDBRepository(settings=self._settings)
-        self._logger: BoundLogger = get_logger(__name__)
+        super().__init__(settings=settings, repository=repository)
         self._base_url = base_url.rstrip("/")
 
         if not self._settings.sam_digital_api_key:

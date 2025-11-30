@@ -3,15 +3,14 @@
 from datetime import UTC, datetime
 
 import httpx
-from home_monitoring.config import Settings, get_settings
+from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
+from home_monitoring.services.base import BaseService
 
 
-class SolarEdgeService:
+class SolarEdgeService(BaseService):
     """Service for interacting with SolarEdge API."""
 
     def __init__(
@@ -28,9 +27,7 @@ class SolarEdgeService:
         Raises:
             ValueError: If required credentials are missing.
         """
-        self._settings = settings or get_settings()
-        self._db = repository or InfluxDBRepository(settings=self._settings)
-        self._logger: BoundLogger = get_logger(__name__)
+        super().__init__(settings=settings, repository=repository)
 
         # Validate required credentials
         if not all(

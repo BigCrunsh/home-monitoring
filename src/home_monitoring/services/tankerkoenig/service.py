@@ -4,16 +4,15 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import ClassVar
 
-from home_monitoring.config import Settings, get_settings
+from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.tankerkoenig import TankerkoenigMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
+from home_monitoring.services.base import BaseService
 from home_monitoring.services.tankerkoenig.client import TankerkoenigClient
-from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
 
 
-class TankerkoenigService:
+class TankerkoenigService(BaseService):
     """Service for interacting with Tankerkoenig API."""
 
     # Default gas station IDs to monitor
@@ -49,9 +48,7 @@ class TankerkoenigService:
             repository: InfluxDB repository. If not provided, created.
             cache_dir: Directory to cache station details. If None, disabled.
         """
-        self._settings = settings or get_settings()
-        self._db = repository or InfluxDBRepository(settings=self._settings)
-        self._logger: BoundLogger = get_logger(__name__)
+        super().__init__(settings=settings, repository=repository)
         self._client = TankerkoenigClient(
             api_key=self._settings.tankerkoenig_api_key,
             cache_dir=cache_dir,

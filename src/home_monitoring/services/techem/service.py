@@ -4,16 +4,15 @@ import asyncio
 from datetime import UTC, datetime
 
 import serial
-from home_monitoring.config import Settings, get_settings
+from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.techem import TechemMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
+from home_monitoring.services.base import BaseService
 from home_monitoring.services.techem.config import SerialConfig
-from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
 
 
-class TechemService:
+class TechemService(BaseService):
     """Service for collecting Techem meter data via serial port."""
 
     def __init__(
@@ -29,9 +28,7 @@ class TechemService:
             repository: InfluxDB repository. If not provided, created.
             serial_config: Serial port configuration
         """
-        self._settings = settings or get_settings()
-        self._db = repository or InfluxDBRepository(settings=self._settings)
-        self._logger: BoundLogger = get_logger(__name__)
+        super().__init__(settings=settings, repository=repository)
         self._serial_config = serial_config or SerialConfig()
 
     async def collect_and_store(self, num_packets: int = 5) -> None:
