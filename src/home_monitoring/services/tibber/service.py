@@ -78,7 +78,6 @@ class TibberService(BaseService):
                 TibberMapper.to_measurements(
                     price_timestamp,
                     price_data,
-                    data_type="price",
                 )
             )
 
@@ -147,7 +146,6 @@ class TibberService(BaseService):
                 TibberMapper.to_measurements(
                     timestamp,
                     {"cost": last_hour_cost, "period": "last_hour"},
-                    data_type="cost",
                 )
             )
         except ValueError as e:
@@ -159,7 +157,6 @@ class TibberService(BaseService):
                 TibberMapper.to_measurements(
                     timestamp,
                     {"consumption": last_hour_consumption, "period": "last_hour"},
-                    data_type="consumption",
                 )
             )
         except ValueError as e:
@@ -175,7 +172,6 @@ class TibberService(BaseService):
                 TibberMapper.to_measurements(
                     timestamp,
                     {"cost": yesterday_cost, "period": "yesterday"},
-                    data_type="cost",
                 )
             )
         except ValueError as e:
@@ -187,7 +183,6 @@ class TibberService(BaseService):
                 TibberMapper.to_measurements(
                     timestamp,
                     {"consumption": yesterday_consumption, "period": "yesterday"},
-                    data_type="consumption",
                 )
             )
         except ValueError as e:
@@ -203,7 +198,6 @@ class TibberService(BaseService):
                 TibberMapper.to_measurements(
                     timestamp,
                     {"cost": last_24h_cost, "period": "last_24h"},
-                    data_type="cost",
                 )
             )
         except ValueError as e:
@@ -215,7 +209,6 @@ class TibberService(BaseService):
                 TibberMapper.to_measurements(
                     timestamp,
                     {"consumption": last_24h_consumption, "period": "last_24h"},
-                    data_type="consumption",
                 )
             )
         except ValueError as e:
