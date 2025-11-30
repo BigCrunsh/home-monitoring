@@ -91,6 +91,7 @@ class SolarEdgeService:
                 "solaredge_api_request_failed",
                 endpoint="energy_details",
                 error=str(e),
+                error_type=type(e).__name__,
             )
             raise APIError("SolarEdge API request failed") from e
 
@@ -200,6 +201,7 @@ class SolarEdgeService:
                 "solaredge_api_request_failed",
                 endpoint="power_details",
                 error=str(e),
+                error_type=type(e).__name__,
             )
             raise APIError("SolarEdge API request failed") from e
 

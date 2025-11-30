@@ -112,4 +112,5 @@ class GardenaService:
                 "failed_to_handle_device_update",
                 device_type=device.type,
                 error=str(e),
+                error_type=type(e).__name__,
             )

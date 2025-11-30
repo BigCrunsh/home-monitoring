@@ -106,6 +106,7 @@ class TankerkoenigService:
             self._logger.error(
                 "failed_to_store_gas_prices",
                 error=str(e),
+                error_type=type(e).__name__,
                 measurements=(measurements if "measurements" in locals() else None),
             )
             raise

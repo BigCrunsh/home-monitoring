@@ -68,6 +68,7 @@ class SamDigitalService:
                 "sam_digital_api_request_failed",
                 endpoint="/devices",
                 error=str(exc),
+                error_type=type(exc).__name__,
             )
             raise APIError("Sam Digital API request failed") from exc
 
@@ -117,5 +118,6 @@ class SamDigitalService:
             self._logger.error(
                 "failed_to_store_sam_digital_data",
                 error=str(exc),
+                error_type=type(exc).__name__,
             )
             raise
