@@ -14,14 +14,19 @@ from structlog.stdlib import BoundLogger
 class NetatmoService:
     """Service for interacting with Netatmo weather station."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        repository: InfluxDBRepository | None = None,
+    ) -> None:
         """Initialize the service.
 
         Args:
             settings: Application settings. If not provided, loaded from env.
+            repository: InfluxDB repository. If not provided, created.
         """
         self._settings = settings or get_settings()
-        self._db = InfluxDBRepository(settings=self._settings)
+        self._db = repository or InfluxDBRepository(settings=self._settings)
         self._logger: BoundLogger = get_logger(__name__)
 
         # Validate required credentials for new lnetatmo library
