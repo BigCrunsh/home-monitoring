@@ -1,7 +1,7 @@
 """Gardena smart system service implementation."""
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from home_monitoring.config import Settings, get_settings
@@ -91,7 +91,7 @@ class GardenaService:
         Args:
             device: Gardena device that was updated
         """
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
 
         try:
             measurements = GardenaMapper.to_measurements(timestamp, device)
