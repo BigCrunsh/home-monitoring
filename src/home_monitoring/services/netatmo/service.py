@@ -4,15 +4,14 @@ from datetime import UTC, datetime
 from typing import Any
 
 import lnetatmo
-from home_monitoring.config import Settings, get_settings
+from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.netatmo import NetatmoMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
+from home_monitoring.services.base import BaseService
 
 
-class NetatmoService:
+class NetatmoService(BaseService):
     """Service for interacting with Netatmo weather station."""
 
     def __init__(
@@ -26,9 +25,7 @@ class NetatmoService:
             settings: Application settings. If not provided, loaded from env.
             repository: InfluxDB repository. If not provided, created.
         """
-        self._settings = settings or get_settings()
-        self._db = repository or InfluxDBRepository(settings=self._settings)
-        self._logger: BoundLogger = get_logger(__name__)
+        super().__init__(settings=settings, repository=repository)
 
         # Validate required credentials for new lnetatmo library
         if not all(

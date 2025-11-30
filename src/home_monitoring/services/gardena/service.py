@@ -4,16 +4,14 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from home_monitoring.config import Settings, get_settings
+from home_monitoring.config import Settings
 from home_monitoring.core.mappers.gardena import GardenaMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.utils.logging import get_logger
-from structlog.stdlib import BoundLogger
-
+from home_monitoring.services.base import BaseService
 from gardena.smart_system import SmartSystem
 
 
-class GardenaService:
+class GardenaService(BaseService):
     """Service for interacting with Gardena smart system."""
 
     def __init__(
@@ -27,9 +25,7 @@ class GardenaService:
             settings: Application settings. If not provided, loaded from env.
             repository: InfluxDB repository. If not provided, created.
         """
-        self._settings = settings or get_settings()
-        self._db = repository or InfluxDBRepository(settings=self._settings)
-        self._logger: BoundLogger = get_logger(__name__)
+        super().__init__(settings=settings, repository=repository)
 
         # Validate required credentials
         if not all(
