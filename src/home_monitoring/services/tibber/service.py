@@ -105,6 +105,10 @@ class TibberService(BaseService):
                         to_time=node.get("to"),
                         cost=node.get("totalCost"),
                         consumption=node.get("consumption"),
+                        consumption_unit=node.get("consumptionUnit"),
+                        production=node.get("production"),
+                        profit=node.get("profit"),
+                        all_fields=list(node.keys()),
                     )
                     cost = node.get("totalCost") or 0.0
                     consumption = node.get("consumption") or 0.0
