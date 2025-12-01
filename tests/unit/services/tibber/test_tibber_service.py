@@ -43,6 +43,10 @@ async def test_collect_and_store_success(
             [],  # Yesterday production (no solar)
             mock_consumption_nodes_24h,  # Last 24h consumption
             [],  # Last 24h production (no solar)
+        ]
+    )
+    mock_home.get_historic_data_date = AsyncMock(
+        side_effect=[
             [mock_consumption_node_monthly],  # This month consumption
             [],  # This month production (no solar)
         ]
@@ -112,6 +116,10 @@ async def test_collect_and_store_database_error(
             [],  # Daily production
             [mock_consumption_node] * 24,  # 24h consumption
             [],  # 24h production
+        ]
+    )
+    mock_home.get_historic_data_date = AsyncMock(
+        side_effect=[
             [mock_consumption_node],  # Monthly consumption
             [],  # Monthly production
         ]
@@ -154,6 +162,10 @@ async def test_collect_and_store_partial_consumption_failure(
             Exception("Daily production unavailable"),
             Exception("24h consumption unavailable"),
             Exception("24h production unavailable"),
+        ]
+    )
+    mock_home.get_historic_data_date = AsyncMock(
+        side_effect=[
             Exception("Monthly consumption unavailable"),
             Exception("Monthly production unavailable"),
         ]

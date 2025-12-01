@@ -302,15 +302,24 @@ class TibberService(BaseService):
 
             # This month (current month-to-date)
             try:
-                # Get current day of month to fetch all days so far this month
+                # Get first day of current month
                 from datetime import datetime as dt
-                current_day = dt.now(connection.time_zone).day
-                
-                monthly_data = await home.get_historic_data(
-                    n_data=current_day, resolution="DAILY"
+                now = dt.now(connection.time_zone)
+                first_of_month = now.replace(
+                    day=1, hour=0, minute=0, second=0, microsecond=0
                 )
-                monthly_production = await home.get_historic_data(
-                    n_data=current_day, resolution="DAILY", production=True
+                days_in_month = now.day
+                
+                monthly_data = await home.get_historic_data_date(
+                    date_from=first_of_month,
+                    n_data=days_in_month,
+                    resolution="DAILY"
+                )
+                monthly_production = await home.get_historic_data_date(
+                    date_from=first_of_month,
+                    n_data=days_in_month,
+                    resolution="DAILY",
+                    production=True
                 )
                 
                 cost = 0.0
