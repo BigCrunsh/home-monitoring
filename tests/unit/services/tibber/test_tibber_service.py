@@ -18,19 +18,12 @@ async def test_collect_and_store_success(
 ) -> None:
     """Test successful data collection and storage."""
     # Arrange
-    mock_consumption_node_hourly = MagicMock()
-    mock_consumption_node_hourly.cost = 0.45
-    mock_consumption_node_hourly.consumption = 1.5
-
-    mock_consumption_node_daily = MagicMock()
-    mock_consumption_node_daily.cost = 7.65
-    mock_consumption_node_daily.consumption = 25.5
+    mock_consumption_node_hourly = {"cost": 0.45, "consumption": 1.5}
+    mock_consumption_node_daily = {"cost": 7.65, "consumption": 25.5}
 
     mock_consumption_nodes_24h = []
     for _ in range(24):
-        node = MagicMock()
-        node.cost = 0.30
-        node.consumption = 1.0
+        node = {"cost": 0.30, "consumption": 1.0}
         mock_consumption_nodes_24h.append(node)
 
     mock_home = AsyncMock()
@@ -38,9 +31,9 @@ async def test_collect_and_store_success(
     mock_home.current_price_data = MagicMock(
         return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5)
     )
-    mock_home.fetch_consumption_data = AsyncMock(
+    mock_home.fetch_consumption_data = AsyncMock(return_value=None)
+    mock_home.get_historic_data = AsyncMock(
         side_effect=[
-            None,  # Initial call without parameters
             [mock_consumption_node_hourly],  # Last hour
             [mock_consumption_node_daily],  # Yesterday
             mock_consumption_nodes_24h,  # Last 24h
@@ -94,21 +87,19 @@ async def test_collect_and_store_database_error(
 ) -> None:
     """Test handling of database error."""
     # Arrange
-    mock_consumption_node = MagicMock()
-    mock_consumption_node.cost = 0.45
-    mock_consumption_node.consumption = 1.5
+    mock_consumption_node = {"cost": 0.45, "consumption": 1.5}
 
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
     mock_home.current_price_data = MagicMock(
         return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5)
     )
-    mock_home.fetch_consumption_data = AsyncMock(
+    mock_home.fetch_consumption_data = AsyncMock(return_value=None)
+    mock_home.get_historic_data = AsyncMock(
         side_effect=[
-            None,  # Initial call without parameters
-            [mock_consumption_node],  # Subsequent parametrized calls
-            [mock_consumption_node],
-            [mock_consumption_node],
+            [mock_consumption_node],  # Hourly
+            [mock_consumption_node],  # Daily
+            [mock_consumption_node] * 24,  # 24h
         ]
     )
 
@@ -138,10 +129,10 @@ async def test_collect_and_store_partial_consumption_failure(
     mock_home.current_price_data = MagicMock(
         return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5)
     )
-    # All consumption data calls fail (after initial call)
-    mock_home.fetch_consumption_data = AsyncMock(
+    # All consumption data calls fail
+    mock_home.fetch_consumption_data = AsyncMock(return_value=None)
+    mock_home.get_historic_data = AsyncMock(
         side_effect=[
-            None,  # Initial call without parameters
             Exception("Hourly data unavailable"),
             Exception("Daily data unavailable"),
             Exception("24h data unavailable"),
