@@ -109,6 +109,18 @@ class TibberService(BaseService):
                     if hourly_production:
                         prod_node = hourly_production[0]
                         production = prod_node.get("production") or 0.0
+                        self._logger.debug(
+                            "last_hour_production_raw",
+                            has_data=bool(hourly_production),
+                            production_value=prod_node.get("production"),
+                            all_fields=list(prod_node.keys()) if prod_node else [],
+                        )
+                    else:
+                        self._logger.debug(
+                            "last_hour_production_raw",
+                            has_data=False,
+                            production_list=hourly_production,
+                        )
                     
                     grid_consumption = max(0.0, consumption - production)
                     self_consumption = min(consumption, production)
