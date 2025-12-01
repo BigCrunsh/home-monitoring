@@ -49,6 +49,7 @@ class TankerkoenigMapper(BaseMapper):
             place = station.get("place", "unknown")
             street = station.get("street", "unknown")
             house_number = station.get("houseNumber", "unknown")
+            post_code = station.get("postCode", "unknown")
 
             # Apply title case to text fields (handles mixed case from API)
             if brand != "unknown":
@@ -59,6 +60,8 @@ class TankerkoenigMapper(BaseMapper):
                 street = street.title()
             if house_number != "unknown":
                 house_number = str(house_number)
+            if post_code != "unknown":
+                post_code = str(post_code)
 
             measurements.append(
                 Measurement(
@@ -69,6 +72,7 @@ class TankerkoenigMapper(BaseMapper):
                         "place": place,
                         "street": street,
                         "house_number": house_number,
+                        "post_code": post_code,
                         "lat": str(station.get("lat", "unknown")),
                         "lng": str(station.get("lng", "unknown")),
                     },
