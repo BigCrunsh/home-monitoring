@@ -322,6 +322,16 @@ class TibberService(BaseService):
                     production=True
                 )
                 
+                self._logger.debug(
+                    "this_month_data_raw",
+                    first_of_month=first_of_month.isoformat(),
+                    days_requested=days_in_month,
+                    data_count=len(monthly_data) if monthly_data else 0,
+                    production_count=(
+                        len(monthly_production) if monthly_production else 0
+                    ),
+                )
+                
                 cost = 0.0
                 consumption = 0.0
                 production = 0.0
