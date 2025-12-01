@@ -92,7 +92,9 @@ class TibberService(BaseService):
 
             # Last hour
             try:
-                hourly_data = await home.fetch_consumption(resolution="HOURLY", last=1)
+                hourly_data = await home.fetch_consumption_data(
+                    resolution="HOURLY", last=1
+                )
                 if hourly_data:
                     node = hourly_data[0]
                     measurements.extend(
@@ -115,7 +117,9 @@ class TibberService(BaseService):
 
             # Yesterday
             try:
-                daily_data = await home.fetch_consumption(resolution="DAILY", last=1)
+                daily_data = await home.fetch_consumption_data(
+                    resolution="DAILY", last=1
+                )
                 if daily_data:
                     node = daily_data[0]
                     measurements.extend(
@@ -138,7 +142,7 @@ class TibberService(BaseService):
 
             # Last 24h
             try:
-                hourly_24h_data = await home.fetch_consumption(
+                hourly_24h_data = await home.fetch_consumption_data(
                     resolution="HOURLY", last=24
                 )
                 if hourly_24h_data:
