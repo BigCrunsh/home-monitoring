@@ -34,9 +34,12 @@ async def test_collect_and_store_success(
     mock_home.fetch_consumption_data = AsyncMock(return_value=None)
     mock_home.get_historic_data = AsyncMock(
         side_effect=[
-            [mock_consumption_node_hourly],  # Last hour
-            [mock_consumption_node_daily],  # Yesterday
-            mock_consumption_nodes_24h,  # Last 24h
+            [mock_consumption_node_hourly],  # Last hour consumption
+            [],  # Last hour production (no solar)
+            [mock_consumption_node_daily],  # Yesterday consumption
+            [],  # Yesterday production (no solar)
+            mock_consumption_nodes_24h,  # Last 24h consumption
+            [],  # Last 24h production (no solar)
         ]
     )
 
@@ -53,8 +56,8 @@ async def test_collect_and_store_success(
         # Assert
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
-        # 1 price + 2 last_hour + 2 yesterday + 2 last_24h
-        expected_count = 7
+        # 1 price + 3 last_hour (cost, total, grid) + 3 yesterday + 3 last_24h
+        expected_count = 10
         assert len(measurements) == expected_count
 
 
@@ -97,9 +100,12 @@ async def test_collect_and_store_database_error(
     mock_home.fetch_consumption_data = AsyncMock(return_value=None)
     mock_home.get_historic_data = AsyncMock(
         side_effect=[
-            [mock_consumption_node],  # Hourly
-            [mock_consumption_node],  # Daily
-            [mock_consumption_node] * 24,  # 24h
+            [mock_consumption_node],  # Hourly consumption
+            [],  # Hourly production
+            [mock_consumption_node],  # Daily consumption
+            [],  # Daily production
+            [mock_consumption_node] * 24,  # 24h consumption
+            [],  # 24h production
         ]
     )
 
@@ -133,9 +139,12 @@ async def test_collect_and_store_partial_consumption_failure(
     mock_home.fetch_consumption_data = AsyncMock(return_value=None)
     mock_home.get_historic_data = AsyncMock(
         side_effect=[
-            Exception("Hourly data unavailable"),
-            Exception("Daily data unavailable"),
-            Exception("24h data unavailable"),
+            Exception("Hourly consumption unavailable"),
+            Exception("Hourly production unavailable"),
+            Exception("Daily consumption unavailable"),
+            Exception("Daily production unavailable"),
+            Exception("24h consumption unavailable"),
+            Exception("24h production unavailable"),
         ]
     )
 

@@ -56,10 +56,13 @@ class TibberMapper(BaseMapper):
             )
 
         if "consumption" in data and "period" in data:
+            tags = {"period": str(data.get("period", "unknown"))}
+            if "source" in data:
+                tags["source"] = str(data.get("source"))
             measurements.append(
                 Measurement(
                     measurement="electricity_consumption_kwh",
-                    tags={"period": str(data.get("period", "unknown"))},
+                    tags=tags,
                     timestamp=timestamp,
                     fields={"consumption": float(data.get("consumption", 0.0))},
                 )
