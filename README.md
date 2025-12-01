@@ -101,14 +101,11 @@ Additional options for specific collectors:
 
 **Tibber:**
 ```bash
-# Collect both prices and consumption data (default)
+# Collect both prices and consumption data
 PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data
 
-# Collect only current prices
-PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data --prices-only
-
-# Collect only consumption and cost data
-PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data --consumption-only
+# Optional: specify custom user agent
+PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data --user-agent "MyApp/1.0"
 ```
 - `collect_tankerkoenig_data.py`:
   - `--cache-dir`: Directory to cache station details

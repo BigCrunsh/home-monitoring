@@ -25,7 +25,11 @@ async def main(args: argparse.Namespace) -> int:
         Exit code
     """
     configure_logging()
-    service = TibberService(user_agent=args.user_agent)
+    # Only pass user_agent if provided, otherwise use service default
+    kwargs = {}
+    if args.user_agent:
+        kwargs["user_agent"] = args.user_agent
+    service = TibberService(**kwargs)
 
     try:
         await service.collect_and_store()
