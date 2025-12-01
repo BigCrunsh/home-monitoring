@@ -133,6 +133,16 @@ class TibberService(BaseService):
                 )
                 if daily_data:
                     node = daily_data[0]
+                    self._logger.debug(
+                        "yesterday_data",
+                        from_time=node.get("from"),
+                        to_time=node.get("to"),
+                        cost=node.get("cost"),
+                        total_cost=node.get("totalCost"),
+                        consumption=node.get("consumption"),
+                        unit_price=node.get("unitPrice"),
+                        all_fields=list(node.keys()),
+                    )
                     cost = node.get("cost") or 0.0
                     consumption = node.get("consumption") or 0.0
                     measurements.extend(
