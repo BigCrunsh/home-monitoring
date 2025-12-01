@@ -96,7 +96,8 @@ class TankerkoenigClient:
         if not force_update and self._cache_dir:
             cached = self._load_from_cache(station_id)
             if cached:
-                return cached
+                # Wrap cached station data in same format as API response
+                return {"ok": True, "station": cached}
 
         # Get from API
         url = (
