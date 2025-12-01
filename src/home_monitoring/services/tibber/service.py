@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from typing import TypedDict
+from zoneinfo import ZoneInfo
 
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
@@ -50,6 +51,7 @@ class TibberService(BaseService):
         connection = tibber.Tibber(  # type: ignore[attr-defined]
             self._settings.tibber_access_token,
             user_agent=self._user_agent,
+            time_zone=ZoneInfo("Europe/Berlin"),
         )
 
         try:
