@@ -97,6 +97,13 @@ class TibberService(BaseService):
                 )
                 if hourly_data:
                     node = hourly_data[0]
+                    self._logger.debug(
+                        "last_hour_data",
+                        from_time=node.get("from"),
+                        to_time=node.get("to"),
+                        cost=node.get("cost"),
+                        consumption=node.get("consumption"),
+                    )
                     cost = node.get("cost") or 0.0
                     consumption = node.get("consumption") or 0.0
                     measurements.extend(
