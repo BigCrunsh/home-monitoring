@@ -32,8 +32,6 @@ async def test_collect_and_store_success(
     mock_home.current_price_data = MagicMock(
         return_value=(1.234, datetime(2024, 2, 16, 20, 0, 0), 0.5)
     )
-    mock_consumption_node_monthly = {"cost": 45.50, "consumption": 150.0}
-
     mock_home.fetch_consumption_data = AsyncMock(return_value=None)
     mock_home.get_historic_data = AsyncMock(
         side_effect=[
@@ -43,12 +41,14 @@ async def test_collect_and_store_success(
             [],  # Yesterday production (no solar)
             mock_consumption_nodes_24h,  # Last 24h consumption
             [],  # Last 24h production (no solar)
+            mock_consumption_nodes_24h[:10],  # This day hourly consumption
+            [],  # This day hourly production (no solar)
         ]
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            [mock_consumption_node_monthly],  # This month consumption
-            [],  # This month production (no solar)
+            [],  # This month completed days (none on day 1)
+            [],  # This month completed days production
         ]
     )
 
@@ -66,8 +66,8 @@ async def test_collect_and_store_success(
         # Assert
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
-        # 1 price + 3 last_hour + 3 yesterday + 3 last_24h + 3 this_month
-        expected_count = 13
+        # 1 price + 3 last_hour + 3 yesterday + 3 last_24h + 3 this_day + 3 this_month
+        expected_count = 16
         assert len(measurements) == expected_count
 
 
@@ -116,12 +116,14 @@ async def test_collect_and_store_database_error(
             [],  # Daily production
             [mock_consumption_node] * 24,  # 24h consumption
             [],  # 24h production
+            [mock_consumption_node] * 10,  # This day hourly consumption
+            [],  # This day hourly production
         ]
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            [mock_consumption_node],  # Monthly consumption
-            [],  # Monthly production
+            [],  # This month completed days
+            [],  # This month completed days production
         ]
     )
 
@@ -162,12 +164,14 @@ async def test_collect_and_store_partial_consumption_failure(
             Exception("Daily production unavailable"),
             Exception("24h consumption unavailable"),
             Exception("24h production unavailable"),
+            Exception("This day hourly consumption unavailable"),
+            Exception("This day hourly production unavailable"),
         ]
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            Exception("Monthly consumption unavailable"),
-            Exception("Monthly production unavailable"),
+            Exception("This month completed days unavailable"),
+            Exception("This month completed days production unavailable"),
         ]
     )
 
