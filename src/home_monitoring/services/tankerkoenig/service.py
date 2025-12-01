@@ -87,9 +87,20 @@ class TankerkoenigService(BaseService):
 
             # Map to InfluxDB measurements
             timestamp = datetime.now(UTC)
+            prices_data = prices_response.get("prices", {})
+            stations_data = stations_response.get("stations", {})
+            
+            self._logger.debug(
+                "mapping_tankerkoenig_data",
+                prices_count=len(prices_data),
+                stations_count=len(stations_data),
+                price_station_ids=list(prices_data.keys()),
+                station_ids_with_details=list(stations_data.keys()),
+            )
+            
             combined_data = {
-                "prices": prices_response.get("prices", {}),
-                "stations": stations_response.get("stations", {}),
+                "prices": prices_data,
+                "stations": stations_data,
             }
             measurements = TankerkoenigMapper.to_measurements(timestamp, combined_data)
 

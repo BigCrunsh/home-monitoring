@@ -104,8 +104,13 @@ def test_to_measurements_missing_data() -> None:
         {"prices": prices, "stations": stations},
     )
 
-    # Assert
-    assert len(measurements) == 0
+    # Assert - should create measurement for station 456 with price data
+    # even though station details are missing (uses "unknown" defaults)
+    assert len(measurements) == 1
+    assert measurements[0].tags["station_id"] == "456"
+    assert measurements[0].tags["brand"] == "unknown"
+    expected_diesel_price = 1.619
+    assert measurements[0].fields["diesel"] == expected_diesel_price
 
 
 def test_to_measurements_invalid_data() -> None:

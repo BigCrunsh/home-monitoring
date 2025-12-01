@@ -9,9 +9,6 @@ from home_monitoring.core.exceptions import APIError
 from home_monitoring.services.tibber.service import TibberService
 from pytest_mock import MockerFixture
 
-# Test constants
-EXPECTED_MEASUREMENT_COUNT = 7  # 1 price + 2 last_hour + 2 yesterday + 2 last_24h
-
 
 @pytest.mark.asyncio(scope="function")
 async def test_collect_and_store_success(
@@ -62,7 +59,9 @@ async def test_collect_and_store_success(
         # Assert
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
-        assert len(measurements) == EXPECTED_MEASUREMENT_COUNT
+        # 1 price + 2 last_hour + 2 yesterday + 2 last_24h
+        expected_count = 7
+        assert len(measurements) == expected_count
 
 
 @pytest.mark.asyncio(scope="function")

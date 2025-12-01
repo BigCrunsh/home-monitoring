@@ -41,10 +41,8 @@ class TankerkoenigMapper(BaseMapper):
             if not price_data:
                 continue
 
-            # Get station details
+            # Get station details - if missing, use defaults to still record prices
             station = stations.get(station_id, {})
-            if not station:
-                continue
 
             measurements.append(
                 Measurement(
