@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from home_monitoring.config import Settings
@@ -49,6 +50,7 @@ async def test_collect_and_store_success(
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
+    mock_connection.time_zone = ZoneInfo("Europe/Berlin")
     mock_connection.get_homes = MagicMock(return_value=[mock_home])
 
     with patch("tibber.Tibber", return_value=mock_connection):
@@ -117,6 +119,7 @@ async def test_collect_and_store_database_error(
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
+    mock_connection.time_zone = ZoneInfo("Europe/Berlin")
     mock_connection.get_homes = MagicMock(return_value=[mock_home])
 
     with patch("tibber.Tibber", return_value=mock_connection):
@@ -158,6 +161,7 @@ async def test_collect_and_store_partial_consumption_failure(
 
     mock_connection = AsyncMock()
     mock_connection.name = "Test User"
+    mock_connection.time_zone = ZoneInfo("Europe/Berlin")
     mock_connection.get_homes = MagicMock(return_value=[mock_home])
 
     with patch("tibber.Tibber", return_value=mock_connection):
