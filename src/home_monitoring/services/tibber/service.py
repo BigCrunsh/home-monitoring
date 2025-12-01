@@ -103,10 +103,10 @@ class TibberService(BaseService):
                         "last_hour_data",
                         from_time=node.get("from"),
                         to_time=node.get("to"),
-                        cost=node.get("cost"),
+                        cost=node.get("totalCost"),
                         consumption=node.get("consumption"),
                     )
-                    cost = node.get("cost") or 0.0
+                    cost = node.get("totalCost") or 0.0
                     consumption = node.get("consumption") or 0.0
                     measurements.extend(
                         TibberMapper.to_measurements(
@@ -137,13 +137,12 @@ class TibberService(BaseService):
                         "yesterday_data",
                         from_time=node.get("from"),
                         to_time=node.get("to"),
-                        cost=node.get("cost"),
-                        total_cost=node.get("totalCost"),
+                        cost=node.get("totalCost"),
                         consumption=node.get("consumption"),
                         unit_price=node.get("unitPrice"),
                         all_fields=list(node.keys()),
                     )
-                    cost = node.get("cost") or 0.0
+                    cost = node.get("totalCost") or 0.0
                     consumption = node.get("consumption") or 0.0
                     measurements.extend(
                         TibberMapper.to_measurements(
@@ -170,7 +169,7 @@ class TibberService(BaseService):
                 )
                 if hourly_24h_data:
                     total_cost = sum(
-                        node.get("cost") or 0.0 for node in hourly_24h_data
+                        node.get("totalCost") or 0.0 for node in hourly_24h_data
                     )
                     total_consumption = sum(
                         node.get("consumption") or 0.0 for node in hourly_24h_data
