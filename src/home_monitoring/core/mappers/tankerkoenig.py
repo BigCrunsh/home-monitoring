@@ -44,15 +44,31 @@ class TankerkoenigMapper(BaseMapper):
             # Get station details - if missing, use defaults to still record prices
             station = stations.get(station_id, {})
 
+            # Normalize text fields to title case for consistency
+            brand = station.get("brand", "unknown")
+            place = station.get("place", "unknown")
+            street = station.get("street", "unknown")
+            house_number = station.get("houseNumber", "unknown")
+
+            # Apply title case to text fields (handles mixed case from API)
+            if brand != "unknown":
+                brand = brand.title()
+            if place != "unknown":
+                place = place.title()
+            if street != "unknown":
+                street = street.title()
+            if house_number != "unknown":
+                house_number = str(house_number)
+
             measurements.append(
                 Measurement(
                     measurement="gas_prices_euro",
                     tags={
                         "station_id": station_id,
-                        "brand": station.get("brand", "unknown"),
-                        "place": station.get("place", "unknown"),
-                        "street": station.get("street", "unknown"),
-                        "house_number": station.get("houseNumber", "unknown"),
+                        "brand": brand,
+                        "place": place,
+                        "street": street,
+                        "house_number": house_number,
                         "lat": str(station.get("lat", "unknown")),
                         "lng": str(station.get("lng", "unknown")),
                     },
