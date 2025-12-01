@@ -300,63 +300,75 @@ class TibberService(BaseService):
             except Exception as e:
                 self._logger.warning("failed_to_get_last_24h_data", error=str(e))
 
-            # This month
+            # This month (current month-to-date)
             try:
+                # Get current day of month to fetch all days so far this month
+                from datetime import datetime as dt
+                current_day = dt.now(connection.time_zone).day
+                
                 monthly_data = await home.get_historic_data(
-                    n_data=1, resolution="MONTHLY"
+                    n_data=current_day, resolution="DAILY"
                 )
                 monthly_production = await home.get_historic_data(
-                    n_data=1, resolution="MONTHLY", production=True
+                    n_data=current_day, resolution="DAILY", production=True
                 )
+                
+                cost = 0.0
+                consumption = 0.0
+                production = 0.0
+                
                 if monthly_data:
-                    node = monthly_data[0]
-                    cost = node.get("totalCost") or 0.0
-                    consumption = node.get("consumption") or 0.0
-
-                    production = 0.0
-                    if monthly_production:
-                        prod_node = monthly_production[0]
-                        production = prod_node.get("production") or 0.0
-
-                    grid_consumption = max(0.0, consumption - production)
-
-                    # Store cost
-                    measurements.extend(
-                        TibberMapper.to_measurements(
-                            summary_timestamp,
-                            {"cost": cost, "period": "this_month"},
-                        )
+                    cost = sum(
+                        node.get("totalCost") or 0.0 for node in monthly_data
                     )
-                    # Store total consumption
-                    measurements.extend(
-                        TibberMapper.to_measurements(
-                            summary_timestamp,
-                            {"consumption": consumption, "period": "this_month"},
-                        )
+                    consumption = sum(
+                        node.get("consumption") or 0.0 for node in monthly_data
                     )
-                    # Store grid consumption
+                
+                if monthly_production:
+                    production = sum(
+                        node.get("production") or 0.0 for node in monthly_production
+                    )
+
+                grid_consumption = max(0.0, consumption - production)
+
+                # Store cost
+                measurements.extend(
+                    TibberMapper.to_measurements(
+                        summary_timestamp,
+                        {"cost": cost, "period": "this_month"},
+                    )
+                )
+                # Store total consumption
+                measurements.extend(
+                    TibberMapper.to_measurements(
+                        summary_timestamp,
+                        {"consumption": consumption, "period": "this_month"},
+                    )
+                )
+                # Store grid consumption
+                measurements.extend(
+                    TibberMapper.to_measurements(
+                        summary_timestamp,
+                        {
+                            "consumption": grid_consumption,
+                            "period": "this_month",
+                            "source": "grid",
+                        },
+                    )
+                )
+                # Store solar production
+                if production > 0:
                     measurements.extend(
                         TibberMapper.to_measurements(
                             summary_timestamp,
                             {
-                                "consumption": grid_consumption,
+                                "consumption": production,
                                 "period": "this_month",
-                                "source": "grid",
+                                "source": "solar",
                             },
                         )
                     )
-                    # Store solar production
-                    if production > 0:
-                        measurements.extend(
-                            TibberMapper.to_measurements(
-                                summary_timestamp,
-                                {
-                                    "consumption": production,
-                                    "period": "this_month",
-                                    "source": "solar",
-                                },
-                            )
-                        )
             except Exception as e:
                 self._logger.warning("failed_to_get_this_month_data", error=str(e))
 
