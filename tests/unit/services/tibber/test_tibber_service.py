@@ -47,7 +47,7 @@ async def test_collect_and_store_success(
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            [{"totalCost": 5.50, "consumption": 20.0}],  # Yesterday (day 1)
+            [{"cost": 5.50, "consumption": 20.0}],  # Yesterday (day 1)
             [{"production": 0.0}],  # Yesterday production
         ]
     )
@@ -237,7 +237,7 @@ async def test_this_month_equals_yesterday_plus_today_on_day_2(
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            [{"totalCost": yesterday_cost, "consumption": yesterday_consumption}],  # Day 1
+            [{"cost": yesterday_cost, "consumption": yesterday_consumption}],  # Day 1
             [{"production": 0.0}],  # Day 1 production
         ]
     )

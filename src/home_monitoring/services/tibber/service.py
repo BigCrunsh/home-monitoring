@@ -428,7 +428,7 @@ class TibberService(BaseService):
                                 )
                             
                             completed_days_cost = sum(
-                                node.get("totalCost") or 0.0 for node in monthly_data
+                                node.get("cost") or 0.0 for node in monthly_data
                             )
                             completed_days_consumption = sum(
                                 node.get("consumption") or 0.0 for node in monthly_data
