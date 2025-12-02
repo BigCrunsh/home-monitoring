@@ -390,6 +390,14 @@ class TibberService(BaseService):
                     month_consumption = day_consumption
                     month_production = day_production
                     
+                    self._logger.debug(
+                        "this_month_calculation",
+                        current_day=now.day,
+                        days_completed=days_completed,
+                        day_cost=day_cost,
+                        initial_month_cost=month_cost,
+                    )
+                    
                     if days_completed > 0:
                         monthly_data = await home.get_historic_data_date(
                             date_from=first_of_month,
@@ -404,11 +412,18 @@ class TibberService(BaseService):
                         )
                         
                         if monthly_data:
-                            month_cost += sum(
+                            completed_days_cost = sum(
                                 node.get("totalCost") or 0.0 for node in monthly_data
                             )
+                            month_cost += completed_days_cost
                             month_consumption += sum(
                                 node.get("consumption") or 0.0 for node in monthly_data
+                            )
+                            self._logger.debug(
+                                "this_month_completed_days",
+                                num_days=len(monthly_data),
+                                completed_days_cost=completed_days_cost,
+                                total_month_cost=month_cost,
                             )
                         
                         if monthly_production:

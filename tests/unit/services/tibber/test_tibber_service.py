@@ -47,8 +47,8 @@ async def test_collect_and_store_success(
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            [],  # This month completed days (none on day 1)
-            [],  # This month completed days production
+            [{"totalCost": 5.50, "consumption": 20.0}],  # Yesterday (day 1)
+            [{"production": 0.0}],  # Yesterday production
         ]
     )
 
@@ -191,3 +191,92 @@ async def test_collect_and_store_partial_consumption_failure(
         measurements = mock_influxdb.write_measurements.call_args[0][0]
         assert len(measurements) == 1  # Only price measurement
         assert measurements[0].measurement == "electricity_prices_euro"
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_this_month_equals_yesterday_plus_today_on_day_2(
+    mocker: MockerFixture,
+    mock_influxdb: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """Test that on day 2, this_month cost = yesterday cost + this_day cost."""
+    # Arrange
+    yesterday_cost = 5.50
+    yesterday_consumption = 20.0
+    
+    # Today's hourly data (10 hours so far, simulating 10am on day 2)
+    today_hourly_cost = 0.35
+    today_hourly_consumption = 1.2
+    today_hourly_nodes = []
+    for _ in range(10):
+        today_hourly_nodes.append({
+            "totalCost": today_hourly_cost,
+            "consumption": today_hourly_consumption
+        })
+    
+    expected_today_cost = today_hourly_cost * 10  # 3.50
+    expected_month_cost = yesterday_cost + expected_today_cost  # 5.50 + 3.50 = 9.00
+
+    mock_home = AsyncMock()
+    mock_home.address1 = "Test Address"
+    mock_home.current_price_data = MagicMock(
+        return_value=(0.30, datetime(2024, 2, 2, 10, 0, 0), 0.5)
+    )
+    mock_home.fetch_consumption_data = AsyncMock(return_value=None)
+    mock_home.get_historic_data = AsyncMock(
+        side_effect=[
+            [{"totalCost": 0.35, "consumption": 1.2}],  # Last hour
+            [],  # Last hour production
+            [{"totalCost": yesterday_cost, "consumption": yesterday_consumption}],  # Yesterday
+            [],  # Yesterday production
+            [{"totalCost": 0.30, "consumption": 1.0}] * 24,  # Last 24h
+            [],  # Last 24h production
+            today_hourly_nodes,  # This day hourly (10 hours)
+            [],  # This day hourly production
+        ]
+    )
+    mock_home.get_historic_data_date = AsyncMock(
+        side_effect=[
+            [{"totalCost": yesterday_cost, "consumption": yesterday_consumption}],  # Day 1
+            [{"production": 0.0}],  # Day 1 production
+        ]
+    )
+
+    mock_connection = AsyncMock()
+    mock_connection.name = "Test User"
+    mock_connection.time_zone = ZoneInfo("Europe/Berlin")
+    mock_connection.get_homes = MagicMock(return_value=[mock_home])
+
+    with patch("tibber.Tibber", return_value=mock_connection):
+        service = TibberService(settings=mock_settings, repository=mock_influxdb)
+
+        # Act
+        await service.collect_and_store()
+
+        # Assert
+        mock_influxdb.write_measurements.assert_called_once()
+        measurements = mock_influxdb.write_measurements.call_args[0][0]
+        
+        # Find this_day and this_month cost measurements
+        this_day_cost = None
+        this_month_cost = None
+        
+        for m in measurements:
+            if m.measurement == "electricity_costs_euro":
+                if m.tags.get("period") == "this_day":
+                    this_day_cost = m.fields["cost"]
+                elif m.tags.get("period") == "this_month":
+                    this_month_cost = m.fields["cost"]
+        
+        # Verify the costs
+        assert this_day_cost is not None, "this_day cost not found"
+        assert this_month_cost is not None, "this_month cost not found"
+        
+        assert this_day_cost == expected_today_cost, (
+            f"this_day cost should be {expected_today_cost}, got {this_day_cost}"
+        )
+        assert this_month_cost == expected_month_cost, (
+            f"this_month cost should be {expected_month_cost} "
+            f"(yesterday {yesterday_cost} + today {expected_today_cost}), "
+            f"got {this_month_cost}"
+        )
