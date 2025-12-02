@@ -412,18 +412,37 @@ class TibberService(BaseService):
                         )
                         
                         if monthly_data:
+                            # Log raw data to debug missing costs
+                            try:
+                                sample = monthly_data[0] if monthly_data else {}
+                                self._logger.debug(
+                                    "this_month_raw_data",
+                                    num_nodes=len(monthly_data),
+                                    sample_node=str(sample),
+                                    all_keys=list(sample.keys()) if hasattr(sample, 'keys') else [],
+                                )
+                            except Exception as log_err:
+                                self._logger.warning(
+                                    "failed_to_log_monthly_data",
+                                    error=str(log_err),
+                                )
+                            
                             completed_days_cost = sum(
                                 node.get("totalCost") or 0.0 for node in monthly_data
                             )
-                            month_cost += completed_days_cost
-                            month_consumption += sum(
+                            completed_days_consumption = sum(
                                 node.get("consumption") or 0.0 for node in monthly_data
                             )
+                            month_cost += completed_days_cost
+                            month_consumption += completed_days_consumption
+                            
                             self._logger.debug(
                                 "this_month_completed_days",
                                 num_days=len(monthly_data),
                                 completed_days_cost=completed_days_cost,
+                                completed_days_consumption=completed_days_consumption,
                                 total_month_cost=month_cost,
+                                total_month_consumption=month_consumption,
                             )
                         
                         if monthly_production:
