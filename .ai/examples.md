@@ -524,3 +524,63 @@ async def validation_exception_handler(request: Request, exc: ValidationExceptio
         ).model_dump()
     )
 ```
+
+## File Splitting Decision Tree
+
+### Step 1: Check File Size
+```
+File <= 400 lines? → ✅ No action needed
+File > 400 lines? → Continue to Step 2
+```
+
+### Step 2: Identify Logical Split
+Ask: "Can this file be split by clear responsibilities?"
+
+**Examples of LOGICAL splits:**
+- ✅ Collection (simple API calls) vs Aggregation (complex calculations)
+- ✅ CRUD operations vs Search operations vs Analytics
+- ✅ Authentication vs Authorization vs Profile
+- ✅ Hourly/Daily operations vs Monthly/Yearly operations
+
+**Examples of ARBITRARY splits:**
+- ❌ Functions 1-5 vs Functions 6-10
+- ❌ collection.py vs collection_extended.py (no logical difference)
+- ❌ Part 1 vs Part 2
+
+### Step 3: Apply 120% Rule
+```
+Logical split exists? → Split immediately
+No logical split + file < 480 lines (120%)? → Keep as single file
+No logical split + file > 480 lines? → Ask user for approval
+```
+
+### Example Decision Process
+
+**Scenario 1**: `collection.py` is 540 lines with 7 similar collection functions
+
+**Analysis**:
+- File > 400 lines? ✅ Yes (540 lines)
+- Logical split exists? ❌ No (all functions do the same thing: simple API calls)
+- File < 480 lines (120%)? ❌ No (540 > 480)
+- **Action**: Ask user for approval, present alternatives:
+  1. Keep as single cohesive file (540 lines)
+  2. Split by time granularity (hourly/daily vs monthly/yearly)
+  3. Split by data type (consumption vs production)
+
+**Scenario 2**: `service.py` is 933 lines with collection + aggregation + orchestration
+
+**Analysis**:
+- File > 400 lines? ✅ Yes (933 lines)
+- Logical split exists? ✅ Yes (collection vs aggregation vs orchestration)
+- **Action**: Split immediately into:
+  - `collection.py` - Simple API calls (540 lines - cohesive unit, acceptable)
+  - `aggregation.py` - Complex calculations (393 lines)
+  - `service.py` - Orchestration (151 lines)
+
+**Scenario 3**: `helpers.py` is 450 lines with various utility functions
+
+**Analysis**:
+- File > 400 lines? ✅ Yes (450 lines)
+- Logical split exists? ❌ No (all are utility functions)
+- File < 480 lines (120%)? ✅ Yes (450 < 480)
+- **Action**: Keep as single file, document that it's a cohesive utilities module
