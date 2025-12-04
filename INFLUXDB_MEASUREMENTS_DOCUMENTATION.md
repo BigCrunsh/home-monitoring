@@ -48,16 +48,17 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 - **Fields**:
   - `cost`: Total cost in EUR
 - **Tags**:
-  - `period`: Time period (last_hour, yesterday, last_24h)
+  - `period`: Time period (last_hour, this_hour, last_day, last_24h, this_day, last_month, this_month, this_year, last_year)
 - **Update Frequency**: Configurable (recommended: hourly or daily)
 
 #### `electricity_consumption_kwh`
 - **Source**: Tibber API
-- **Description**: Total electricity consumption for different time periods
+- **Description**: Total electricity consumption for different time periods. Can represent total consumption, grid consumption, or solar production depending on the source tag.
 - **Fields**:
   - `consumption`: Total consumption in kWh
 - **Tags**:
-  - `period`: Time period (last_hour, yesterday, last_24h)
+  - `period`: Time period (last_hour, this_hour, last_day, last_24h, this_day, last_month, this_month, this_year, last_year)
+  - `source`: (optional) Energy source - `grid` for grid consumption, `solar` for solar production. When absent, represents total consumption.
 - **Update Frequency**: Configurable (recommended: hourly or daily)
 
 ### 2. Garden & Irrigation
@@ -379,5 +380,5 @@ All measurements follow standard InfluxDB line protocol and can be exported usin
 - Custom scripts using InfluxDB client libraries
 
 ---
-*Last updated: November 2025*
+*Last updated: December 2025*
 *System: Home Monitoring InfluxDB Integration*
