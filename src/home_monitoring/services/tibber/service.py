@@ -280,9 +280,14 @@ class TibberService(BaseService):
                         total_consumption = sum(consumptions)
                         total_production = 0.0
                         if hourly_24h_production:
-                            productions = [node.get("production") for node in hourly_24h_production]
-                            # Production can be missing, default to 0 for those hours
-                            total_production = sum(p if p is not None else 0.0 for p in productions)
+                            productions = [
+                                node.get("production")
+                                for node in hourly_24h_production
+                            ]
+                            # Production can be missing, default to 0
+                            total_production = sum(
+                                p if p is not None else 0.0 for p in productions
+                            )
                         
                         total_grid_consumption = max(
                             0.0, total_consumption - total_production
@@ -299,7 +304,10 @@ class TibberService(BaseService):
                         measurements.extend(
                             TibberMapper.to_measurements(
                                 summary_timestamp,
-                                {"consumption": total_consumption, "period": "last_24h"},
+                                {
+                                    "consumption": total_consumption,
+                                    "period": "last_24h",
+                                },
                             )
                         )
                         # Store grid consumption
@@ -363,9 +371,14 @@ class TibberService(BaseService):
                         )
                 
                 if today_hourly_production:
-                    productions = [node.get("production") for node in today_hourly_production]
-                    # Production can be missing, default to 0 for those hours
-                    day_production = sum(p if p is not None else 0.0 for p in productions)
+                    productions = [
+                        node.get("production")
+                        for node in today_hourly_production
+                    ]
+                    # Production can be missing, default to 0
+                    day_production = sum(
+                        p if p is not None else 0.0 for p in productions
+                    )
                 
                 # Only store measurements if we have valid data
                 if day_cost is not None and day_consumption is not None:
@@ -456,7 +469,11 @@ class TibberService(BaseService):
                                     "this_month_raw_data",
                                     num_nodes=len(monthly_data),
                                     sample_node=str(sample),
-                                    all_keys=list(sample.keys()) if hasattr(sample, 'keys') else [],
+                                    all_keys=(
+                                        list(sample.keys())
+                                        if hasattr(sample, "keys")
+                                        else []
+                                    ),
                                 )
                             except Exception as log_err:
                                 self._logger.warning(
@@ -464,8 +481,13 @@ class TibberService(BaseService):
                                     error=str(log_err),
                                 )
                             
-                            costs = [node.get("cost") for node in monthly_data]
-                            consumptions = [node.get("consumption") for node in monthly_data]
+                            costs = [
+                                node.get("cost") for node in monthly_data
+                            ]
+                            consumptions = [
+                                node.get("consumption")
+                                for node in monthly_data
+                            ]
                             
                             # Skip if any data is missing
                             if None in costs or None in consumptions:
@@ -494,9 +516,14 @@ class TibberService(BaseService):
                                 )
                         
                         if monthly_production:
-                            productions = [node.get("production") for node in monthly_production]
-                            # Production can be missing, default to 0 for those days
-                            month_production += sum(p if p is not None else 0.0 for p in productions)
+                            productions = [
+                                node.get("production")
+                                for node in monthly_production
+                            ]
+                            # Production can be missing, default to 0
+                            month_production += sum(
+                                p if p is not None else 0.0 for p in productions
+                            )
                     
                     # Only store measurements if we have valid data
                     if month_cost is not None and month_consumption is not None:
@@ -514,7 +541,10 @@ class TibberService(BaseService):
                         measurements.extend(
                             TibberMapper.to_measurements(
                                 summary_timestamp,
-                                {"consumption": month_consumption, "period": "this_month"},
+                                {
+                                    "consumption": month_consumption,
+                                    "period": "this_month",
+                                },
                             )
                         )
                         measurements.extend(

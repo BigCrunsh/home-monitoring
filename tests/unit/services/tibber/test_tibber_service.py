@@ -227,7 +227,9 @@ async def test_this_month_equals_yesterday_plus_today_on_day_2(
         side_effect=[
             [{"totalCost": 0.35, "consumption": 1.2}],  # Last hour
             [],  # Last hour production
-            [{"totalCost": yesterday_cost, "consumption": yesterday_consumption}],  # Yesterday
+            [
+                {"totalCost": yesterday_cost, "consumption": yesterday_consumption}
+            ],  # Yesterday
             [],  # Yesterday production
             [{"totalCost": 0.30, "consumption": 1.0}] * 24,  # Last 24h
             [],  # Last 24h production
