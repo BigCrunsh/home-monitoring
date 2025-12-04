@@ -37,18 +37,32 @@ async def test_collect_and_store_success(
         side_effect=[
             [mock_consumption_node_hourly],  # Last hour consumption
             [],  # Last hour production (no solar)
-            [mock_consumption_node_daily],  # Yesterday consumption
-            [],  # Yesterday production (no solar)
+            [mock_consumption_node_daily],  # Last day consumption
+            [],  # Last day production (no solar)
             mock_consumption_nodes_24h,  # Last 24h consumption
             [],  # Last 24h production (no solar)
             mock_consumption_nodes_24h[:10],  # This day hourly consumption
             [],  # This day hourly production (no solar)
+            [mock_consumption_node_hourly],  # This hour consumption
+            [],  # This hour production (no solar)
+            [mock_consumption_node_daily],  # Last month consumption
+            [],  # Last month production (no solar)
+            [{"totalCost": 100.0, "consumption": 500.0}],  # This year consumption
+            [],  # This year production (no solar)
+            [
+                {"totalCost": 100.0, "consumption": 500.0},
+                {"totalCost": 90.0, "consumption": 450.0},
+            ],  # Last year (need 2 items)
+            [
+                {"production": 0.0},
+                {"production": 0.0},
+            ],  # Last year production (no solar)
         ]
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            [{"cost": 5.50, "consumption": 20.0}],  # Yesterday (day 1)
-            [{"production": 0.0}],  # Yesterday production
+            [{"cost": 5.50, "consumption": 20.0}],  # Day 1 for this_month
+            [{"production": 0.0}],  # Day 1 production for this_month
         ]
     )
 
@@ -66,8 +80,9 @@ async def test_collect_and_store_success(
         # Assert
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
-        # 1 price + 3 last_hour + 3 yesterday + 3 last_24h + 3 this_day + 3 this_month
-        expected_count = 16
+        # 1 price + 3 last_hour + 3 last_day + 3 last_24h + 3 this_day +
+        # 3 this_month + 3 this_hour + 3 last_month + 3 this_year + 3 last_year
+        expected_count = 28
         assert len(measurements) == expected_count
 
 
@@ -194,15 +209,15 @@ async def test_collect_and_store_partial_consumption_failure(
 
 
 @pytest.mark.asyncio(scope="function")
-async def test_this_month_equals_yesterday_plus_today_on_day_2(
+async def test_this_month_equals_last_day_plus_today_on_day_2(
     mocker: MockerFixture,
     mock_influxdb: AsyncMock,
     mock_settings: Settings,
 ) -> None:
-    """Test that on day 2, this_month cost = yesterday cost + this_day cost."""
+    """Test that on day 2, this_month cost = last_day cost + this_day cost."""
     # Arrange
-    yesterday_cost = 5.50
-    yesterday_consumption = 20.0
+    last_day_cost = 5.50
+    last_day_consumption = 20.0
     
     # Today's hourly data (10 hours so far, simulating 10am on day 2)
     today_hourly_cost = 0.35
@@ -215,7 +230,7 @@ async def test_this_month_equals_yesterday_plus_today_on_day_2(
         })
     
     expected_today_cost = today_hourly_cost * 10  # 3.50
-    expected_month_cost = yesterday_cost + expected_today_cost  # 5.50 + 3.50 = 9.00
+    expected_month_cost = last_day_cost + expected_today_cost  # 5.50 + 3.50 = 9.00
 
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
@@ -228,18 +243,32 @@ async def test_this_month_equals_yesterday_plus_today_on_day_2(
             [{"totalCost": 0.35, "consumption": 1.2}],  # Last hour
             [],  # Last hour production
             [
-                {"totalCost": yesterday_cost, "consumption": yesterday_consumption}
-            ],  # Yesterday
-            [],  # Yesterday production
+                {"totalCost": last_day_cost, "consumption": last_day_consumption}
+            ],  # Last day
+            [],  # Last day production
             [{"totalCost": 0.30, "consumption": 1.0}] * 24,  # Last 24h
             [],  # Last 24h production
             today_hourly_nodes,  # This day hourly (10 hours)
             [],  # This day hourly production
+            [{"totalCost": 0.35, "consumption": 1.2}],  # This hour
+            [],  # This hour production
+            [{"totalCost": 50.0, "consumption": 200.0}],  # Last month
+            [],  # Last month production
+            [{"totalCost": 100.0, "consumption": 500.0}],  # This year
+            [],  # This year production
+            [
+                {"totalCost": 100.0, "consumption": 500.0},
+                {"totalCost": 90.0, "consumption": 450.0},
+            ],  # Last year
+            [
+                {"production": 0.0},
+                {"production": 0.0},
+            ],  # Last year production
         ]
     )
     mock_home.get_historic_data_date = AsyncMock(
         side_effect=[
-            [{"cost": yesterday_cost, "consumption": yesterday_consumption}],  # Day 1
+            [{"cost": last_day_cost, "consumption": last_day_consumption}],  # Day 1
             [{"production": 0.0}],  # Day 1 production
         ]
     )
@@ -279,6 +308,6 @@ async def test_this_month_equals_yesterday_plus_today_on_day_2(
         )
         assert this_month_cost == expected_month_cost, (
             f"this_month cost should be {expected_month_cost} "
-            f"(yesterday {yesterday_cost} + today {expected_today_cost}), "
+            f"(last_day {last_day_cost} + today {expected_today_cost}), "
             f"got {this_month_cost}"
         )

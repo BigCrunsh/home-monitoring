@@ -184,7 +184,7 @@ class TibberService(BaseService):
             except Exception as e:
                 self._logger.warning("failed_to_get_last_hour_data", error=str(e))
 
-            # Yesterday
+            # Last day (yesterday)
             try:
                 daily_data = await home.get_historic_data(
                     n_data=1, resolution="DAILY"
@@ -200,7 +200,7 @@ class TibberService(BaseService):
                     # Skip if we don't have actual data
                     if cost is None or consumption is None:
                         self._logger.debug(
-                            "yesterday_data_missing",
+                            "last_day_data_missing",
                             has_cost=cost is not None,
                             has_consumption=consumption is not None,
                         )
@@ -218,14 +218,14 @@ class TibberService(BaseService):
                         measurements.extend(
                             TibberMapper.to_measurements(
                                 summary_timestamp,
-                                {"cost": cost, "period": "yesterday"},
+                                {"cost": cost, "period": "last_day"},
                             )
                         )
                         # Store total consumption
                         measurements.extend(
                             TibberMapper.to_measurements(
                                 summary_timestamp,
-                                {"consumption": consumption, "period": "yesterday"},
+                                {"consumption": consumption, "period": "last_day"},
                             )
                         )
                         # Store grid consumption
@@ -234,7 +234,7 @@ class TibberService(BaseService):
                                 summary_timestamp,
                                 {
                                     "consumption": grid_consumption,
-                                    "period": "yesterday",
+                                    "period": "last_day",
                                     "source": "grid",
                                 },
                             )
@@ -246,13 +246,13 @@ class TibberService(BaseService):
                                     summary_timestamp,
                                     {
                                         "consumption": production,
-                                        "period": "yesterday",
+                                        "period": "last_day",
                                         "source": "solar",
                                     },
                                 )
                             )
             except Exception as e:
-                self._logger.warning("failed_to_get_yesterday_data", error=str(e))
+                self._logger.warning("failed_to_get_last_day_data", error=str(e))
 
             # Last 24h
             try:
@@ -570,6 +570,282 @@ class TibberService(BaseService):
                             )
                 except Exception as e:
                     self._logger.warning("failed_to_get_this_month_data", error=str(e))
+
+            # This hour (current incomplete hour)
+            try:
+                from datetime import datetime as dt
+                now = dt.now(connection.time_zone)
+                
+                # Get data for current hour (n_data=0 means current incomplete hour)
+                # We'll use n_data=1 and check if it's the current hour
+                this_hour_data = await home.get_historic_data(
+                    n_data=1, resolution="HOURLY"
+                )
+                this_hour_production = await home.get_historic_data(
+                    n_data=1, resolution="HOURLY", production=True
+                )
+                
+                if this_hour_data:
+                    node = this_hour_data[0]
+                    # Check if this is actually the current hour
+                    # (last_hour data might be from previous hour)
+                    cost = node.get("totalCost")
+                    consumption = node.get("consumption")
+                    
+                    # For current hour, data might be incomplete/None
+                    if cost is not None and consumption is not None:
+                        production = 0.0
+                        if this_hour_production:
+                            prod_node = this_hour_production[0]
+                            prod_value = prod_node.get("production")
+                            if prod_value is not None:
+                                production = prod_value
+                        
+                        grid_consumption = max(0.0, consumption - production)
+                        
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {"cost": cost, "period": "this_hour"},
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {"consumption": consumption, "period": "this_hour"},
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {
+                                    "consumption": grid_consumption,
+                                    "period": "this_hour",
+                                    "source": "grid",
+                                },
+                            )
+                        )
+                        if production > 0:
+                            measurements.extend(
+                                TibberMapper.to_measurements(
+                                    summary_timestamp,
+                                    {
+                                        "consumption": production,
+                                        "period": "this_hour",
+                                        "source": "solar",
+                                    },
+                                )
+                            )
+            except Exception as e:
+                self._logger.warning("failed_to_get_this_hour_data", error=str(e))
+
+            # Last month
+            try:
+                monthly_data = await home.get_historic_data(
+                    n_data=1, resolution="MONTHLY"
+                )
+                monthly_production = await home.get_historic_data(
+                    n_data=1, resolution="MONTHLY", production=True
+                )
+                
+                if monthly_data:
+                    node = monthly_data[0]
+                    cost = node.get("totalCost")
+                    consumption = node.get("consumption")
+                    
+                    if cost is None or consumption is None:
+                        self._logger.debug(
+                            "last_month_data_missing",
+                            has_cost=cost is not None,
+                            has_consumption=consumption is not None,
+                        )
+                    else:
+                        production = 0.0
+                        if monthly_production:
+                            prod_node = monthly_production[0]
+                            prod_value = prod_node.get("production")
+                            if prod_value is not None:
+                                production = prod_value
+                        
+                        grid_consumption = max(0.0, consumption - production)
+                        
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {"cost": cost, "period": "last_month"},
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {
+                                    "consumption": consumption,
+                                    "period": "last_month",
+                                },
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {
+                                    "consumption": grid_consumption,
+                                    "period": "last_month",
+                                    "source": "grid",
+                                },
+                            )
+                        )
+                        if production > 0:
+                            measurements.extend(
+                                TibberMapper.to_measurements(
+                                    summary_timestamp,
+                                    {
+                                        "consumption": production,
+                                        "period": "last_month",
+                                        "source": "solar",
+                                    },
+                                )
+                            )
+            except Exception as e:
+                self._logger.warning("failed_to_get_last_month_data", error=str(e))
+
+            # This year
+            try:
+                yearly_data = await home.get_historic_data(
+                    n_data=1, resolution="ANNUAL"
+                )
+                yearly_production = await home.get_historic_data(
+                    n_data=1, resolution="ANNUAL", production=True
+                )
+                
+                if yearly_data:
+                    node = yearly_data[0]
+                    cost = node.get("totalCost")
+                    consumption = node.get("consumption")
+                    
+                    if cost is None or consumption is None:
+                        self._logger.debug(
+                            "this_year_data_missing",
+                            has_cost=cost is not None,
+                            has_consumption=consumption is not None,
+                        )
+                    else:
+                        production = 0.0
+                        if yearly_production:
+                            prod_node = yearly_production[0]
+                            prod_value = prod_node.get("production")
+                            if prod_value is not None:
+                                production = prod_value
+                        
+                        grid_consumption = max(0.0, consumption - production)
+                        
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {"cost": cost, "period": "this_year"},
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {
+                                    "consumption": consumption,
+                                    "period": "this_year",
+                                },
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {
+                                    "consumption": grid_consumption,
+                                    "period": "this_year",
+                                    "source": "grid",
+                                },
+                            )
+                        )
+                        if production > 0:
+                            measurements.extend(
+                                TibberMapper.to_measurements(
+                                    summary_timestamp,
+                                    {
+                                        "consumption": production,
+                                        "period": "this_year",
+                                        "source": "solar",
+                                    },
+                                )
+                            )
+            except Exception as e:
+                self._logger.warning("failed_to_get_this_year_data", error=str(e))
+
+            # Last year
+            try:
+                last_year_data = await home.get_historic_data(
+                    n_data=2, resolution="ANNUAL"
+                )
+                last_year_production = await home.get_historic_data(
+                    n_data=2, resolution="ANNUAL", production=True
+                )
+                
+                # Get the second item (index 1) which is last year
+                if last_year_data and len(last_year_data) > 1:
+                    node = last_year_data[1]
+                    cost = node.get("totalCost")
+                    consumption = node.get("consumption")
+                    
+                    if cost is None or consumption is None:
+                        self._logger.debug(
+                            "last_year_data_missing",
+                            has_cost=cost is not None,
+                            has_consumption=consumption is not None,
+                        )
+                    else:
+                        production = 0.0
+                        if last_year_production and len(last_year_production) > 1:
+                            prod_node = last_year_production[1]
+                            prod_value = prod_node.get("production")
+                            if prod_value is not None:
+                                production = prod_value
+                        
+                        grid_consumption = max(0.0, consumption - production)
+                        
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {"cost": cost, "period": "last_year"},
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {
+                                    "consumption": consumption,
+                                    "period": "last_year",
+                                },
+                            )
+                        )
+                        measurements.extend(
+                            TibberMapper.to_measurements(
+                                summary_timestamp,
+                                {
+                                    "consumption": grid_consumption,
+                                    "period": "last_year",
+                                    "source": "grid",
+                                },
+                            )
+                        )
+                        if production > 0:
+                            measurements.extend(
+                                TibberMapper.to_measurements(
+                                    summary_timestamp,
+                                    {
+                                        "consumption": production,
+                                        "period": "last_year",
+                                        "source": "solar",
+                                    },
+                                )
+                            )
+            except Exception as e:
+                self._logger.warning("failed_to_get_last_year_data", error=str(e))
 
             if not measurements:
                 self._logger.warning("no_tibber_measurements_to_store")
