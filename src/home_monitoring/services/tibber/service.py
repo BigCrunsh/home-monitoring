@@ -424,6 +424,11 @@ class TibberService(BaseService):
                 day_consumption = None
                 day_production = None
 
+            # Initialize month variables for this_year calculation
+            month_cost = None
+            month_consumption = None
+            month_production = None
+
             # This month (all completed days + this_day)
             # Only calculate if we have this_day data
             if day_cost is not None:
@@ -708,47 +713,106 @@ class TibberService(BaseService):
             except Exception as e:
                 self._logger.warning("failed_to_get_last_month_data", error=str(e))
 
-            # This year
-            try:
-                yearly_data = await home.get_historic_data(
-                    n_data=1, resolution="ANNUAL"
-                )
-                yearly_production = await home.get_historic_data(
-                    n_data=1, resolution="ANNUAL", production=True
-                )
-                
-                if yearly_data:
-                    node = yearly_data[0]
-                    cost = node.get("totalCost")
-                    consumption = node.get("consumption")
+            # This year (all completed months + this_month)
+            # Only calculate if we have this_month data
+            if month_cost is not None:
+                try:
+                    from datetime import datetime as dt
+                    now = dt.now(connection.time_zone)
+                    first_of_year = now.replace(
+                        month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+                    )
+                    # Get completed months (all months before current month)
+                    months_completed = now.month - 1
                     
-                    if cost is None or consumption is None:
-                        self._logger.debug(
-                            "this_year_data_missing",
-                            has_cost=cost is not None,
-                            has_consumption=consumption is not None,
+                    year_cost = month_cost
+                    year_consumption = month_consumption
+                    year_production = month_production
+                    
+                    self._logger.debug(
+                        "this_year_calculation",
+                        current_month=now.month,
+                        months_completed=months_completed,
+                        month_cost=month_cost,
+                        initial_year_cost=year_cost,
+                    )
+                    
+                    if months_completed > 0:
+                        yearly_data = await home.get_historic_data_date(
+                            date_from=first_of_year,
+                            n_data=months_completed,
+                            resolution="MONTHLY"
                         )
-                    else:
-                        production = 0.0
+                        yearly_production = await home.get_historic_data_date(
+                            date_from=first_of_year,
+                            n_data=months_completed,
+                            resolution="MONTHLY",
+                            production=True
+                        )
+                        
+                        if yearly_data:
+                            costs = [
+                                node.get("cost") for node in yearly_data
+                            ]
+                            consumptions = [
+                                node.get("consumption")
+                                for node in yearly_data
+                            ]
+                            
+                            # Skip if any data is missing
+                            if None in costs or None in consumptions:
+                                self._logger.debug(
+                                    "this_year_completed_months_incomplete",
+                                    missing_costs=costs.count(None),
+                                    missing_consumptions=consumptions.count(None),
+                                    total_months=len(yearly_data),
+                                )
+                                # Can't calculate this_year without complete data
+                                year_cost = None
+                                year_consumption = None
+                            else:
+                                completed_months_cost = sum(costs)
+                                completed_months_consumption = sum(consumptions)
+                                year_cost += completed_months_cost
+                                year_consumption += completed_months_consumption
+                                
+                                self._logger.debug(
+                                    "this_year_completed_months",
+                                    num_months=len(yearly_data),
+                                    completed_months_cost=completed_months_cost,
+                                    completed_months_consumption=completed_months_consumption,
+                                    total_year_cost=year_cost,
+                                    total_year_consumption=year_consumption,
+                                )
+                        
                         if yearly_production:
-                            prod_node = yearly_production[0]
-                            prod_value = prod_node.get("production")
-                            if prod_value is not None:
-                                production = prod_value
+                            productions = [
+                                node.get("production")
+                                for node in yearly_production
+                            ]
+                            # Production can be missing, default to 0
+                            year_production += sum(
+                                p if p is not None else 0.0 for p in productions
+                            )
+                    
+                    # Only store measurements if we have valid data
+                    if year_cost is not None and year_consumption is not None:
+                        year_grid_consumption = max(
+                            0.0, year_consumption - year_production
+                        )
                         
-                        grid_consumption = max(0.0, consumption - production)
-                        
+                        # Store this_year measurements
                         measurements.extend(
                             TibberMapper.to_measurements(
                                 summary_timestamp,
-                                {"cost": cost, "period": "this_year"},
+                                {"cost": year_cost, "period": "this_year"},
                             )
                         )
                         measurements.extend(
                             TibberMapper.to_measurements(
                                 summary_timestamp,
                                 {
-                                    "consumption": consumption,
+                                    "consumption": year_consumption,
                                     "period": "this_year",
                                 },
                             )
@@ -757,25 +821,25 @@ class TibberService(BaseService):
                             TibberMapper.to_measurements(
                                 summary_timestamp,
                                 {
-                                    "consumption": grid_consumption,
+                                    "consumption": year_grid_consumption,
                                     "period": "this_year",
                                     "source": "grid",
                                 },
                             )
                         )
-                        if production > 0:
+                        if year_production > 0:
                             measurements.extend(
                                 TibberMapper.to_measurements(
                                     summary_timestamp,
                                     {
-                                        "consumption": production,
+                                        "consumption": year_production,
                                         "period": "this_year",
                                         "source": "solar",
                                     },
                                 )
                             )
-            except Exception as e:
-                self._logger.warning("failed_to_get_this_year_data", error=str(e))
+                except Exception as e:
+                    self._logger.warning("failed_to_get_this_year_data", error=str(e))
 
             # Last year
             try:
