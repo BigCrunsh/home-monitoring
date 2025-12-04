@@ -47,8 +47,6 @@ async def test_collect_and_store_success(
             [],  # This hour production (no solar)
             [mock_consumption_node_daily],  # Last month consumption
             [],  # Last month production (no solar)
-            [{"totalCost": 100.0, "consumption": 500.0}],  # This year consumption
-            [],  # This year production (no solar)
             [
                 {"totalCost": 100.0, "consumption": 500.0},
                 {"totalCost": 90.0, "consumption": 450.0},
@@ -63,6 +61,9 @@ async def test_collect_and_store_success(
         side_effect=[
             [{"cost": 5.50, "consumption": 20.0}],  # Day 1 for this_month
             [{"production": 0.0}],  # Day 1 production for this_month
+            # For this_year: completed months (Jan)
+            [{"cost": 10.0, "consumption": 40.0}],  # January
+            [{"production": 0.0}],  # January production
         ]
     )
 
@@ -254,8 +255,6 @@ async def test_this_month_equals_last_day_plus_today_on_day_2(
             [],  # This hour production
             [{"totalCost": 50.0, "consumption": 200.0}],  # Last month
             [],  # Last month production
-            [{"totalCost": 100.0, "consumption": 500.0}],  # This year
-            [],  # This year production
             [
                 {"totalCost": 100.0, "consumption": 500.0},
                 {"totalCost": 90.0, "consumption": 450.0},
@@ -270,6 +269,9 @@ async def test_this_month_equals_last_day_plus_today_on_day_2(
         side_effect=[
             [{"cost": last_day_cost, "consumption": last_day_consumption}],  # Day 1
             [{"production": 0.0}],  # Day 1 production
+            # For this_year: completed months (Jan)
+            [{"cost": 10.0, "consumption": 40.0}],  # January
+            [{"production": 0.0}],  # January production
         ]
     )
 
