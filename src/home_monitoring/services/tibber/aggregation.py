@@ -12,7 +12,7 @@ logger = structlog.get_logger()
 
 
 async def aggregate_this_day_data(
-    home, connection, summary_timestamp: datetime
+    home, connection, summary_timestamp: datetime, now: datetime | None = None
 ) -> tuple[list[Measurement], float | None, float | None, float | None]:
     """Aggregate this day (today so far) consumption data.
     
@@ -22,6 +22,7 @@ async def aggregate_this_day_data(
         home: Tibber home object
         connection: Tibber connection with timezone info
         summary_timestamp: Timestamp for measurements
+        now: Current datetime (if None, uses actual current time)
         
     Returns:
         Tuple of (measurements, day_cost, day_consumption, day_production)
@@ -33,7 +34,8 @@ async def aggregate_this_day_data(
     
     try:
         from datetime import datetime as dt
-        now = dt.now(connection.time_zone)
+        if now is None:
+            now = dt.now(connection.time_zone)
         current_hour = now.hour
         
         # Fetch all completed hours today (0 to current_hour)
@@ -119,6 +121,7 @@ async def aggregate_this_month_data(
     day_cost: float | None,
     day_consumption: float | None,
     day_production: float | None,
+    now: datetime | None = None,
 ) -> tuple[list[Measurement], float | None, float | None, float | None]:
     """Aggregate this month (month so far) consumption data.
     
@@ -131,6 +134,7 @@ async def aggregate_this_month_data(
         day_cost: Cost for this_day
         day_consumption: Consumption for this_day
         day_production: Production for this_day
+        now: Current datetime (if None, uses actual current time)
         
     Returns:
         Tuple of (measurements, month_cost, month_consumption, month_production)
@@ -143,7 +147,8 @@ async def aggregate_this_month_data(
     if day_cost is not None:
         try:
             from datetime import datetime as dt
-            now = dt.now(connection.time_zone)
+            if now is None:
+                now = dt.now(connection.time_zone)
             first_of_month = now.replace(
                 day=1, hour=0, minute=0, second=0, microsecond=0
             )
@@ -261,6 +266,7 @@ async def aggregate_this_year_data(
     month_cost: float | None,
     month_consumption: float | None,
     month_production: float | None,
+    now: datetime | None = None,
 ) -> list[Measurement]:
     """Aggregate this year (year so far) consumption data.
     
@@ -273,6 +279,7 @@ async def aggregate_this_year_data(
         month_cost: Cost for this_month
         month_consumption: Consumption for this_month
         month_production: Production for this_month
+        now: Current datetime (if None, uses actual current time)
         
     Returns:
         List of measurements for this_year
@@ -282,7 +289,8 @@ async def aggregate_this_year_data(
     if month_cost is not None:
         try:
             from datetime import datetime as dt
-            now = dt.now(connection.time_zone)
+            if now is None:
+                now = dt.now(connection.time_zone)
             first_of_year = now.replace(
                 month=1, day=1, hour=0, minute=0, second=0, microsecond=0
             )
