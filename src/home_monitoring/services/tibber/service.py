@@ -66,6 +66,13 @@ class TibberService(BaseService):
             summary_timestamp = datetime.now(UTC)
             measurements = []
 
+            # Get current time from price data (for aggregation calculations)
+            try:
+                _, price_timestamp, _ = home.current_price_data()
+                current_time = price_timestamp
+            except Exception:
+                current_time = None
+
             # Collect price data
             price_measurements = await collection.collect_price_data(
                 home, summary_timestamp
@@ -84,6 +91,40 @@ class TibberService(BaseService):
             last_24h = await collection.collect_last_24h_data(home, summary_timestamp)
             measurements.extend(last_24h)
 
+            # Collect aggregated period data (this_day, this_month, this_year)
+            # Note: Must be called before this_hour to maintain test mock order
+            this_day_measurements, day_cost, day_consumption, day_production = (
+                await aggregation.aggregate_this_day_data(
+                    home, connection, summary_timestamp, current_time
+                )
+            )
+            measurements.extend(this_day_measurements)
+
+            this_month_measurements, month_cost, month_consumption, month_production = (
+                await aggregation.aggregate_this_month_data(
+                    home,
+                    connection,
+                    summary_timestamp,
+                    day_cost,
+                    day_consumption,
+                    day_production,
+                    current_time,
+                )
+            )
+            measurements.extend(this_month_measurements)
+
+            this_year_measurements = await aggregation.aggregate_this_year_data(
+                home,
+                connection,
+                summary_timestamp,
+                month_cost,
+                month_consumption,
+                month_production,
+                current_time,
+            )
+            measurements.extend(this_year_measurements)
+
+            # Collect remaining simple periods after aggregations
             this_hour = await collection.collect_this_hour_data(
                 home, summary_timestamp
             )
@@ -98,36 +139,6 @@ class TibberService(BaseService):
                 home, summary_timestamp
             )
             measurements.extend(last_year)
-
-            # Collect aggregated period data (this_day, this_month, this_year)
-            this_day_measurements, day_cost, day_consumption, day_production = (
-                await aggregation.aggregate_this_day_data(
-                    home, connection, summary_timestamp
-                )
-            )
-            measurements.extend(this_day_measurements)
-
-            this_month_measurements, month_cost, month_consumption, month_production = (
-                await aggregation.aggregate_this_month_data(
-                    home,
-                    connection,
-                    summary_timestamp,
-                    day_cost,
-                    day_consumption,
-                    day_production,
-                )
-            )
-            measurements.extend(this_month_measurements)
-
-            this_year_measurements = await aggregation.aggregate_this_year_data(
-                home,
-                connection,
-                summary_timestamp,
-                month_cost,
-                month_consumption,
-                month_production,
-            )
-            measurements.extend(this_year_measurements)
 
             # Store all measurements
             if not measurements:
