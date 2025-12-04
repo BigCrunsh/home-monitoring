@@ -45,24 +45,52 @@ tests/
 ```
 
 ## File Size Limit
-**CRITICAL**: No file should exceed 400 lines of code.
 
-When a file approaches 400 lines:
-- Split into multiple files by responsibility
-- Extract related functions into separate modules
-- Break large classes into smaller, focused classes
-- Use composition over inheritance
-- Create sub-packages for related functionality
+**TARGET**: No file should exceed 400 lines of code.
 
-Example splits:
-- `services/user_service.py` (450 lines) → Split into:
-  - `services/user/auth.py` - Authentication logic
-  - `services/user/profile.py` - Profile management
-  - `services/user/registration.py` - Registration flow
-- `models/order.py` (500 lines) → Split into:
-  - `models/order/order.py` - Core order model
-  - `models/order/items.py` - Order items model
-  - `models/order/payment.py` - Payment-related models
+**FLEXIBILITY**: 
+- Up to 480 lines (120% of target) is acceptable if the file is a logical cohesive unit
+- Example: A collection module with 7 similar functions = 540 lines may be acceptable
+- Beyond 120%: MUST ask for user approval and present alternatives
+
+**When to split:**
+1. ✅ **DO split** if there's a clear logical separation:
+   - Different responsibilities (collection vs aggregation)
+   - Different concerns (authentication vs profile management)
+   - Different time scales (hourly vs monthly operations)
+
+2. ❌ **DON'T split** if:
+   - It would create arbitrary divisions
+   - It would require excessive cross-file imports
+   - It would make function calls less optimal
+   - The file is a cohesive unit (e.g., all similar collection functions)
+
+**Decision process:**
+1. File > 400 lines → Check if logical split exists
+2. Logical split exists → Split immediately
+3. No logical split → Check if < 480 lines (120%)
+4. If < 480 lines → Keep as single file, document why
+5. If > 480 lines → Present alternatives to user for approval
+
+**Example - GOOD split:**
+```python
+# Before: services/user_service.py (600 lines)
+# Clear logical split by responsibility:
+services/user/
+├── authentication.py  # Login, JWT, password (200 lines)
+├── profile.py        # Profile management (200 lines)
+└── registration.py   # User registration (200 lines)
+```
+
+**Example - BAD split:**
+```python
+# Before: services/collection.py (540 lines - 7 similar functions)
+# Arbitrary split would create:
+services/
+├── collection_part1.py  # Functions 1-4 (arbitrary)
+└── collection_part2.py  # Functions 5-7 (arbitrary)
+# Better: Keep as one file since it's cohesive
+```
 
 ## Testing
 - Use `pytest` for all tests
@@ -138,6 +166,23 @@ class UserCreate(BaseModel):
 - Never commit secrets to version control
 - Use `.env` files locally (gitignored)
 
+## Pre-Commit Requirements (MANDATORY)
+
+**NEVER commit code that:**
+1. ❌ Has failing tests
+2. ❌ Has linting errors (run `ruff check .`)
+3. ❌ Has type errors (run `mypy src/`)
+
+**Pre-commit checklist (MUST run before EVERY commit):**
+```bash
+# All three must pass before committing
+pytest                    # All tests must pass
+ruff check .             # No linting errors
+mypy src/                # No type errors
+```
+
+**If ANY of these fail, you MUST fix them before committing. No exceptions.**
+
 ## Database
 - Use SQLAlchemy 2.0+ with async support
 - Use Alembic for migrations
@@ -188,9 +233,12 @@ def calculate_metrics(data: pd.DataFrame) -> dict[str, float]:
 - Don't commit commented-out code
 - Don't use global variables for state
 - Don't use `requirements.txt` if using `pyproject.toml`
-- **Don't create files longer than 400 lines** - split them up instead
+- **Don't create files longer than 480 lines (120%)** without logical reason or user approval
+- **Don't split files arbitrarily** - only split when there's a clear logical separation
 - **Don't suggest large commits** - break into small, atomic commits
-- **Don't commit without running tests and linters**
+- **Don't commit with failing tests** - NEVER, no exceptions
+- **Don't commit with linting errors** - NEVER, no exceptions
+- **Don't commit with type errors** - NEVER, no exceptions
 
 ## Security
 - Sanitize all user inputs
