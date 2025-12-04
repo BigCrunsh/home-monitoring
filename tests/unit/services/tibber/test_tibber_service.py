@@ -19,12 +19,12 @@ async def test_collect_and_store_success(
 ) -> None:
     """Test successful data collection and storage."""
     # Arrange
-    mock_consumption_node_hourly = {"cost": 0.45, "consumption": 1.5}
-    mock_consumption_node_daily = {"cost": 7.65, "consumption": 25.5}
+    mock_consumption_node_hourly = {"totalCost": 0.45, "consumption": 1.5}
+    mock_consumption_node_daily = {"totalCost": 7.65, "consumption": 25.5}
 
     mock_consumption_nodes_24h = []
     for _ in range(24):
-        node = {"cost": 0.30, "consumption": 1.0}
+        node = {"totalCost": 0.30, "consumption": 1.0}
         mock_consumption_nodes_24h.append(node)
 
     mock_home = AsyncMock()
@@ -100,7 +100,7 @@ async def test_collect_and_store_database_error(
 ) -> None:
     """Test handling of database error."""
     # Arrange
-    mock_consumption_node = {"cost": 0.45, "consumption": 1.5}
+    mock_consumption_node = {"totalCost": 0.45, "consumption": 1.5}
 
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
