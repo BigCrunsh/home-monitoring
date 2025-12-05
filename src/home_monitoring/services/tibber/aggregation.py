@@ -3,10 +3,8 @@
 from datetime import datetime
 
 import structlog
-
 from home_monitoring.core.mappers.tibber import TibberMapper
 from home_monitoring.models.base import Measurement
-
 
 logger = structlog.get_logger()
 
