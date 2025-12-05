@@ -61,6 +61,8 @@ class TibberService(BaseService):
                 return
 
             home = homes[0]
+            await home.update_info()
+            
             has_subscription = (
                 hasattr(home, 'has_active_subscription')
                 and home.has_active_subscription
@@ -70,16 +72,7 @@ class TibberService(BaseService):
                 address=home.address1,
                 has_active_subscription=has_subscription,
                 subscription_status=getattr(home, 'subscription_status', 'unknown'),
-            )
-
-            # Update price info before accessing price data
-            await home.update_price_info()
-            
-            self._logger.debug(
-                "price_info_updated",
-                current_price_info=home.current_price_info,
-                has_price_total=hasattr(home, 'price_total'),
-                has_price_level=hasattr(home, 'price_level'),
+                current_price_info=getattr(home, 'current_price_info', None),
             )
 
             summary_timestamp = datetime.now(UTC)
