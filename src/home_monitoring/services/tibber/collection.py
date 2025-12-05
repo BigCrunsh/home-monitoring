@@ -7,12 +7,16 @@ direct API calls without complex aggregation logic.
 from datetime import datetime
 
 import structlog
-
 from home_monitoring.core.mappers.tibber import TibberMapper
 from home_monitoring.models.base import Measurement
 
-
 logger = structlog.get_logger()
+
+# Rank thresholds for price level classification
+RANK_VERY_CHEAP_THRESHOLD = 0.1
+RANK_CHEAP_THRESHOLD = 0.35
+RANK_NORMAL_THRESHOLD = 0.65
+RANK_EXPENSIVE_THRESHOLD = 0.85
 
 
 async def collect_price_data(
@@ -31,14 +35,40 @@ async def collect_price_data(
     
     try:
         total, _, rank = home.current_price_data()
+        
+        # Validate that we have actual price data
+        if total is None:
+            logger.error(
+                "price_data_missing",
+                message="current_price_data returned None for total price",
+            )
+            return measurements
+        
+        # Convert rank to level string for mapper
+        # Rank is 0.0-1.0, map it back to level strings
+        if rank <= RANK_VERY_CHEAP_THRESHOLD:
+            level = "VERY_CHEAP"
+        elif rank <= RANK_CHEAP_THRESHOLD:
+            level = "CHEAP"
+        elif rank <= RANK_NORMAL_THRESHOLD:
+            level = "NORMAL"
+        elif rank <= RANK_EXPENSIVE_THRESHOLD:
+            level = "EXPENSIVE"
+        else:
+            level = "VERY_EXPENSIVE"
+        
         measurements.extend(
             TibberMapper.to_measurements(
                 summary_timestamp,
-                {"total": total, "rank": rank},
+                {"total": total, "level": level},
             )
         )
     except Exception as e:
-        logger.warning("failed_to_get_price_data", error=str(e))
+        logger.error(
+            "failed_to_get_price_data",
+            error=str(e),
+            error_type=type(e).__name__,
+        )
     
     return measurements
 
