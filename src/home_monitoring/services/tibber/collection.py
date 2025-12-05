@@ -34,30 +34,13 @@ async def collect_price_data(
     measurements = []
     
     try:
-        price_result = home.current_price_data()
-        
-        logger.debug(
-            "price_data_call_result",
-            result=price_result,
-            result_type=type(price_result).__name__,
-        )
-        
-        total, timestamp, rank = price_result
-        
-        logger.debug(
-            "price_data_raw",
-            total=total,
-            timestamp=timestamp,
-            rank=rank,
-        )
+        total, _, rank = home.current_price_data()
         
         # Validate that we have actual price data
         if total is None:
             logger.error(
                 "price_data_missing",
                 message="current_price_data returned None for total price",
-                timestamp=timestamp,
-                rank=rank,
             )
             return measurements
         
@@ -74,23 +57,11 @@ async def collect_price_data(
         else:
             level = "VERY_EXPENSIVE"
         
-        logger.debug(
-            "price_data_processed",
-            total=total,
-            level=level,
-            rank=rank,
-        )
-        
         measurements.extend(
             TibberMapper.to_measurements(
                 summary_timestamp,
                 {"total": total, "level": level},
             )
-        )
-        
-        logger.debug(
-            "price_measurements_created",
-            count=len(measurements),
         )
     except Exception as e:
         logger.error(
