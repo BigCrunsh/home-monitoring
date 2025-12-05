@@ -63,6 +63,9 @@ class TibberService(BaseService):
             home = homes[0]
             self._logger.debug("got_home_data", address=home.address1)
 
+            # Update price info before accessing price data
+            await home.update_price_info()
+
             summary_timestamp = datetime.now(UTC)
             measurements = []
 

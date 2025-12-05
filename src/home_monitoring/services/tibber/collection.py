@@ -34,11 +34,20 @@ async def collect_price_data(
     measurements = []
     
     try:
-        total, _, rank = home.current_price_data()
+        price_result = home.current_price_data()
+        
+        logger.debug(
+            "price_data_call_result",
+            result=price_result,
+            result_type=type(price_result).__name__,
+        )
+        
+        total, timestamp, rank = price_result
         
         logger.debug(
             "price_data_raw",
             total=total,
+            timestamp=timestamp,
             rank=rank,
         )
         
@@ -47,6 +56,8 @@ async def collect_price_data(
             logger.error(
                 "price_data_missing",
                 message="current_price_data returned None for total price",
+                timestamp=timestamp,
+                rank=rank,
             )
             return measurements
         
