@@ -37,10 +37,10 @@ var summaryStatistics = ['min', 'max', 'p20', 'p50', 'p80'];
 
 // Statistics configuration per period
 var periodStatsConfig = {
-    'this_hour': { stats: ['max'], timeWindow: null },
-    'this_day': { stats: ['max'], timeWindow: null },
-    'this_month': { stats: ['max'], timeWindow: null },
-    'this_year': { stats: ['max'], timeWindow: null },
+    'this_hour': { stats: ['max'], timeWindow: '24h' },
+    'this_day': { stats: ['max'], timeWindow: '30d' },
+    'this_month': { stats: ['max'], timeWindow: '12M' },
+    'this_year': { stats: ['max'], timeWindow: '12M' },
     'last_hour': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '24h' },
     'last_day': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '30d' },
     'last_month': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '12M' },
@@ -279,8 +279,9 @@ function queryInfluxDBTibberConsumption() {
         // Build query based on period type
         var statsQuery;
         if (period.startsWith('this_')) {
-            // For this_* periods, just get MAX from current period
-            statsQuery = `SELECT MAX("consumption") FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' AND period = '${period}'`;
+            // For this_* periods, just get MAX from current period within time window
+            var timeWindow = config.timeWindow;
+            statsQuery = `SELECT MAX("consumption") FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' AND period = '${period}' AND time > now() - ${timeWindow}`;
         } else {
             // For last_* periods, get statistics from unique period values over time window
             // Use LAST() to get one value per day/hour/month, then calculate statistics
@@ -382,8 +383,9 @@ function queryInfluxDBTibberCosts() {
         // Build query based on period type
         var statsQuery;
         if (period.startsWith('this_')) {
-            // For this_* periods, just get MAX from current period
-            statsQuery = `SELECT MAX("cost") FROM home_monitoring.autogen.electricity_costs_euro WHERE period = '${period}'`;
+            // For this_* periods, just get MAX from current period within time window
+            var timeWindow = config.timeWindow;
+            statsQuery = `SELECT MAX("cost") FROM home_monitoring.autogen.electricity_costs_euro WHERE period = '${period}' AND time > now() - ${timeWindow}`;
         } else {
             // For last_* periods, get statistics from unique period values over time window
             // Use LAST() to get one value per day/hour/month, then calculate statistics
