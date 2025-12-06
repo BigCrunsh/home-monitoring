@@ -31,9 +31,6 @@ var periods = [
     'last_hour', 'last_day', 'last_month', 'last_year'
 ];
 
-// Summary statistics to calculate
-var summaryStatistics = ['min', 'max', 'p20', 'p50', 'p80'];
-
 // Statistics configuration per period
 var periodStatsConfig = {
     'this_hour': { stats: ['max'], timeWindow: '24h' },
