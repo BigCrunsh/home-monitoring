@@ -24,12 +24,7 @@
 // ============================================================================
 
 var stateBasePath = 'javascript.0.tibber_states';
-
-// Periods for consumption and cost data
-var periods = [
-    'this_hour', 'this_day', 'this_month', 'this_year',
-    'last_hour', 'last_day', 'last_month', 'last_year'
-];
+var influxAdapter = 'influxdb.0';
 
 // Statistics configuration per period
 var periodStatsConfig = {
@@ -42,6 +37,9 @@ var periodStatsConfig = {
     'last_month': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '12M' },
     'last_year': { stats: [], timeWindow: null }
 };
+
+// Derive periods from configuration
+var periods = Object.keys(periodStatsConfig);
 
 // Price statistics configuration
 var priceStatsConfig = {
@@ -171,6 +169,91 @@ function createCostStates() {
 }
 
 // ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Build statistics query for a given period
+ * @param {string} metric - Field name (e.g., 'consumption', 'cost')
+ * @param {string} measurement - InfluxDB measurement name
+ * @param {string} period - Period name
+ * @param {Object} config - Period configuration
+ * @param {string} sourceFilter - Optional WHERE clause for source filtering
+ * @returns {string} InfluxDB query string
+ */
+function buildStatsQuery(metric, measurement, period, config, sourceFilter) {
+    var whereClause = sourceFilter || '';
+    
+    if (period.startsWith('this_')) {
+        // For this_* periods, just get MAX from current period within time window
+        // Use alias 'max' to match INFLUX_FIELD_MAPPING
+        return `SELECT MAX("${metric}") AS max FROM home_monitoring.autogen.${measurement} WHERE ${whereClause}period = '${period}' AND time > now() - ${config.timeWindow}`;
+    } else {
+        // For last_* periods, get statistics from unique period values over time window
+        // Use aliases to match INFLUX_FIELD_MAPPING exactly
+        var groupByTime;
+        if (period === 'last_hour') {
+            groupByTime = '1h';
+        } else if (period === 'last_day') {
+            groupByTime = '1d';
+        } else if (period === 'last_month') {
+            groupByTime = '30d';
+        }
+        
+        return `SELECT MIN(last_val) AS min, MAX(last_val) AS max, PERCENTILE(last_val, 20) AS p20, PERCENTILE(last_val, 50) AS p50, PERCENTILE(last_val, 80) AS p80 FROM (SELECT LAST("${metric}") AS last_val FROM home_monitoring.autogen.${measurement} WHERE ${whereClause}period = '${period}' AND time > now() - ${config.timeWindow} GROUP BY time(${groupByTime}))`;
+    }
+}
+
+/**
+ * Update statistics states for a given metric and period
+ * @param {string} metricType - Type of metric ('consumption_grid' or 'cost')
+ * @param {string} period - Period name
+ * @param {Object} row - Query result row
+ * @param {Object} config - Period configuration
+ */
+function updatePeriodStats(metricType, period, row, config) {
+    config.stats.forEach(function(stat) {
+        if (row[stat] !== undefined) {
+            setState(`${stateBasePath}.${metricType}_${period}_${stat}`, row[stat]);
+        }
+    });
+}
+
+/**
+ * Query statistics for all periods of a given metric
+ * @param {string} metricType - Type of metric ('consumption_grid' or 'cost')
+ * @param {string} metric - Field name in InfluxDB
+ * @param {string} measurement - InfluxDB measurement name
+ * @param {string} sourceFilter - Optional WHERE clause for source filtering
+ */
+function queryPeriodStatistics(metricType, metric, measurement, sourceFilter) {
+    periods.forEach(function(period) {
+        var config = periodStatsConfig[period];
+        
+        // Skip periods without statistics
+        if (!config || config.stats.length === 0) {
+            return;
+        }
+        
+        var statsQuery = buildStatsQuery(metric, measurement, period, config, sourceFilter);
+        
+        sendTo(influxAdapter, 'query', statsQuery, function(result) {
+            if (result.error) {
+                console.error(`[Tibber ${metricType} Stats ${period}] Query error:`, result.error);
+                return;
+            }
+
+            if (!result.result || !result.result[0] || result.result[0].length === 0) {
+                console.warn(`[Tibber ${metricType} Stats ${period}] No statistics data returned`);
+                return;
+            }
+
+            updatePeriodStats(metricType, period, result.result[0][0], config);
+        });
+    });
+}
+
+// ============================================================================
 // QUERY FUNCTIONS - ENERGY PRICES
 // ============================================================================
 
@@ -179,7 +262,7 @@ function createCostStates() {
  */
 function queryInfluxDBTibberPrices() {
     // Query 1: Get latest energy price and rank
-    sendTo('influxdb.0', 'query', 
+    sendTo(influxAdapter, 'query', 
         "SELECT * FROM home_monitoring.autogen.electricity_prices_euro ORDER BY time DESC LIMIT 1", 
         function(result) {
             if (result.error) {
@@ -206,9 +289,10 @@ function queryInfluxDBTibberPrices() {
     );
 
     // Query 2: Get price statistics over time window
-    var statsQuery = `SELECT MIN("total"), MAX("total"), PERCENTILE("total", 20), PERCENTILE("total", 50), PERCENTILE("total", 80) FROM home_monitoring.autogen.electricity_prices_euro WHERE time > now() - ${priceStatsConfig.timeWindow}`;
+    // Use stat names directly as aliases
+    var statsQuery = `SELECT MIN("total") AS min, MAX("total") AS max, PERCENTILE("total", 20) AS p20, PERCENTILE("total", 50) AS p50, PERCENTILE("total", 80) AS p80 FROM home_monitoring.autogen.electricity_prices_euro WHERE time > now() - ${priceStatsConfig.timeWindow}`;
     
-    sendTo('influxdb.0', 'query', statsQuery, function(result) {
+    sendTo(influxAdapter, 'query', statsQuery, function(result) {
         if (result.error) {
             console.error('[Tibber Price Stats] Query error:', result.error);
             return;
@@ -217,12 +301,12 @@ function queryInfluxDBTibberPrices() {
         if (result.result && result.result[0] && result.result[0].length > 0) {
             var row = result.result[0][0];
             
-            // Update statistics states
-            setState(`${stateBasePath}.energy_price_euro_min`, row.min);
-            setState(`${stateBasePath}.energy_price_euro_max`, row.max);
-            setState(`${stateBasePath}.energy_price_euro_p20`, row.percentile);
-            setState(`${stateBasePath}.energy_price_euro_p50`, row.percentile_1);
-            setState(`${stateBasePath}.energy_price_euro_p80`, row.percentile_2);
+            // Update statistics states directly using stat names
+            priceStatsConfig.stats.forEach(function(stat) {
+                if (row[stat] !== undefined) {
+                    setState(`${stateBasePath}.energy_price_euro_${stat}`, row[stat]);
+                }
+            });
         } else {
             console.warn('[Tibber Price Stats] No statistics data returned from InfluxDB');
         }
@@ -240,7 +324,7 @@ function queryInfluxDBTibberConsumption() {
     // Query 1: Get latest consumption values for all periods (grid source)
     var currentQuery = "SELECT last(*) FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' GROUP BY period";
     
-    sendTo('influxdb.0', 'query', currentQuery, function(result) {
+    sendTo(influxAdapter, 'query', currentQuery, function(result) {
         if (result.error) {
             console.error('[Tibber Consumption] Query error:', result.error);
             return;
@@ -269,68 +353,8 @@ function queryInfluxDBTibberConsumption() {
         });
     });
 
-    // Query 2: Get consumption statistics for each period with appropriate time windows
-    periods.forEach(function(period) {
-        var config = periodStatsConfig[period];
-        
-        // Skip periods without statistics
-        if (!config || config.stats.length === 0) {
-            return;
-        }
-        
-        // Build query based on period type
-        var statsQuery;
-        if (period.startsWith('this_')) {
-            // For this_* periods, just get MAX from current period within time window
-            var timeWindow = config.timeWindow;
-            statsQuery = `SELECT MAX("consumption") FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' AND period = '${period}' AND time > now() - ${timeWindow}`;
-        } else {
-            // For last_* periods, get statistics from unique period values over time window
-            // Use LAST() to get one value per day/hour/month, then calculate statistics
-            var timeWindow = config.timeWindow;
-            var groupByTime;
-            
-            if (period === 'last_hour') {
-                groupByTime = '1h'; // One value per hour over last 24 hours
-            } else if (period === 'last_day') {
-                groupByTime = '1d'; // One value per day over last 30 days
-            } else if (period === 'last_month') {
-                groupByTime = '30d'; // One value per month over last 12 months
-            }
-            
-            statsQuery = `SELECT MIN(last_val), MAX(last_val), PERCENTILE(last_val, 20), PERCENTILE(last_val, 50), PERCENTILE(last_val, 80) FROM (SELECT LAST("consumption") AS last_val FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' AND period = '${period}' AND time > now() - ${timeWindow} GROUP BY time(${groupByTime}))`;
-        }
-        
-        sendTo('influxdb.0', 'query', statsQuery, function(result) {
-            if (result.error) {
-                console.error(`[Tibber Consumption Stats ${period}] Query error:`, result.error);
-                return;
-            }
-
-            if (!result.result || !result.result[0] || result.result[0].length === 0) {
-                return;
-            }
-
-            var row = result.result[0][0];
-            
-            // Update statistics states based on what's configured for this period
-            if (config.stats.indexOf('min') >= 0 && row.min !== undefined) {
-                setState(`${stateBasePath}.consumption_grid_${period}_min`, row.min);
-            }
-            if (config.stats.indexOf('max') >= 0 && row.max !== undefined) {
-                setState(`${stateBasePath}.consumption_grid_${period}_max`, row.max);
-            }
-            if (config.stats.indexOf('p20') >= 0 && row.percentile !== undefined) {
-                setState(`${stateBasePath}.consumption_grid_${period}_p20`, row.percentile);
-            }
-            if (config.stats.indexOf('p50') >= 0 && row.percentile_1 !== undefined) {
-                setState(`${stateBasePath}.consumption_grid_${period}_p50`, row.percentile_1);
-            }
-            if (config.stats.indexOf('p80') >= 0 && row.percentile_2 !== undefined) {
-                setState(`${stateBasePath}.consumption_grid_${period}_p80`, row.percentile_2);
-            }
-        });
-    });
+    // Query 2: Get consumption statistics using helper function
+    queryPeriodStatistics('consumption_grid', 'consumption', 'electricity_consumption_kwh', "source = 'grid' AND ");
 }
 
 // ============================================================================
@@ -344,7 +368,7 @@ function queryInfluxDBTibberCosts() {
     // Query 1: Get latest cost values for all periods
     var currentQuery = "SELECT last(*) FROM home_monitoring.autogen.electricity_costs_euro GROUP BY period";
     
-    sendTo('influxdb.0', 'query', currentQuery, function(result) {
+    sendTo(influxAdapter, 'query', currentQuery, function(result) {
         if (result.error) {
             console.error('[Tibber Costs] Query error:', result.error);
             return;
@@ -373,68 +397,8 @@ function queryInfluxDBTibberCosts() {
         });
     });
 
-    // Query 2: Get cost statistics for each period with appropriate time windows
-    periods.forEach(function(period) {
-        var config = periodStatsConfig[period];
-        
-        // Skip periods without statistics
-        if (!config || config.stats.length === 0) {
-            return;
-        }
-        
-        // Build query based on period type
-        var statsQuery;
-        if (period.startsWith('this_')) {
-            // For this_* periods, just get MAX from current period within time window
-            var timeWindow = config.timeWindow;
-            statsQuery = `SELECT MAX("cost") FROM home_monitoring.autogen.electricity_costs_euro WHERE period = '${period}' AND time > now() - ${timeWindow}`;
-        } else {
-            // For last_* periods, get statistics from unique period values over time window
-            // Use LAST() to get one value per day/hour/month, then calculate statistics
-            var timeWindow = config.timeWindow;
-            var groupByTime;
-            
-            if (period === 'last_hour') {
-                groupByTime = '1h'; // One value per hour over last 24 hours
-            } else if (period === 'last_day') {
-                groupByTime = '1d'; // One value per day over last 30 days
-            } else if (period === 'last_month') {
-                groupByTime = '30d'; // One value per month over last 12 months
-            }
-            
-            statsQuery = `SELECT MIN(last_val), MAX(last_val), PERCENTILE(last_val, 20), PERCENTILE(last_val, 50), PERCENTILE(last_val, 80) FROM (SELECT LAST("cost") AS last_val FROM home_monitoring.autogen.electricity_costs_euro WHERE period = '${period}' AND time > now() - ${timeWindow} GROUP BY time(${groupByTime}))`;
-        }
-        
-        sendTo('influxdb.0', 'query', statsQuery, function(result) {
-            if (result.error) {
-                console.error(`[Tibber Cost Stats ${period}] Query error:`, result.error);
-                return;
-            }
-
-            if (!result.result || !result.result[0] || result.result[0].length === 0) {
-                return;
-            }
-
-            var row = result.result[0][0];
-            
-            // Update statistics states based on what's configured for this period
-            if (config.stats.indexOf('min') >= 0 && row.min !== undefined) {
-                setState(`${stateBasePath}.cost_${period}_min`, row.min);
-            }
-            if (config.stats.indexOf('max') >= 0 && row.max !== undefined) {
-                setState(`${stateBasePath}.cost_${period}_max`, row.max);
-            }
-            if (config.stats.indexOf('p20') >= 0 && row.percentile !== undefined) {
-                setState(`${stateBasePath}.cost_${period}_p20`, row.percentile);
-            }
-            if (config.stats.indexOf('p50') >= 0 && row.percentile_1 !== undefined) {
-                setState(`${stateBasePath}.cost_${period}_p50`, row.percentile_1);
-            }
-            if (config.stats.indexOf('p80') >= 0 && row.percentile_2 !== undefined) {
-                setState(`${stateBasePath}.cost_${period}_p80`, row.percentile_2);
-            }
-        });
-    });
+    // Query 2: Get cost statistics using helper function
+    queryPeriodStatistics('cost', 'cost', 'electricity_costs_euro', '');
 }
 
 // ===========================================================================
@@ -456,17 +420,24 @@ function queryInfluxDBTibber() {
 // INITIALIZATION
 // ============================================================================
 
-// Create all states on script start
-createPriceStates();
-createConsumptionStates();
-createCostStates();
+// Validate InfluxDB adapter is available
+if (!existsObject(influxAdapter)) {
+    console.error(`[Tibber Integration] ERROR: InfluxDB adapter '${influxAdapter}' not found! Please install and configure the InfluxDB adapter.`);
+} else {
+    console.log('[Tibber Integration] InfluxDB adapter found, initializing...');
+    
+    // Create all states on script start
+    createPriceStates();
+    createConsumptionStates();
+    createCostStates();
 
-// Wait for states to be created before running first query (createState is async)
-setTimeout(function() {
-    queryInfluxDBTibber();
-}, 2000);
+    // Wait for states to be created before running first query (createState is async)
+    setTimeout(function() {
+        queryInfluxDBTibber();
+    }, 2000);
 
-// Schedule to run every 15 minutes (at 1, 16, 31, 46 minutes past the hour)
-schedule("1,16,31,46 * * * *", queryInfluxDBTibber);
+    // Schedule to run every 15 minutes (at 1, 16, 31, 46 minutes past the hour)
+    schedule("1,16,31,46 * * * *", queryInfluxDBTibber);
 
-console.log('[Tibber Integration] Script initialized and scheduled');
+    console.log('[Tibber Integration] Script initialized and scheduled');
+}
