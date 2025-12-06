@@ -23,7 +23,7 @@
 // CONFIGURATION
 // ============================================================================
 
-var stateBasePath = 'javascript.0.tibber_energy';
+var stateBasePath = 'javascript.0.tibber_states';
 var statisticsTimeWindow = '7d'; // Time window for statistics (e.g., '7d', '30d', '90d')
 
 // Periods for consumption and cost data
@@ -34,6 +34,18 @@ var periods = [
 
 // Summary statistics to calculate
 var summaryStatistics = ['min', 'max', 'p20', 'p50', 'p80'];
+
+// Statistics configuration per period
+var periodStatsConfig = {
+    'this_hour': { stats: ['max'], timeWindow: null },
+    'this_day': { stats: ['max'], timeWindow: null },
+    'this_month': { stats: ['max'], timeWindow: null },
+    'this_year': { stats: ['max'], timeWindow: null },
+    'last_hour': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '24h' },
+    'last_day': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '30d' },
+    'last_month': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '12M' },
+    'last_year': { stats: [], timeWindow: null }
+};
 
 // ============================================================================
 // STATE CREATION - ENERGY PRICES
@@ -100,15 +112,19 @@ function createConsumptionStates() {
             role: 'value'
         });
 
-        // Summary statistics for this period
-        summaryStatistics.forEach(function(stat) {
-            createState(`${stateBasePath}.consumption_grid_${period}_${stat}`, 0, {
-                desc: `Grid consumption ${stat} for ${period} over last ${statisticsTimeWindow}`,
-                type: 'number',
-                role: 'value',
-                unit: 'kWh'
+        // Summary statistics for this period (based on period configuration)
+        var config = periodStatsConfig[period];
+        if (config && config.stats.length > 0) {
+            config.stats.forEach(function(stat) {
+                var timeDesc = config.timeWindow ? ` over last ${config.timeWindow}` : '';
+                createState(`${stateBasePath}.consumption_grid_${period}_${stat}`, 0, {
+                    desc: `Grid consumption ${stat} for ${period}${timeDesc}`,
+                    type: 'number',
+                    role: 'value',
+                    unit: 'kWh'
+                });
             });
-        });
+        }
     });
 }
 
@@ -136,15 +152,19 @@ function createCostStates() {
             role: 'value'
         });
 
-        // Summary statistics for this period
-        summaryStatistics.forEach(function(stat) {
-            createState(`${stateBasePath}.cost_${period}_${stat}`, 0, {
-                desc: `Energy cost ${stat} for ${period} over last ${statisticsTimeWindow}`,
-                type: 'number',
-                role: 'value',
-                unit: 'Euro'
+        // Summary statistics for this period (based on period configuration)
+        var config = periodStatsConfig[period];
+        if (config && config.stats.length > 0) {
+            config.stats.forEach(function(stat) {
+                var timeDesc = config.timeWindow ? ` over last ${config.timeWindow}` : '';
+                createState(`${stateBasePath}.cost_${period}_${stat}`, 0, {
+                    desc: `Energy cost ${stat} for ${period}${timeDesc}`,
+                    type: 'number',
+                    role: 'value',
+                    unit: 'Euro'
+                });
             });
-        });
+        }
     });
 }
 
@@ -247,29 +267,63 @@ function queryInfluxDBTibberConsumption() {
         });
     });
 
-    // Query 2: Get consumption statistics for all periods (single query with GROUP BY)
-    var statsQuery = `SELECT MIN("consumption"), MAX("consumption"), PERCENTILE("consumption", 20), PERCENTILE("consumption", 50), PERCENTILE("consumption", 80) FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' AND time > now() - ${statisticsTimeWindow} GROUP BY period`;
-    
-    sendTo('influxdb.0', 'query', statsQuery, function(result) {
-        if (result.error) {
-            console.error('[Tibber Consumption Stats] Query error:', result.error);
+    // Query 2: Get consumption statistics for each period with appropriate time windows
+    periods.forEach(function(period) {
+        var config = periodStatsConfig[period];
+        
+        // Skip periods without statistics
+        if (!config || config.stats.length === 0) {
             return;
         }
-
-        if (!result.result || !result.result[0]) {
-            console.warn('[Tibber Consumption Stats] No statistics data returned from InfluxDB');
-            return;
-        }
-
-        // Process statistics for each period
-        result.result[0].forEach(function(row) {
-            var period = row.period;
+        
+        // Build query based on period type
+        var statsQuery;
+        if (period.startsWith('this_')) {
+            // For this_* periods, just get MAX from current period
+            statsQuery = `SELECT MAX("consumption") FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' AND period = '${period}'`;
+        } else {
+            // For last_* periods, get statistics from unique period values over time window
+            // Use LAST() to get one value per day/hour/month, then calculate statistics
+            var timeWindow = config.timeWindow;
+            var groupByTime;
             
-            if (period) {
+            if (period === 'last_hour') {
+                groupByTime = '1h'; // One value per hour over last 24 hours
+            } else if (period === 'last_day') {
+                groupByTime = '1d'; // One value per day over last 30 days
+            } else if (period === 'last_month') {
+                groupByTime = '30d'; // One value per month over last 12 months
+            }
+            
+            statsQuery = `SELECT MIN(last_val), MAX(last_val), PERCENTILE(last_val, 20), PERCENTILE(last_val, 50), PERCENTILE(last_val, 80) FROM (SELECT LAST("consumption") AS last_val FROM home_monitoring.autogen.electricity_consumption_kwh WHERE source = 'grid' AND period = '${period}' AND time > now() - ${timeWindow} GROUP BY time(${groupByTime}))`;
+        }
+        
+        sendTo('influxdb.0', 'query', statsQuery, function(result) {
+            if (result.error) {
+                console.error(`[Tibber Consumption Stats ${period}] Query error:`, result.error);
+                return;
+            }
+
+            if (!result.result || !result.result[0] || result.result[0].length === 0) {
+                return;
+            }
+
+            var row = result.result[0][0];
+            
+            // Update statistics states based on what's configured for this period
+            if (config.stats.indexOf('min') >= 0 && row.min !== undefined) {
                 setState(`${stateBasePath}.consumption_grid_${period}_min`, row.min);
+            }
+            if (config.stats.indexOf('max') >= 0 && row.max !== undefined) {
                 setState(`${stateBasePath}.consumption_grid_${period}_max`, row.max);
+            }
+            if (config.stats.indexOf('p20') >= 0 && row.percentile !== undefined) {
                 setState(`${stateBasePath}.consumption_grid_${period}_p20`, row.percentile);
+            }
+            if (config.stats.indexOf('p50') >= 0 && row.percentile_1 !== undefined) {
                 setState(`${stateBasePath}.consumption_grid_${period}_p50`, row.percentile_1);
+            }
+            if (config.stats.indexOf('p80') >= 0 && row.percentile_2 !== undefined) {
                 setState(`${stateBasePath}.consumption_grid_${period}_p80`, row.percentile_2);
             }
         });
@@ -316,29 +370,63 @@ function queryInfluxDBTibberCosts() {
         });
     });
 
-    // Query 2: Get cost statistics for all periods (single query with GROUP BY)
-    var statsQuery = `SELECT MIN("cost"), MAX("cost"), PERCENTILE("cost", 20), PERCENTILE("cost", 50), PERCENTILE("cost", 80) FROM home_monitoring.autogen.electricity_costs_euro WHERE time > now() - ${statisticsTimeWindow} GROUP BY period`;
-    
-    sendTo('influxdb.0', 'query', statsQuery, function(result) {
-        if (result.error) {
-            console.error('[Tibber Cost Stats] Query error:', result.error);
+    // Query 2: Get cost statistics for each period with appropriate time windows
+    periods.forEach(function(period) {
+        var config = periodStatsConfig[period];
+        
+        // Skip periods without statistics
+        if (!config || config.stats.length === 0) {
             return;
         }
-
-        if (!result.result || !result.result[0]) {
-            console.warn('[Tibber Cost Stats] No statistics data returned from InfluxDB');
-            return;
-        }
-
-        // Process statistics for each period
-        result.result[0].forEach(function(row) {
-            var period = row.period;
+        
+        // Build query based on period type
+        var statsQuery;
+        if (period.startsWith('this_')) {
+            // For this_* periods, just get MAX from current period
+            statsQuery = `SELECT MAX("cost") FROM home_monitoring.autogen.electricity_costs_euro WHERE period = '${period}'`;
+        } else {
+            // For last_* periods, get statistics from unique period values over time window
+            // Use LAST() to get one value per day/hour/month, then calculate statistics
+            var timeWindow = config.timeWindow;
+            var groupByTime;
             
-            if (period) {
+            if (period === 'last_hour') {
+                groupByTime = '1h'; // One value per hour over last 24 hours
+            } else if (period === 'last_day') {
+                groupByTime = '1d'; // One value per day over last 30 days
+            } else if (period === 'last_month') {
+                groupByTime = '30d'; // One value per month over last 12 months
+            }
+            
+            statsQuery = `SELECT MIN(last_val), MAX(last_val), PERCENTILE(last_val, 20), PERCENTILE(last_val, 50), PERCENTILE(last_val, 80) FROM (SELECT LAST("cost") AS last_val FROM home_monitoring.autogen.electricity_costs_euro WHERE period = '${period}' AND time > now() - ${timeWindow} GROUP BY time(${groupByTime}))`;
+        }
+        
+        sendTo('influxdb.0', 'query', statsQuery, function(result) {
+            if (result.error) {
+                console.error(`[Tibber Cost Stats ${period}] Query error:`, result.error);
+                return;
+            }
+
+            if (!result.result || !result.result[0] || result.result[0].length === 0) {
+                return;
+            }
+
+            var row = result.result[0][0];
+            
+            // Update statistics states based on what's configured for this period
+            if (config.stats.indexOf('min') >= 0 && row.min !== undefined) {
                 setState(`${stateBasePath}.cost_${period}_min`, row.min);
+            }
+            if (config.stats.indexOf('max') >= 0 && row.max !== undefined) {
                 setState(`${stateBasePath}.cost_${period}_max`, row.max);
+            }
+            if (config.stats.indexOf('p20') >= 0 && row.percentile !== undefined) {
                 setState(`${stateBasePath}.cost_${period}_p20`, row.percentile);
+            }
+            if (config.stats.indexOf('p50') >= 0 && row.percentile_1 !== undefined) {
                 setState(`${stateBasePath}.cost_${period}_p50`, row.percentile_1);
+            }
+            if (config.stats.indexOf('p80') >= 0 && row.percentile_2 !== undefined) {
                 setState(`${stateBasePath}.cost_${period}_p80`, row.percentile_2);
             }
         });
