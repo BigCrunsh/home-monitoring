@@ -420,24 +420,20 @@ function queryInfluxDBTibber() {
 // INITIALIZATION
 // ============================================================================
 
-// Validate InfluxDB adapter is available
-if (!existsObject(influxAdapter)) {
-    console.error(`[Tibber Integration] ERROR: InfluxDB adapter '${influxAdapter}' not found! Please install and configure the InfluxDB adapter.`);
-} else {
-    console.log('[Tibber Integration] InfluxDB adapter found, initializing...');
-    
-    // Create all states on script start
-    createPriceStates();
-    createConsumptionStates();
-    createCostStates();
+// Initialize script
+console.log('[Tibber Integration] Initializing...');
 
-    // Wait for states to be created before running first query (createState is async)
-    setTimeout(function() {
-        queryInfluxDBTibber();
-    }, 2000);
+// Create all states on script start
+createPriceStates();
+createConsumptionStates();
+createCostStates();
 
-    // Schedule to run every 15 minutes (at 1, 16, 31, 46 minutes past the hour)
-    schedule("1,16,31,46 * * * *", queryInfluxDBTibber);
+// Wait for states to be created before running first query (createState is async)
+setTimeout(function() {
+    queryInfluxDBTibber();
+}, 2000);
 
-    console.log('[Tibber Integration] Script initialized and scheduled');
-}
+// Schedule to run every 15 minutes (at 1, 16, 31, 46 minutes past the hour)
+schedule("1,16,31,46 * * * *", queryInfluxDBTibber);
+
+console.log('[Tibber Integration] Script initialized and scheduled');
