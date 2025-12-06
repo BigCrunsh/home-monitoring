@@ -48,7 +48,7 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 - **Fields**:
   - `cost`: Total cost in EUR
 - **Tags**:
-  - `period`: Time period (last_hour, this_hour, last_day, last_24h, this_day, last_month, this_month, this_year, last_year)
+  - `period`: Time period (last_hour, this_hour, last_day, this_day, last_month, this_month, this_year, last_year)
 - **Update Frequency**: Configurable (recommended: hourly or daily)
 
 #### `electricity_consumption_kwh`
@@ -57,7 +57,7 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 - **Fields**:
   - `consumption`: Total consumption in kWh
 - **Tags**:
-  - `period`: Time period (last_hour, this_hour, last_day, last_24h, this_day, last_month, this_month, this_year, last_year)
+  - `period`: Time period (last_hour, this_hour, last_day, this_day, last_month, this_month, this_year, last_year)
   - `source`: (optional) Energy source - `grid` for grid consumption, `solar` for solar production. When absent, represents total consumption.
 - **Update Frequency**: Configurable (recommended: hourly or daily)
 

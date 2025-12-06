@@ -4,6 +4,8 @@
 
 A centralized monitoring system for smart home devices and services. This project focuses on collecting and storing metrics in InfluxDB; visualization is handled by external tools (for example Grafana or ioBroker) that read from InfluxDB.
 
+**Integrations:** See [`integrations/`](integrations/) directory for ioBroker scripts and other integration tools.
+
 ## Supported Systems
 
 - [Netatmo](https://www.netatmo.com/en-eu) - Smart home weather station (OAuth2 with lnetatmo library)
@@ -294,13 +296,6 @@ print(f"Yesterday's total cost: {yesterday_cost:.2f} EUR")
 yesterday_consumption = await service.get_yesterday_consumption()
 print(f"Yesterday's total consumption: {yesterday_consumption:.2f} kWh")
 
-# Get cost for the last 24 hours
-last_24h_cost = await service.get_last_24h_cost()
-print(f"Last 24h cost: {last_24h_cost:.2f} EUR")
-
-# Get consumption for the last 24 hours
-last_24h_consumption = await service.get_last_24h_consumption()
-print(f"Last 24h consumption: {last_24h_consumption:.2f} kWh")
 ```
 
 These queries can be pasted directly into the InfluxDB CLI, or into

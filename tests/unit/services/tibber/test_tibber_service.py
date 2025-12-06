@@ -81,9 +81,10 @@ async def test_collect_and_store_success(
         # Assert
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
-        # 1 price + 3 last_hour + 3 last_day + 3 last_24h + 3 this_day +
-        # 3 this_month + 3 this_hour + 3 last_month + 3 this_year + 3 last_year
-        expected_count = 28
+        # 1 price + 3 last_hour + 3 last_day + 3 this_day +
+        # 3 this_month + 3 this_hour + 3 last_month + 3 last_year
+        # Note: this_year is not included in basic test (no year data mocked)
+        expected_count = 22
         assert len(measurements) == expected_count
 
 

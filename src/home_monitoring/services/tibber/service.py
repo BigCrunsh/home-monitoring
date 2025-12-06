@@ -89,9 +89,6 @@ class TibberService(BaseService):
             last_day = await collection.collect_last_day_data(home, summary_timestamp)
             measurements.extend(last_day)
 
-            last_24h = await collection.collect_last_24h_data(home, summary_timestamp)
-            measurements.extend(last_24h)
-
             # Collect aggregated period data (this_day, this_month, this_year)
             # Note: Must be called before this_hour to maintain test mock order
             this_day_measurements, day_cost, day_consumption, day_production = (
