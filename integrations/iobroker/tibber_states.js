@@ -30,11 +30,11 @@ var influxAdapter = 'influxdb.0';
 var periodStatsConfig = {
     'this_hour': { stats: ['max'], timeWindow: '24h' },
     'this_day': { stats: ['max'], timeWindow: '30d' },
-    'this_month': { stats: ['max'], timeWindow: '12M' },
-    'this_year': { stats: ['max'], timeWindow: '12M' },
+    'this_month': { stats: ['max'], timeWindow: '365d' },
+    'this_year': { stats: ['max'], timeWindow: '365d' },
     'last_hour': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '24h' },
     'last_day': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '30d' },
-    'last_month': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '12M' },
+    'last_month': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '365d' },
     'last_year': { stats: [], timeWindow: null }
 };
 
