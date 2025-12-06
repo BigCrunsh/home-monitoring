@@ -31,21 +31,20 @@ git commit -m "WIP"  # Never commit WIP to main branch
 
 **MANDATORY**: Before every commit, you MUST:
 
-1. ✅ **Run tests** - ALL must pass
+1. ✅ **Run tests**
    ```bash
    pytest
    ```
-   - ❌ **NEVER commit with failing tests**
-   - ❌ **NEVER commit with skipped tests** (without justification)
+   - All tests must pass
+   - No skipped tests without good reason
    - Coverage should not decrease
 
-2. ✅ **Run linter** - NO errors allowed
+2. ✅ **Run linter**
    ```bash
    ruff check .
    ```
-   - ❌ **NEVER commit with linting errors**
-   - Fix all errors before committing
-   - Warnings should be addressed when possible
+   - Fix all linting errors
+   - Address warnings when possible
 
 3. ✅ **Run formatter**
    ```bash
@@ -54,15 +53,12 @@ git commit -m "WIP"  # Never commit WIP to main branch
    - Ensure consistent code style
    - No manual formatting needed
 
-4. ✅ **Run type checker** - NO errors allowed
+4. ✅ **Run type checker**
    ```bash
    mypy src/
    ```
-   - ❌ **NEVER commit with type errors**
-   - Fix all type errors before committing
+   - Fix all type errors
    - No `type: ignore` without justification
-
-**If ANY of these fail, you MUST fix them before committing. No exceptions.**
 
 ## Commit Message Format
 

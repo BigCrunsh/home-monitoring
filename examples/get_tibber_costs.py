@@ -27,21 +27,12 @@ async def main() -> None:
             f"Yesterday: {yesterday_consumption:.2f} kWh → {yesterday_cost:.2f} EUR"
         )
 
-        # Get data for the last 24 hours
-        last_24h_cost = await service.get_last_24h_cost()
-        last_24h_consumption = await service.get_last_24h_consumption()
-        print(
-            f"Last 24h: {last_24h_consumption:.2f} kWh → {last_24h_cost:.2f} EUR"
-        )
 
         # Calculate average prices per kWh
         if yesterday_consumption > 0:
             avg_price_yesterday = yesterday_cost / yesterday_consumption
             print(f"Average price yesterday: {avg_price_yesterday:.3f} EUR/kWh")
 
-        if last_24h_consumption > 0:
-            avg_price_24h = last_24h_cost / last_24h_consumption
-            print(f"Average price last 24h: {avg_price_24h:.3f} EUR/kWh")
 
     except ValueError as e:
         print(f"Error: {e}")

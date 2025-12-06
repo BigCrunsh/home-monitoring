@@ -126,23 +126,6 @@ def test_to_cost_measurement_yesterday() -> None:
     assert measurement.fields == {"cost": 7.65}
 
 
-def test_to_cost_measurement_last_24h() -> None:
-    """Test cost measurement mapping for last 24h."""
-    # Arrange
-    timestamp = datetime(2024, 2, 16, 20, 0, 0)
-    data = {"cost": 8.50, "period": "last_24h"}
-
-    # Act
-    measurements = TibberMapper.to_measurements(timestamp, data)
-
-    # Assert
-    assert len(measurements) == 1
-    measurement = measurements[0]
-    assert measurement.measurement == "electricity_costs_euro"
-    assert measurement.tags == {"period": "last_24h"}
-    assert measurement.timestamp == timestamp
-    assert measurement.fields == {"cost": 8.50}
-
 
 def test_to_cost_measurement_zero_cost() -> None:
     """Test cost measurement with zero cost (unhappy path)."""
@@ -195,11 +178,11 @@ def test_to_consumption_measurement_yesterday() -> None:
     assert measurement.fields == {"consumption": 25.5}
 
 
-def test_to_consumption_measurement_last_24h() -> None:
-    """Test consumption measurement mapping for last 24h."""
+def test_to_consumption_measurement_last_year() -> None:
+    """Test consumption measurement mapping for last year."""
     # Arrange
     timestamp = datetime(2024, 2, 16, 20, 0, 0)
-    data = {"consumption": 36.0, "period": "last_24h"}
+    data = {"consumption": 36.0, "period": "last_year"}
 
     # Act
     measurements = TibberMapper.to_measurements(timestamp, data)
@@ -208,7 +191,7 @@ def test_to_consumption_measurement_last_24h() -> None:
     assert len(measurements) == 1
     measurement = measurements[0]
     assert measurement.measurement == "electricity_consumption_kwh"
-    assert measurement.tags == {"period": "last_24h"}
+    assert measurement.tags == {"period": "last_year"}
     assert measurement.timestamp == timestamp
     assert measurement.fields == {"consumption": 36.0}
 
