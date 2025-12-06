@@ -24,7 +24,6 @@
 // ============================================================================
 
 var stateBasePath = 'javascript.0.tibber_states';
-var statisticsTimeWindow = '7d'; // Time window for statistics (e.g., '7d', '30d', '90d')
 
 // Periods for consumption and cost data
 var periods = [
@@ -45,6 +44,12 @@ var periodStatsConfig = {
     'last_day': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '30d' },
     'last_month': { stats: ['min', 'max', 'p20', 'p50', 'p80'], timeWindow: '12M' },
     'last_year': { stats: [], timeWindow: null }
+};
+
+// Price statistics configuration
+var priceStatsConfig = {
+    stats: ['min', 'max', 'p20', 'p50', 'p80'],
+    timeWindow: '7d'
 };
 
 // ============================================================================
@@ -78,9 +83,9 @@ function createPriceStates() {
     });
 
     // Price statistics over time window
-    summaryStatistics.forEach(function(stat) {
+    priceStatsConfig.stats.forEach(function(stat) {
         createState(`${stateBasePath}.energy_price_euro_${stat}`, 0, {
-            desc: `Electricity price ${stat} over last ${statisticsTimeWindow}`,
+            desc: `Electricity price ${stat} over last ${priceStatsConfig.timeWindow}`,
             type: 'number',
             role: 'value',
             unit: 'Euro'
@@ -204,7 +209,7 @@ function queryInfluxDBTibberPrices() {
     );
 
     // Query 2: Get price statistics over time window
-    var statsQuery = `SELECT MIN("total"), MAX("total"), PERCENTILE("total", 20), PERCENTILE("total", 50), PERCENTILE("total", 80) FROM home_monitoring.autogen.electricity_prices_euro WHERE time > now() - ${statisticsTimeWindow}`;
+    var statsQuery = `SELECT MIN("total"), MAX("total"), PERCENTILE("total", 20), PERCENTILE("total", 50), PERCENTILE("total", 80) FROM home_monitoring.autogen.electricity_prices_euro WHERE time > now() - ${priceStatsConfig.timeWindow}`;
     
     sendTo('influxdb.0', 'query', statsQuery, function(result) {
         if (result.error) {
