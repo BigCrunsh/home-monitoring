@@ -239,7 +239,8 @@ function queryPeriodStatistics(metricType, metric, measurement, sourceFilter) {
         
         sendTo(influxAdapter, 'query', statsQuery, function(result) {
             if (result.error) {
-                console.error(`[Tibber ${metricType} Stats ${period}] Query error:`, result.error);
+                console.error(`[Tibber ${metricType} Stats ${period}] Query error: ${JSON.stringify(result.error)}`);
+                console.error(`[Tibber ${metricType} Stats ${period}] Failed query: ${statsQuery}`);
                 return;
             }
 
