@@ -9,7 +9,7 @@
  * - Energy consumption by period (with statistics)
  * - Energy costs by period (with statistics)
  * 
- * Schedule: Runs every 15 minutes (at 1, 16, 31, 46 minutes past the hour)
+ * Schedule: Runs every 5 minutes (at 1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56 minutes past the hour)
  * 
  * Dependencies:
  * - InfluxDB adapter (influxdb.0) must be configured
@@ -434,7 +434,7 @@ setTimeout(function() {
     queryInfluxDBTibber();
 }, 2000);
 
-// Schedule to run every 15 minutes (at 1, 16, 31, 46 minutes past the hour)
-schedule("1,16,31,46 * * * *", queryInfluxDBTibber);
+// Schedule to run every 5 minutes, 1 minute after collection script (*/5)
+schedule("1,6,11,16,21,26,31,36,41,46,51,56 * * * *", queryInfluxDBTibber);
 
 console.log('[Tibber Integration] Script initialized and scheduled');
