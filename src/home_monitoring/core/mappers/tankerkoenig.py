@@ -41,6 +41,24 @@ class TankerkoenigMapper(BaseMapper):
             if not price_data:
                 continue
 
+            # Skip closed stations - they return 0 or invalid prices
+            if price_data.get("status") == "closed":
+                continue
+
+            # Skip stations with all zero prices (likely data quality issue)
+            e5_price = price_data.get("e5", 0.0)
+            e10_price = price_data.get("e10", 0.0)
+            diesel_price = price_data.get("diesel", 0.0)
+            
+            zero_price = 0.0
+            all_zero = (
+                e5_price == zero_price
+                and e10_price == zero_price
+                and diesel_price == zero_price
+            )
+            if all_zero:
+                continue
+
             # Get station details - if missing, use defaults to still record prices
             station = stations.get(station_id, {})
 
@@ -78,9 +96,9 @@ class TankerkoenigMapper(BaseMapper):
                     },
                     timestamp=timestamp,
                     fields={
-                        "e5": float(price_data.get("e5", 0.0)),
-                        "e10": float(price_data.get("e10", 0.0)),
-                        "diesel": float(price_data.get("diesel", 0.0)),
+                        "e5": e5_price,
+                        "e10": e10_price,
+                        "diesel": diesel_price,
                     },
                 )
             )
