@@ -49,7 +49,7 @@ class TankerkoenigMapper(BaseMapper):
             e5_price = price_data.get("e5", 0.0)
             e10_price = price_data.get("e10", 0.0)
             diesel_price = price_data.get("diesel", 0.0)
-            
+
             zero_price = 0.0
             all_zero = (
                 e5_price == zero_price
@@ -59,7 +59,7 @@ class TankerkoenigMapper(BaseMapper):
             if all_zero:
                 continue
 
-            # Get station details - if missing, use defaults to still record prices
+            # Get station details - use defaults if missing
             station = stations.get(station_id, {})
 
             # Normalize text fields to title case for consistency
