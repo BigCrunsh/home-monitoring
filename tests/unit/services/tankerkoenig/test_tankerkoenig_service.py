@@ -317,12 +317,12 @@ async def test_collect_and_store_empty_price_data(
             "prices": {},  # Empty prices
         }
     )
-    
+
     original_init = TankerkoenigClient.__init__
-    
+
     def mock_init(self, api_key: str, cache_dir: str | None = None) -> None:
         original_init(self, api_key, cache_dir)
-    
+
     mocker.patch.object(
         TankerkoenigClient,
         "__init__",
