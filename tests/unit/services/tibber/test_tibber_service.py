@@ -220,17 +220,16 @@ async def test_this_month_equals_last_day_plus_today_on_day_2(
     # Arrange
     last_day_cost = 5.50
     last_day_consumption = 20.0
-    
+
     # Today's hourly data (10 hours so far, simulating 10am on day 2)
     today_hourly_cost = 0.35
     today_hourly_consumption = 1.2
     today_hourly_nodes = []
     for _ in range(10):
-        today_hourly_nodes.append({
-            "totalCost": today_hourly_cost,
-            "consumption": today_hourly_consumption
-        })
-    
+        today_hourly_nodes.append(
+            {"totalCost": today_hourly_cost, "consumption": today_hourly_consumption}
+        )
+
     expected_today_cost = today_hourly_cost * 10  # 3.50
     expected_month_cost = last_day_cost + expected_today_cost  # 5.50 + 3.50 = 9.00
 
@@ -248,9 +247,7 @@ async def test_this_month_equals_last_day_plus_today_on_day_2(
                 {"totalCost": last_day_cost, "consumption": last_day_consumption}
             ],  # Last day
             [],  # Last day production
-            [{"totalCost": 0.30, "consumption": 1.0}] * 24,  # Last 24h
-            [],  # Last 24h production
-            today_hourly_nodes,  # This day hourly (10 hours)
+            today_hourly_nodes,  # This day hourly (10 hours) - moved up
             [],  # This day hourly production
             [{"totalCost": 0.35, "consumption": 1.2}],  # This hour
             [],  # This hour production
@@ -290,25 +287,25 @@ async def test_this_month_equals_last_day_plus_today_on_day_2(
         # Assert
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
-        
+
         # Find this_day and this_month cost measurements
         this_day_cost = None
         this_month_cost = None
-        
+
         for m in measurements:
             if m.measurement == "electricity_costs_euro":
                 if m.tags.get("period") == "this_day":
                     this_day_cost = m.fields["cost"]
                 elif m.tags.get("period") == "this_month":
                     this_month_cost = m.fields["cost"]
-        
+
         # Verify the costs
         assert this_day_cost is not None, "this_day cost not found"
         assert this_month_cost is not None, "this_month cost not found"
-        
-        assert this_day_cost == expected_today_cost, (
-            f"this_day cost should be {expected_today_cost}, got {this_day_cost}"
-        )
+
+        assert (
+            this_day_cost == expected_today_cost
+        ), f"this_day cost should be {expected_today_cost}, got {this_day_cost}"
         assert this_month_cost == expected_month_cost, (
             f"this_month cost should be {expected_month_cost} "
             f"(last_day {last_day_cost} + today {expected_today_cost}), "
@@ -323,14 +320,14 @@ async def test_this_year_calculation_march_15_10am(
     mock_settings: Settings,
 ) -> None:
     """Test this_year = completed_months + this_month on March 15, 10am.
-    
+
     Scenario: March 15, 2024 at 10:00 AM
     - Completed months: January (31 days) + February (29 days in 2024)
     - This month (March): 14 completed days + today so far (10 completed hours: 0-9)
-    
+
     Note: this_hour (hour 10, the current incomplete hour) is NOT included in this_year
     because it's incomplete. It's tracked separately as its own period.
-    
+
     Expected: this_year = jan_cost + feb_cost + march_1_to_14_cost + today_0_to_9_cost
     """
     # Arrange - costs for completed months
@@ -338,35 +335,36 @@ async def test_this_year_calculation_march_15_10am(
     jan_consumption = 600.0
     feb_cost = 140.0  # February total
     feb_consumption = 560.0
-    
+
     # March 1-14 (14 completed days)
     march_completed_days_cost = 70.0  # 14 days * 5.0 per day
     march_completed_days_consumption = 280.0
-    
+
     # Today (March 15) - 10 completed hours (0-9)
     today_hourly_cost = 0.5
     today_hourly_consumption = 2.0
     today_hourly_nodes = []
     for _ in range(10):
-        today_hourly_nodes.append({
-            "totalCost": today_hourly_cost,
-            "consumption": today_hourly_consumption
-        })
+        today_hourly_nodes.append(
+            {"totalCost": today_hourly_cost, "consumption": today_hourly_consumption}
+        )
     today_cost = today_hourly_cost * 10  # 5.0
     today_consumption = today_hourly_consumption * 10  # 20.0
-    
+
     # This hour (current incomplete hour)
     this_hour_cost = 0.25
     this_hour_consumption = 1.0
-    
+
     # Expected this_year calculation (does NOT include this_hour)
     expected_year_cost = (
         jan_cost + feb_cost + march_completed_days_cost + today_cost
     )  # 150 + 140 + 70 + 5.0 = 365.0
-    
+
     expected_year_consumption = (
-        jan_consumption + feb_consumption + march_completed_days_consumption +
-        today_consumption
+        jan_consumption
+        + feb_consumption
+        + march_completed_days_consumption
+        + today_consumption
     )  # 600 + 560 + 280 + 20 = 1460.0
 
     mock_home = AsyncMock()
@@ -381,9 +379,7 @@ async def test_this_year_calculation_march_15_10am(
             [],  # Last hour production
             [{"totalCost": 5.0, "consumption": 20.0}],  # Last day
             [],  # Last day production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 24,  # Last 24h
-            [],  # Last 24h production
-            today_hourly_nodes,  # This day hourly (10 hours: 0-9)
+            today_hourly_nodes,  # This day hourly (10 hours: 0-9) - moved up
             [],  # This day hourly production
             [
                 {"totalCost": this_hour_cost, "consumption": this_hour_consumption}
@@ -391,10 +387,6 @@ async def test_this_year_calculation_march_15_10am(
             [],  # This hour production
             [{"totalCost": 50.0, "consumption": 200.0}],  # Last month (Feb)
             [],  # Last month production
-            # For this_year: completed months + this_month
-            # Implementation calculates this_year properly
-            [{"totalCost": 100.0, "consumption": 500.0}],  # Placeholder
-            [],  # This year production
             [
                 {"totalCost": 100.0, "consumption": 500.0},
                 {"totalCost": 90.0, "consumption": 450.0},
@@ -438,11 +430,11 @@ async def test_this_year_calculation_march_15_10am(
         # Assert
         mock_influxdb.write_measurements.assert_called_once()
         measurements = mock_influxdb.write_measurements.call_args[0][0]
-        
+
         # Find this_year cost measurement
         this_year_cost = None
         this_year_consumption = None
-        
+
         for m in measurements:
             if m.measurement == "electricity_costs_euro":
                 if m.tags.get("period") == "this_year":
@@ -450,11 +442,11 @@ async def test_this_year_calculation_march_15_10am(
             elif m.measurement == "electricity_consumption_kwh":
                 if m.tags.get("period") == "this_year" and "source" not in m.tags:
                     this_year_consumption = m.fields["consumption"]
-        
+
         # Verify the costs
         assert this_year_cost is not None, "this_year cost not found"
         assert this_year_consumption is not None, "this_year consumption not found"
-        
+
         assert this_year_cost == expected_year_cost, (
             f"this_year cost should be {expected_year_cost} "
             f"(Jan {jan_cost} + Feb {feb_cost} + "
@@ -462,7 +454,7 @@ async def test_this_year_calculation_march_15_10am(
             f"today completed hours {today_cost}), "
             f"got {this_year_cost}"
         )
-        
+
         assert this_year_consumption == expected_year_consumption, (
             f"this_year consumption should be {expected_year_consumption}, "
             f"got {this_year_consumption}"
