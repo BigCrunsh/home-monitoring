@@ -81,6 +81,7 @@ function queryInfluxDBTankerkoenigQuantiles() {
     console.log('[Tankerkoenig Quantiles] Starting quantile calculation from InfluxDB');
 
     fuels.forEach(function(fuel) {
+        // Query 1: Get statistics over time window
         var statsQuery = `SELECT MIN("${fuel.field}") AS min, MAX("${fuel.field}") AS max, PERCENTILE("${fuel.field}", 20) AS p20, PERCENTILE("${fuel.field}", 50) AS p50, PERCENTILE("${fuel.field}", 80) AS p80 FROM home_monitoring.autogen.gas_prices_euro WHERE station_id = '${stationId}' AND time > now() - ${statsConfig.timeWindow}`;
 
         sendTo(influxAdapter, 'query', statsQuery, function(result) {
@@ -103,9 +104,27 @@ function queryInfluxDBTankerkoenigQuantiles() {
                     setState(`${stateBasePath}.${fuel.name}_${stat}`, row[stat]);
                 }
             });
+        });
+
+        // Query 2: Get latest timestamp
+        var latestQuery = `SELECT "${fuel.field}" FROM home_monitoring.autogen.gas_prices_euro WHERE station_id = '${stationId}' ORDER BY time DESC LIMIT 1`;
+
+        sendTo(influxAdapter, 'query', latestQuery, function(result) {
+            if (result.error) {
+                console.error(`[Tankerkoenig Latest ${fuel.name.toUpperCase()}] Query error:`, result.error);
+                console.error(`[Tankerkoenig Latest ${fuel.name.toUpperCase()}] Failed query: ${latestQuery}`);
+                return;
+            }
+
+            if (!result.result || !result.result[0] || result.result[0].length === 0) {
+                console.warn(`[Tankerkoenig Latest ${fuel.name.toUpperCase()}] No data returned from InfluxDB`);
+                return;
+            }
+
+            var row = result.result[0][0];
 
             // Update timestamp
-            var ts = new Date(row.ts).getTime()
+            var ts = new Date(row.ts).getTime();
             setState(`${stateBasePath}.${fuel.name}_ts`, ts);
         });
     });
