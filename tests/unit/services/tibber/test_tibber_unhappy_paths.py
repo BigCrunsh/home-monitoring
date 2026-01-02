@@ -29,9 +29,7 @@ async def test_this_hour_missing_data(
             [],  # Last hour production
             [{"totalCost": 5.0, "consumption": 20.0}],  # Last day
             [],  # Last day production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 24,  # Last 24h
-            [],  # Last 24h production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day
+            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day (moved up)
             [],  # This day production
             [{"totalCost": None, "consumption": None}],  # This hour - MISSING DATA
             [],  # This hour production
@@ -75,7 +73,9 @@ async def test_this_hour_missing_data(
         this_hour_measurements = [
             m for m in measurements if m.tags.get("period") == "this_hour"
         ]
-        assert len(this_hour_measurements) == 0, "this_hour should be skipped when data is missing"
+        assert (
+            len(this_hour_measurements) == 0
+        ), "this_hour should be skipped when data is missing"
 
 
 @pytest.mark.asyncio(scope="function")
@@ -97,9 +97,7 @@ async def test_last_month_missing_data(
             [],  # Last hour production
             [{"totalCost": 5.0, "consumption": 20.0}],  # Last day
             [],  # Last day production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 24,  # Last 24h
-            [],  # Last 24h production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day
+            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day (moved up)
             [],  # This day production
             [{"totalCost": 0.25, "consumption": 1.0}],  # This hour
             [],  # This hour production
@@ -143,7 +141,9 @@ async def test_last_month_missing_data(
         last_month_measurements = [
             m for m in measurements if m.tags.get("period") == "last_month"
         ]
-        assert len(last_month_measurements) == 0, "last_month should be skipped when data is incomplete"
+        assert (
+            len(last_month_measurements) == 0
+        ), "last_month should be skipped when data is incomplete"
 
 
 @pytest.mark.asyncio(scope="function")
@@ -165,9 +165,7 @@ async def test_last_year_insufficient_data(
             [],  # Last hour production
             [{"totalCost": 5.0, "consumption": 20.0}],  # Last day
             [],  # Last day production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 24,  # Last 24h
-            [],  # Last 24h production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day
+            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day (moved up)
             [],  # This day production
             [{"totalCost": 0.25, "consumption": 1.0}],  # This hour
             [],  # This hour production
@@ -208,7 +206,9 @@ async def test_last_year_insufficient_data(
         last_year_measurements = [
             m for m in measurements if m.tags.get("period") == "last_year"
         ]
-        assert len(last_year_measurements) == 0, "last_year should be skipped when insufficient data"
+        assert (
+            len(last_year_measurements) == 0
+        ), "last_year should be skipped when insufficient data"
 
 
 @pytest.mark.asyncio(scope="function")
@@ -230,9 +230,7 @@ async def test_this_year_incomplete_months(
             [],  # Last hour production
             [{"totalCost": 5.0, "consumption": 20.0}],  # Last day
             [],  # Last day production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 24,  # Last 24h
-            [],  # Last 24h production
-            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day
+            [{"totalCost": 0.5, "consumption": 2.0}] * 10,  # This day (moved up)
             [],  # This day production
             [{"totalCost": 0.25, "consumption": 1.0}],  # This hour
             [],  # This hour production
@@ -276,4 +274,6 @@ async def test_this_year_incomplete_months(
         this_year_measurements = [
             m for m in measurements if m.tags.get("period") == "this_year"
         ]
-        assert len(this_year_measurements) == 0, "this_year should be skipped when month data is incomplete"
+        assert (
+            len(this_year_measurements) == 0
+        ), "this_year should be skipped when month data is incomplete"
