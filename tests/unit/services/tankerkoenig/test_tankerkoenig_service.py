@@ -300,3 +300,169 @@ async def test_collect_and_store_integer_postcode(
     assert measurements[0].measurement == "gas_prices_euro"
     assert measurements[0].tags["station_id"] == TEST_STATION_ID
     assert measurements[0].fields["diesel"] == TEST_DIESEL_PRICE
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_collect_and_store_empty_price_data(
+    mocker: MockerFixture,
+    mock_influxdb: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """Test error raised when API returns empty price data (unhappy path)."""
+    # Arrange
+    mock_client = AsyncMock()
+    mock_client.get_prices = AsyncMock(
+        return_value={
+            "ok": True,
+            "prices": {},  # Empty prices
+        }
+    )
+    
+    original_init = TankerkoenigClient.__init__
+    
+    def mock_init(self, api_key: str, cache_dir: str | None = None) -> None:
+        original_init(self, api_key, cache_dir)
+    
+    mocker.patch.object(
+        TankerkoenigClient,
+        "__init__",
+        mock_init,
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "get_prices",
+        side_effect=mock_client.get_prices,
+    )
+
+    # Create service
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
+
+    # Act & Assert
+    with pytest.raises(APIError, match="No price data received from Tankerkoenig API"):
+        await service.collect_and_store(station_ids=[TEST_STATION_ID])
+
+    assert not mock_influxdb.write_measurements.called
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_collect_and_store_all_stations_closed(
+    mocker: MockerFixture,
+    mock_influxdb: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """Test error raised when all stations are closed (unhappy path)."""
+    # Arrange
+    mock_client = AsyncMock()
+    mock_client.get_prices = AsyncMock(
+        return_value={
+            "ok": True,
+            "prices": {
+                TEST_STATION_ID: {
+                    "status": "closed",  # Closed station
+                },
+            },
+        }
+    )
+    mock_client.get_stations_details = AsyncMock(
+        return_value={
+            "ok": True,
+            "stations": {
+                TEST_STATION_ID: {
+                    "name": TEST_STATION_NAME,
+                    "brand": TEST_STATION_BRAND,
+                },
+            },
+        }
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "__init__",
+        return_value=None,
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "get_prices",
+        side_effect=mock_client.get_prices,
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "get_stations_details",
+        side_effect=mock_client.get_stations_details,
+    )
+
+    # Create service
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
+
+    # Act & Assert
+    with pytest.raises(APIError, match="No valid measurements created from API data"):
+        await service.collect_and_store(station_ids=[TEST_STATION_ID])
+
+    assert not mock_influxdb.write_measurements.called
+
+
+@pytest.mark.asyncio(scope="function")
+async def test_collect_and_store_all_zero_prices(
+    mocker: MockerFixture,
+    mock_influxdb: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """Test error raised when all prices are zero (unhappy path)."""
+    # Arrange
+    mock_client = AsyncMock()
+    mock_client.get_prices = AsyncMock(
+        return_value={
+            "ok": True,
+            "prices": {
+                TEST_STATION_ID: {
+                    "diesel": 0.0,
+                    "e5": 0.0,
+                    "e10": 0.0,
+                    "status": "open",
+                },
+            },
+        }
+    )
+    mock_client.get_stations_details = AsyncMock(
+        return_value={
+            "ok": True,
+            "stations": {
+                TEST_STATION_ID: {
+                    "name": TEST_STATION_NAME,
+                    "brand": TEST_STATION_BRAND,
+                },
+            },
+        }
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "__init__",
+        return_value=None,
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "get_prices",
+        side_effect=mock_client.get_prices,
+    )
+    mocker.patch.object(
+        TankerkoenigClient,
+        "get_stations_details",
+        side_effect=mock_client.get_stations_details,
+    )
+
+    # Create service
+    service = TankerkoenigService(
+        settings=mock_settings,
+        repository=mock_influxdb,
+    )
+
+    # Act & Assert
+    with pytest.raises(APIError, match="No valid measurements created from API data"):
+        await service.collect_and_store(station_ids=[TEST_STATION_ID])
+
+    assert not mock_influxdb.write_measurements.called
