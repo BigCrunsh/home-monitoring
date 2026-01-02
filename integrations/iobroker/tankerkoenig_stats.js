@@ -105,12 +105,8 @@ function queryInfluxDBTankerkoenigQuantiles() {
             });
 
             // Update timestamp
-            if (row.time) {
-                var timestamp = Math.floor(new Date(row.time).getTime());
-                setState(`${stateBasePath}.${fuel.name}_ts`, timestamp);
-            } else {
-                setState(`${stateBasePath}.${fuel.name}_ts`, Date.now());
-            }
+            var ts = new Date(row.ts).getTime()
+            setState(`${stateBasePath}.${fuel.name}_ts`, ts);
         });
     });
 }
