@@ -17,7 +17,7 @@ pytestmark = pytest.mark.integration
 @pytest.fixture(scope="function")
 def influxdb_repo():
     """Create InfluxDB repository for testing.
-    
+
     Note: These tests require a running InfluxDB instance.
     Run with: pytest -m integration
     Skip with: pytest -m "not integration"
@@ -145,9 +145,7 @@ async def test_electricity_costs_periods_available(
         "last_year",
     ]
 
-    query = (
-        "SELECT last(cost) FROM electricity_costs_euro " "GROUP BY period"
-    )
+    query = "SELECT last(cost) FROM electricity_costs_euro " "GROUP BY period"
 
     result = [row async for row in influxdb_repo.query(query)]
 
