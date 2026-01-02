@@ -7,7 +7,7 @@ from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.services.base import BaseService
+from home_monitoring.services.base_service import BaseService
 
 
 class SolarEdgeService(BaseService):

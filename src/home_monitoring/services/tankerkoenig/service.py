@@ -8,7 +8,7 @@ from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.tankerkoenig import TankerkoenigMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.services.base import BaseService
+from home_monitoring.services.base_service import BaseService
 from home_monitoring.services.tankerkoenig.client import TankerkoenigClient
 
 
@@ -75,7 +75,8 @@ class TankerkoenigService(BaseService):
             # Get current prices
             prices_response = await self._client.get_prices(station_ids)
             if not prices_response.get("ok", False):
-                raise APIError(prices_response.get("message", "Unknown error"))
+                error_msg = prices_response.get("message", "Unknown error")
+                raise APIError(error_msg)
 
             # Get station details
             stations_response = await self._client.get_stations_details(
@@ -89,20 +90,23 @@ class TankerkoenigService(BaseService):
             timestamp = datetime.now(UTC)
             prices_data = prices_response.get("prices", {})
             stations_data = stations_response.get("stations", {})
-            
-            self._logger.debug(
-                "mapping_tankerkoenig_data",
-                prices_count=len(prices_data),
-                stations_count=len(stations_data),
-                price_station_ids=list(prices_data.keys()),
-                station_ids_with_details=list(stations_data.keys()),
-            )
-            
+
+            # Validate we have price data
+            if not prices_data:
+                raise APIError("No price data received from Tankerkoenig API")
+
             combined_data = {
                 "prices": prices_data,
                 "stations": stations_data,
             }
             measurements = TankerkoenigMapper.to_measurements(timestamp, combined_data)
+
+            # Validate we have measurements to store
+            if not measurements:
+                raise APIError(
+                    "No valid measurements created from API data. "
+                    "All stations may be closed or have invalid prices."
+                )
 
             # Store in InfluxDB
             await self._db.write_measurements(measurements)
