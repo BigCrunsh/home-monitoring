@@ -6,7 +6,7 @@ from typing import TypedDict
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.services.base import BaseService
+from home_monitoring.services.base_service import BaseService
 from home_monitoring.services.tibber import aggregation, collection
 
 import tibber
@@ -81,9 +81,7 @@ class TibberService(BaseService):
             measurements.extend(price_measurements)
 
             # Collect individual period data
-            last_hour = await collection.collect_last_hour_data(
-                home, summary_timestamp
-            )
+            last_hour = await collection.collect_last_hour_data(home, summary_timestamp)
             measurements.extend(last_hour)
 
             last_day = await collection.collect_last_day_data(home, summary_timestamp)
@@ -123,9 +121,7 @@ class TibberService(BaseService):
             measurements.extend(this_year_measurements)
 
             # Collect remaining simple periods after aggregations
-            this_hour = await collection.collect_this_hour_data(
-                home, summary_timestamp
-            )
+            this_hour = await collection.collect_this_hour_data(home, summary_timestamp)
             measurements.extend(this_hour)
 
             last_month = await collection.collect_last_month_data(
@@ -133,9 +129,7 @@ class TibberService(BaseService):
             )
             measurements.extend(last_month)
 
-            last_year = await collection.collect_last_year_data(
-                home, summary_timestamp
-            )
+            last_year = await collection.collect_last_year_data(home, summary_timestamp)
             measurements.extend(last_year)
 
             # Store all measurements

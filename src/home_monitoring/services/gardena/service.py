@@ -7,7 +7,7 @@ from typing import Any
 from home_monitoring.config import Settings
 from home_monitoring.core.mappers.gardena import GardenaMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.services.base import BaseService
+from home_monitoring.services.base_service import BaseService
 
 from gardena.smart_system import SmartSystem
 
