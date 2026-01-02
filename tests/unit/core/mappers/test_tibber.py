@@ -126,7 +126,6 @@ def test_to_cost_measurement_yesterday() -> None:
     assert measurement.fields == {"cost": 7.65}
 
 
-
 def test_to_cost_measurement_zero_cost() -> None:
     """Test cost measurement with zero cost (unhappy path)."""
     # Arrange

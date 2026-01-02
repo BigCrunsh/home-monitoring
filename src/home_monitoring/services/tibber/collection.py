@@ -19,23 +19,21 @@ RANK_NORMAL_THRESHOLD = 0.65
 RANK_EXPENSIVE_THRESHOLD = 0.85
 
 
-async def collect_price_data(
-    home, summary_timestamp: datetime
-) -> list[Measurement]:
+async def collect_price_data(home, summary_timestamp: datetime) -> list[Measurement]:
     """Collect current electricity price data.
-    
+
     Args:
         home: Tibber home object
         summary_timestamp: Timestamp for measurements
-        
+
     Returns:
         List of price measurements
     """
     measurements = []
-    
+
     try:
         total, _, rank = home.current_price_data()
-        
+
         # Validate that we have actual price data
         if total is None:
             logger.error(
@@ -43,7 +41,7 @@ async def collect_price_data(
                 message="current_price_data returned None for total price",
             )
             return measurements
-        
+
         # Convert rank to level string for mapper
         # Rank is 0.0-1.0, map it back to level strings
         if rank <= RANK_VERY_CHEAP_THRESHOLD:
@@ -56,7 +54,7 @@ async def collect_price_data(
             level = "EXPENSIVE"
         else:
             level = "VERY_EXPENSIVE"
-        
+
         measurements.extend(
             TibberMapper.to_measurements(
                 summary_timestamp,
@@ -69,7 +67,7 @@ async def collect_price_data(
             error=str(e),
             error_type=type(e).__name__,
         )
-    
+
     return measurements
 
 
@@ -77,27 +75,27 @@ async def collect_last_hour_data(
     home, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect last completed hour consumption data.
-    
+
     Args:
         home: Tibber home object
         summary_timestamp: Timestamp for measurements
-        
+
     Returns:
         List of measurements for last hour
     """
     measurements = []
-    
+
     try:
         hourly_data = await home.get_historic_data(n_data=1, resolution="HOURLY")
         hourly_production = await home.get_historic_data(
             n_data=1, resolution="HOURLY", production=True
         )
-        
+
         if hourly_data:
             node = hourly_data[0]
             cost = node.get("totalCost")
             consumption = node.get("consumption")
-            
+
             if cost is None or consumption is None:
                 logger.debug(
                     "last_hour_data_missing",
@@ -111,16 +109,16 @@ async def collect_last_hour_data(
                     prod_value = prod_node.get("production")
                     if prod_value is not None:
                         production = prod_value
-                
+
                 logger.debug(
                     "last_hour_production_raw",
                     production_list=hourly_production,
                     has_data=bool(hourly_production),
                 )
-                
+
                 grid_consumption = max(0.0, consumption - production)
                 self_consumption = min(consumption, production)
-                
+
                 logger.debug(
                     "last_hour_data",
                     cost=cost,
@@ -129,7 +127,7 @@ async def collect_last_hour_data(
                     grid_consumption=grid_consumption,
                     self_consumption=self_consumption,
                 )
-                
+
                 measurements.extend(
                     TibberMapper.to_measurements(
                         summary_timestamp,
@@ -165,35 +163,33 @@ async def collect_last_hour_data(
                     )
     except Exception as e:
         logger.warning("failed_to_get_last_hour_data", error=str(e))
-    
+
     return measurements
 
 
-async def collect_last_day_data(
-    home, summary_timestamp: datetime
-) -> list[Measurement]:
+async def collect_last_day_data(home, summary_timestamp: datetime) -> list[Measurement]:
     """Collect last completed day (yesterday) consumption data.
-    
+
     Args:
         home: Tibber home object
         summary_timestamp: Timestamp for measurements
-        
+
     Returns:
         List of measurements for last day
     """
     measurements = []
-    
+
     try:
         daily_data = await home.get_historic_data(n_data=1, resolution="DAILY")
         daily_production = await home.get_historic_data(
             n_data=1, resolution="DAILY", production=True
         )
-        
+
         if daily_data:
             node = daily_data[0]
             cost = node.get("totalCost")
             consumption = node.get("consumption")
-            
+
             if cost is None or consumption is None:
                 logger.debug(
                     "last_day_data_missing",
@@ -207,9 +203,9 @@ async def collect_last_day_data(
                     prod_value = prod_node.get("production")
                     if prod_value is not None:
                         production = prod_value
-                
+
                 grid_consumption = max(0.0, consumption - production)
-                
+
                 measurements.extend(
                     TibberMapper.to_measurements(
                         summary_timestamp,
@@ -245,37 +241,35 @@ async def collect_last_day_data(
                     )
     except Exception as e:
         logger.warning("failed_to_get_last_day_data", error=str(e))
-    
+
     return measurements
-
-
 
 
 async def collect_this_hour_data(
     home, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect current incomplete hour consumption data.
-    
+
     Args:
         home: Tibber home object
         summary_timestamp: Timestamp for measurements
-        
+
     Returns:
         List of measurements for this hour
     """
     measurements = []
-    
+
     try:
         this_hour_data = await home.get_historic_data(n_data=1, resolution="HOURLY")
         this_hour_production = await home.get_historic_data(
             n_data=1, resolution="HOURLY", production=True
         )
-        
+
         if this_hour_data:
             node = this_hour_data[0]
             cost = node.get("totalCost")
             consumption = node.get("consumption")
-            
+
             if cost is not None and consumption is not None:
                 production = 0.0
                 if this_hour_production:
@@ -283,9 +277,9 @@ async def collect_this_hour_data(
                     prod_value = prod_node.get("production")
                     if prod_value is not None:
                         production = prod_value
-                
+
                 grid_consumption = max(0.0, consumption - production)
-                
+
                 measurements.extend(
                     TibberMapper.to_measurements(
                         summary_timestamp,
@@ -321,7 +315,7 @@ async def collect_this_hour_data(
                     )
     except Exception as e:
         logger.warning("failed_to_get_this_hour_data", error=str(e))
-    
+
     return measurements
 
 
@@ -329,27 +323,27 @@ async def collect_last_month_data(
     home, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect last completed month consumption data.
-    
+
     Args:
         home: Tibber home object
         summary_timestamp: Timestamp for measurements
-        
+
     Returns:
         List of measurements for last month
     """
     measurements = []
-    
+
     try:
         monthly_data = await home.get_historic_data(n_data=1, resolution="MONTHLY")
         monthly_production = await home.get_historic_data(
             n_data=1, resolution="MONTHLY", production=True
         )
-        
+
         if monthly_data:
             node = monthly_data[0]
             cost = node.get("totalCost")
             consumption = node.get("consumption")
-            
+
             if cost is None or consumption is None:
                 logger.debug(
                     "last_month_data_missing",
@@ -363,9 +357,9 @@ async def collect_last_month_data(
                     prod_value = prod_node.get("production")
                     if prod_value is not None:
                         production = prod_value
-                
+
                 grid_consumption = max(0.0, consumption - production)
-                
+
                 measurements.extend(
                     TibberMapper.to_measurements(
                         summary_timestamp,
@@ -401,7 +395,7 @@ async def collect_last_month_data(
                     )
     except Exception as e:
         logger.warning("failed_to_get_last_month_data", error=str(e))
-    
+
     return measurements
 
 
@@ -409,27 +403,27 @@ async def collect_last_year_data(
     home, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect last completed year consumption data.
-    
+
     Args:
         home: Tibber home object
         summary_timestamp: Timestamp for measurements
-        
+
     Returns:
         List of measurements for last year
     """
     measurements = []
-    
+
     try:
         last_year_data = await home.get_historic_data(n_data=2, resolution="ANNUAL")
         last_year_production = await home.get_historic_data(
             n_data=2, resolution="ANNUAL", production=True
         )
-        
+
         if last_year_data and len(last_year_data) > 1:
             node = last_year_data[1]
             cost = node.get("totalCost")
             consumption = node.get("consumption")
-            
+
             if cost is None or consumption is None:
                 logger.debug(
                     "last_year_data_missing",
@@ -443,9 +437,9 @@ async def collect_last_year_data(
                     prod_value = prod_node.get("production")
                     if prod_value is not None:
                         production = prod_value
-                
+
                 grid_consumption = max(0.0, consumption - production)
-                
+
                 measurements.extend(
                     TibberMapper.to_measurements(
                         summary_timestamp,
@@ -481,5 +475,5 @@ async def collect_last_year_data(
                     )
     except Exception as e:
         logger.warning("failed_to_get_last_year_data", error=str(e))
-    
+
     return measurements
