@@ -57,6 +57,8 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 check_untyped_defs = true
+explicit_package_bases = true
+mypy_path = "src"
 
 [[tool.mypy.overrides]]
 module = [
@@ -70,3 +72,6 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (require external services like InfluxDB)",
+]
