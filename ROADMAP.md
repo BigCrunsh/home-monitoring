@@ -50,7 +50,9 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 
 | Change | Goal | Effort |
 |---|---|---|
-| `deploy-evcc-energy-automation` | evcc sidecar: Tibber tariff + SolarEdge PV, first price/PV-surplus-controlled load; measure shifted kWh (~€75–150/yr upside) | ~2–3 days |
+| `add-realtime-hybrid-energy-states` | Anchor energy states on the live Shelly grid meter: purchase/feed-in exact in seconds, autarky near-real-time (added 2026-06-10 after the 2 h SolarEdge lag surfaced) | ~½ day |
+| `add-maxxisun-integration` | **PENDING (CCU2 local API not yet open)** — capture the second PV system + battery; until then whole-house autarky is understated | blocked |
+| `deploy-evcc-energy-automation` | evcc sidecar: Tibber tariff + SolarEdge PV (incl. Modbus TCP spike for local real-time inverter data), first price/PV-surplus-controlled load; battery-aware once Maxxisun lands (~€75–150/yr upside) | ~2–3 days |
 
 ### P5 — Platform modernization
 
@@ -73,6 +75,11 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 
 - Replace the Netatmo rain-gauge batteries (hardware dead since 2025-12-30).
 - `git pull` on the Pi (checkout is behind master) — folded into `version-iobroker-scripts`.
+- **Pi timezone is Europe/London, house is in Berlin** (found 2026-06-10; UTC/NTP are
+  correct). Cron schedules and local-time day boundaries (e.g. Tibber "yesterday"
+  aggregations) are shifted 1 h vs. the Berlin billing day. Fix = `timedatectl
+  set-timezone Europe/Berlin`, but review cron timings and day-boundary logic in the
+  same window — treat as a small maintenance task, not a drive-by change.
 
 ## Open questions
 
@@ -83,3 +90,6 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
   is actively updated.) Answered as part of `harden-network-services`.
 - **First controlled load for evcc**: which device (hot-water, dishwasher, other)?
   Decided in the `deploy-evcc-energy-automation` spike task.
+- **Maxxisun CCU2 local API**: in progress upstream, not open yet (state 2026-06-10).
+  `add-maxxisun-integration` re-checks ~monthly; community adapters
+  (ioBroker.maxxi-charge) target the older CCU and need verification against CCU2.

@@ -20,8 +20,8 @@
 - [ ] 2.2 Check overnight behavior (no production): autarky → 0 legitimately,
       self-consumption rate handled without division-by-zero artifacts
       (logic guards in place; verify on live data after one night)
-- [ ] 2.3 Confirm the Energy view tiles and Main view tiles update accordingly
-      (states verified; needs a glance at the wall tablet)
+- [x] 2.3 Confirm the Energy view tiles and Main view tiles update accordingly
+      (user confirmed on the tablet 2026-06-10: Autarkie 100%, Eigenverbrauch 395 W)
 
 ## 3. Sync
 
