@@ -7,9 +7,11 @@
 - [x] 1.2 Commit all deployed scripts (12 leaf scripts); naming reconciled by
       renaming repo `tankerkoenig_stats.js` → `tankerkoenig_quantiles.js` to match
       the deployed object id (contents were identical)
-- [ ] 1.3 Bring the Pi repo checkout up to date — blocked: the Pi's `git@github.com`
-      remote has no working key. Fix: switch the Pi remote to HTTPS (public repo,
-      pull needs no credentials), then `git pull --ff-only`
+- [x] 1.3 Pi checkout synced: remote switched to HTTPS (the old `git@github.com`
+      key was dead; public repo needs no pull credentials); `git pull --ff-only`
+      now part of the deploy cycle. End-to-end `check_drift.sh` on the Pi: zero
+      drift. Bonus beyond original scope: vis-2 layout is also versioned now
+      (`vis/main/` + export_vis.sh/deploy_vis.sh)
 
 ## 2. Reconcile drift
 
