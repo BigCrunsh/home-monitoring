@@ -340,7 +340,13 @@ function queryInfluxDBTibberConsumption() {
         result.result[0].forEach(function(row) {
             var period = row.period;
             var consumption = row.last_consumption;
-            
+
+            // InfluxDB carries more period tags than this script exposes as
+            // states (e.g. last_24h, yesterday) — only set configured ones
+            if (period && !periodStatsConfig.hasOwnProperty(period)) {
+                return;
+            }
+
             // Update consumption state for this period
             if (period && consumption !== undefined) {
                 setState(`${stateBasePath}.consumption_grid_${period}`, consumption);
@@ -384,7 +390,13 @@ function queryInfluxDBTibberCosts() {
         result.result[0].forEach(function(row) {
             var period = row.period;
             var cost = row.last_cost;
-            
+
+            // InfluxDB carries more period tags than this script exposes as
+            // states (e.g. last_24h) — only set configured ones
+            if (period && !periodStatsConfig.hasOwnProperty(period)) {
+                return;
+            }
+
             // Update cost state for this period
             if (period && cost !== undefined) {
                 setState(`${stateBasePath}.cost_${period}`, cost);
