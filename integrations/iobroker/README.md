@@ -28,6 +28,38 @@ ioBroker is a home automation platform that can visualize and control smart home
                                                       └─────────────┘
 ```
 
+## Source of truth & deployment workflow
+
+This directory is the **source of truth** for every JavaScript script deployed in
+ioBroker. Make changes here, then deploy — never edit scripts in the admin UI first.
+The tools (run on the Pi, from this directory):
+
+```bash
+./tools/export_scripts.sh          # dump all deployed script sources into this dir
+./tools/deploy_script.sh <name>    # push one repo script into ioBroker (auto-restarts)
+./tools/check_drift.sh             # diff deployed vs repo; non-zero exit on drift
+```
+
+Run `check_drift.sh` after any ioBroker upgrade or whenever something was edited in
+the admin UI in a pinch; export and commit such edits promptly.
+
+## Script inventory
+
+| Script | Purpose |
+|---|---|
+| `tibber_states.js` | Tibber price/consumption/cost states from InfluxDB (details below) |
+| `solaredge_power.js` | Real-time energy states anchored on the Shelly grid meter (hybrid model, see `openspec/changes/add-realtime-hybrid-energy-states`) |
+| `mqtt_shelly.js` | Bridges the Shelly 3EM MQTT topics into `javascript.0.mqtt_shelly.*` states |
+| `tankerkoenig_quantiles.js` | Fuel-price quantiles for dashboard color coding |
+| `sam_digital.js` | SAM Digital heating states |
+| `gardena_valve.js` | Gardena valve activity states (currently idle — adapter has no data) |
+| `netatmo_wind.js` | Netatmo wind states (currently idle — no wind module) |
+| `openweathermap_weather.js` | OpenWeatherMap supplementary weather states |
+| `ical_events.js` | Calendar events for the dashboard agenda |
+| `suncalc_phases.js` | Sun phase times (sunrise/sunset) |
+| `telegram_waschmaschine.js` | Telegram notification when the washing machine finishes |
+| `reset_lock_target_state.js` | Resets a lock's target state after actuation |
+
 ## Scripts
 
 ### `tibber_states.js`
