@@ -8,6 +8,16 @@ contributor or AI assistant. Dependencies are declared in both `pyproject.toml` 
 `requirements.txt` (out of sync). `make lint` reformats files (black) instead of
 checking.
 
+Verified consequences of the dead CI + dual manifests (2026-06-10, clean-room install):
+- `pip install -e ".[dev]"` is broken on the project's own Python 3.12: `pyproject.toml`
+  pins `pandas==2.0.3`, which predates 3.12 and fails to build from source.
+- `requirements.txt` is missing runtime deps the code imports (`pydantic`,
+  `pydantic-settings`, `structlog`, `httpx` unpinned).
+- `pyproject.toml` declares `fastapi==0.110.0` — a ghost dependency from the template;
+  nothing imports it.
+- 5 tankerkoenig client tests fail on master under any pytest version: they test
+  10-station API batching the client never implemented (see tracked follow-up).
+
 ## What Changes
 
 - GitHub Actions workflow: `make test` (pytest + lint + type-check) on Python 3.12 for
