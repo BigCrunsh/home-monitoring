@@ -1,0 +1,32 @@
+{
+  "default_sla_minutes": 120,
+  "slas": {
+    "electricity_prices_euro": 60,
+    "electricity_consumption_kwh": 60,
+    "electricity_costs_euro": 60,
+    "electricity_power_watt": 180,
+    "electricity_energy_watthour": 180,
+    "gas_prices_euro": 60,
+    "heat_temperature_celsius": 60,
+    "heat_valve_signal_percentage": 60,
+    "weather_temperature_celsius": 60,
+    "weather_humidity_percentage": 60,
+    "weather_pressure_mbar": 60,
+    "weather_co2_ppm": 60,
+    "weather_noise_db": 60,
+    "weather_system_battery_percentage": 60,
+    "weather_rain_mm": 120
+  },
+  "ignore": [
+    "garden_temperature_celsius",
+    "garden_humidity_percentage",
+    "garden_light_intensity_lux",
+    "garden_rf_link_level_percentage",
+    "garden_system_battery_percentage",
+    "garden_valves_activity",
+    "weather_windstrength_kph",
+    "weather_windangle_angles",
+    "weather_guststrength_kph",
+    "weather_gustangle_angles"
+  ]
+}
