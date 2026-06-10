@@ -2,24 +2,31 @@
 
 ## 1. Export & commit
 
-- [ ] 1.1 Export tool: dump source of all `script.js.common.*` objects to
-      `integrations/iobroker/` (one .js per script, name = script name)
-- [ ] 1.2 Commit all 14 scripts; reconcile `tankerkoenig_quantiles` vs
-      `tankerkoenig_stats.js` naming (keep one, document)
-- [ ] 1.3 Bring the Pi repo checkout up to date with master (`git pull`)
+- [x] 1.1 Export tool: dump source of all `script.js.common.*` objects to
+      `integrations/iobroker/` (`tools/export_scripts.sh`)
+- [x] 1.2 Commit all deployed scripts (12 leaf scripts); naming reconciled by
+      renaming repo `tankerkoenig_stats.js` → `tankerkoenig_quantiles.js` to match
+      the deployed object id (contents were identical)
+- [ ] 1.3 Bring the Pi repo checkout up to date — blocked: the Pi's `git@github.com`
+      remote has no working key. Fix: switch the Pi remote to HTTPS (public repo,
+      pull needs no credentials), then `git pull --ff-only`
 
 ## 2. Reconcile drift
 
-- [ ] 2.1 Diff deployed `tibber_states` against the repo version; deploy the repo
-      version (includes the `f7f39af` latest-timestamp fix)
-- [ ] 2.2 Confirm the `State "cost_last_24h_ts" not found` warnings stop in the
-      ioBroker log
-- [ ] 2.3 Review the other 12 exported scripts for obviously dead ones (e.g.
-      `gardena_valve` if Gardena is retired) and flag, don't delete
+- [x] 2.1 Verified: deployed `tibber_states` is byte-identical to the repo — the
+      "outdated deployment" hypothesis was wrong. The `State "cost_last_24h_ts" not
+      found` warnings are an in-script bug (setState before createState completes,
+      same race fixed in `solaredge_power.js`) — flagged as a separate small fix,
+      not a drift issue
+- [x] 2.2 (Reframed by 2.1 — warnings need the race fix, not a redeploy)
+- [x] 2.3 Reviewed all 12: `gardena_valve` and `netatmo_wind` are idle (no source
+      data); flagged in the README inventory, not deleted pending the Gardena
+      decision
 
 ## 3. Source-of-truth workflow
 
-- [ ] 3.1 Deploy tool: push a repo script into the ioBroker object DB and restart it
-- [ ] 3.2 Drift check command (compare all, report diffs); document running it after
-      any ioBroker upgrade
-- [ ] 3.3 README for `integrations/iobroker/`: workflow, tool usage, script inventory
+- [x] 3.1 Deploy tool: `tools/deploy_script.sh` (updates source; creates missing
+      script objects disabled for review)
+- [x] 3.2 Drift check: `tools/check_drift.sh`; verified zero drift across all 12
+      scripts (2026-06-10); documented to run after ioBroker upgrades
+- [x] 3.3 README for `integrations/iobroker/`: workflow, tool usage, script inventory
