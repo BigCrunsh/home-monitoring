@@ -2,19 +2,37 @@
 
 # Home Monitoring
 
-A centralized monitoring system for smart home devices and services. This project focuses on collecting and storing metrics in InfluxDB; visualization is handled by external tools (for example Grafana or ioBroker) that read from InfluxDB.
+A centralized monitoring system for smart home devices and services. Python collectors
+gather metrics from vendor APIs and store them in InfluxDB; an ioBroker vis-2 dashboard
+(the screenshot above) visualizes them on a wall tablet, fed by version-controlled
+ioBroker scripts that read from InfluxDB and live sources (Shelly via MQTT).
 
-**Integrations:** See [`integrations/`](integrations/) directory for ioBroker scripts and other integration tools.
+**Integrations:** [`integrations/iobroker/`](integrations/iobroker/) holds all deployed
+ioBroker scripts plus export/deploy/drift tooling — see the development cycle below.
+
+**Roadmap:** [`ROADMAP.md`](ROADMAP.md); each item is an OpenSpec change under
+[`openspec/changes/`](openspec/changes/).
 
 ## Supported Systems
 
+Active:
+
 - [Netatmo](https://www.netatmo.com/en-eu) - Smart home weather station (OAuth2 with lnetatmo library)
-- [SolarEdge](https://www.solaredge.com/) - Solar inverter and PV monitoring
-- [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart gardening system
+- [SolarEdge](https://www.solaredge.com/) - Solar inverter and PV monitoring (cloud API; power rows arrive ~60-75 min delayed)
 - [Tankerkoenig](https://creativecommons.tankerkoenig.de/) - Gas station price monitoring
-- [Tibber](https://tibber.com/) - Smart energy monitoring
-- Techem Compat V - Energy meter monitoring via nanoCUL USB Stick (requires pyserial)
+- [Tibber](https://tibber.com/) - Dynamic electricity tariff: hourly prices, consumption, costs
+- SAM Digital - Heating system gateway (flow/return/storage temperatures, valve signals)
+- Shelly 3EM - Live grid power at the connection point (via MQTT into ioBroker; anchors the real-time energy states)
 - Dynu DNS - Dynamic DNS updates for remote access
+
+Currently disabled (cron entries commented out):
+
+- [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart gardening system (the ioBroker smartgarden adapter is also without data; keep/retire is an open roadmap question)
+- Techem Compact V - Heat meter via nanoCUL USB stick (requires pyserial)
+
+Pending:
+
+- Maxxisun/Maxxicharge - second PV system with battery; blocked on the CCU2 local API (see `openspec/changes/add-maxxisun-integration/`)
 
 ## Installation
 
@@ -120,23 +138,61 @@ PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data --user-agen
 
 ### Scheduling Collections
 
-Create a crontab entry (`crontab -e`):
+Collections run via cron through the wrapper script (make it executable once:
+`chmod +x run_home_monitoring.sh`). The crontab as deployed on the Pi (active
+collectors every 5 minutes, DNS hourly; Gardena and Techem are disabled):
+
+```
+*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_netatmo_data >> /home/pi/logs/netatmo.log 2>&1
+*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_solaredge_data >> /home/pi/logs/solaredge.log 2>&1
+*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /home/pi/src/github.com/BigCrunsh/home-monitoring/cache >> /home/pi/logs/tankerkoenig.log 2>&1
+*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_tibber_data >> /home/pi/logs/tibber.log 2>&1
+*/5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_sam_digital_data >> /home/pi/logs/sam_digital.log 2>&1
+0 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.update_dns >> /home/pi/logs/update_dns.log 2>&1
+#*/30 * * * * ... collect_gardena_data   (disabled — see ROADMAP open questions)
+#0 1 * * *   ... collect_techem_data     (disabled)
+```
+
+Logs land in `/home/pi/logs/` and are rotated weekly (4 weeks kept).
+
+## Dashboard & ioBroker Integration
+
+The wall-tablet dashboard (ioBroker vis-2, served from the Pi) has two layers:
+
+- **Logic** — the ioBroker JavaScript scripts that compute every displayed value
+  (e.g. `solaredge_power.js` for the real-time energy states, `tibber_states.js` for
+  price/cost statistics). **Fully version-controlled** in
+  [`integrations/iobroker/`](integrations/iobroker/) — the repo is the source of
+  truth; never edit scripts in the admin UI first.
+- **Layout** — the vis-2 widget arrangement, versioned in
+  [`integrations/iobroker/vis/main/`](integrations/iobroker/vis/main/)
+  (`vis-views.json`, `vis-user.css`). Export after editing in the vis editor
+  (`tools/export_vis.sh` + commit); restore/deploy with `tools/deploy_vis.sh`
+  (interactive, overwrites the live layout).
+
+### Development cycle for dashboard logic
+
+```
+edit on the workstation → commit → push → pull on the Pi → deploy → verify
+```
 
 ```bash
-chmod +x /home/pi/run_home_monitoring.sh
+# 1. edit integrations/iobroker/<name>.js in the repo, commit, push
+
+# 2. on the Pi:
+cd ~/src/github.com/BigCrunsh/home-monitoring
+git pull
+./integrations/iobroker/tools/deploy_script.sh <name>   # auto-restarts the script
+
+# 3. verify
+./integrations/iobroker/tools/check_drift.sh   # deployed == repo for all scripts
 ```
 
-Then your crontab becomes much cleaner:
-```
-*/5 * * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.collect_netatmo_data >> /var/log/home_monitoring/netatmo.log 2>&1
-*/5 * * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.collect_solaredge_data >> /var/log/home_monitoring/solaredge.log 2>&1
-*/5 * * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /home/pi/src/github.com/BigCrunsh/home-monitoring/cache >> /var/log/home_monitoring/tankerkoenig.log 2>&1
-*/30 * * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.collect_gardena_data >> /var/log/home_monitoring/gardena.log 2>&1
-*/15 * * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.collect_tibber_data >> /var/log/home_monitoring/tibber.log 2>&1
-*/5 * * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.collect_sam_digital_data >> /var/log/home_monitoring/sam_digital.log 2>&1
-0 1 * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.collect_techem_data >> /var/log/home_monitoring/techem.log 2>&1
-0 * * * * /home/pi/run_home_monitoring.sh home_monitoring.scripts.update_dns >> /var/log/home_monitoring/update_dns.log 2>&1
-```
+Rollback = check out any earlier version of the script and run `deploy_script.sh`
+again. If a script was edited in the admin UI in a pinch, `check_drift.sh` flags it;
+export with `tools/export_scripts.sh` and commit, or redeploy from the repo to
+overwrite. Details and the full script inventory:
+[`integrations/iobroker/README.md`](integrations/iobroker/README.md).
 
 ## Development
 
@@ -182,7 +238,8 @@ make clean         # Remove Python artifacts and caches
 - Black for code formatting
 - Ruff for linting
 - MyPy for type checking
-- 100% test coverage for core functionality
+- Tests required for new logic (target ratio 2:1 unhappy:happy paths; mappers and the
+  repository layer are well covered, scripts less so)
 - Docstrings required for public APIs
 - Type hints required for all functions
 
@@ -192,12 +249,12 @@ The system writes all metrics to InfluxDB using a consistent
 `<domain>_<metric>_<unit>` naming scheme (for example
 `electricity_power_watt` or `garden_humidity_percentage`).
 
-High-level categories:
-- **Electricity & energy**: `electricity_energy_watthour`, `electricity_power_watt`, `electricity_prices_euro`
-- **Garden & irrigation**: `garden_temperature_celsius`, `garden_humidity_percentage`, `garden_light_intensity_lux`, `garden_rf_link_level_percentage`, `garden_system_battery_percentage`, `garden_valves_activity`
+High-level categories (live schema, 2026-06):
+- **Electricity & energy**: `electricity_energy_watthour`, `electricity_power_watt`, `electricity_prices_euro`, `electricity_consumption_kwh`, `electricity_costs_euro`
+- **Heating** (SAM Digital): `heat_temperature_celsius`, `heat_valve_signal_percentage` (`heat_energy_watthours` only when the Techem collector is enabled)
 - **Fuel prices**: `gas_prices_euro`
-- **Heating**: `heat_energy_watthours`
-- **Weather**: `weather_temperature_celsius`, `weather_humidity_percentage`, `weather_pressure_mbar`, `weather_windstrength_kph`, `weather_windangle_angles`, `weather_guststrength_kph`, `weather_gustangle_angles`, `weather_rain_mm`, `weather_noise_db`, `weather_system_battery_percentage`
+- **Weather** (Netatmo): `weather_temperature_celsius`, `weather_humidity_percentage`, `weather_pressure_mbar`, `weather_co2_ppm`, `weather_noise_db`, `weather_rain_mm`, `weather_system_battery_percentage` (wind/gust measurements exist in the schema but have no source module)
+- **Garden & irrigation** (Gardena, currently empty — collector disabled): `garden_temperature_celsius`, `garden_humidity_percentage`, `garden_light_intensity_lux`, `garden_rf_link_level_percentage`, `garden_system_battery_percentage`, `garden_valves_activity`
 
 For full details (fields, tags, update frequency) see
 `INFLUXDB_MEASUREMENTS_DOCUMENTATION.md`.
