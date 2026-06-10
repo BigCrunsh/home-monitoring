@@ -7,11 +7,19 @@ no production, no battery state, no contribution to the energy model. Until it's
 integrated, whole-house consumption is undercounted and autarky understated by up to
 the Maxxi's output, and the future evcc automation can't reason about the battery.
 
-**Status: PENDING.** The household runs the new **CCU2**, whose local API is still in
-progress and not yet open. Existing community integrations
-(ioBroker.maxxi-charge adapter, local REST-push patterns for the older CCU) may not
-work against the CCU2 yet. This change stays blocked until the API is available;
-task 1.1 is a periodic re-check.
+**Status: phase A unblocked / phase B PENDING.** The household runs the new **CCU2**,
+whose local API is still in progress and not yet open, so the full integration
+(battery SoC, charge/discharge, panel-vs-battery split) stays blocked; task 1.1 is a
+periodic re-check.
+
+**Phase A (no API needed):** meter the Maxxi's output at its feed-in socket with an
+existing HomeMatic metering plug (HmIP-PSM-style, `.6.POWER` channel — already used
+elsewhere in the house). That yields `maxxi_output` for the whole-house model
+(`consumption = SE_production + maxxi_output + grid`) and a "davon Maxxi" dashboard
+value. Direction caveat: the plug meters reverse flow only de facto (community-proven,
+not officially specified) — phase A starts with an empirical plausibility check.
+What phase A cannot provide: battery SoC and the split between Maxxi panel and
+battery — that remains phase B (CCU2 API).
 
 ## What Changes
 
