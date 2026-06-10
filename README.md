@@ -155,6 +155,19 @@ collectors every 5 minutes, DNS hourly; Gardena and Techem are disabled):
 
 Logs land in `/home/pi/logs/` and are rotated weekly (4 weeks kept).
 
+### Freshness monitoring
+
+An hourly healthcheck (`home_monitoring.scripts.healthcheck`, cron `30 * * * *`)
+compares every measurement's newest data point against its SLA and alerts via
+Telegram (through the ioBroker telegram adapter). Stale alerts repeat at most once
+per 24 h; recoveries notify once; an unreachable InfluxDB alerts about the
+monitoring itself.
+
+SLAs live in [`conf/healthcheck.json`](conf/healthcheck.json): per-measurement
+minutes in `slas`, a `default_sla_minutes` fallback for new measurements, and an
+`ignore` list for sources that are dead by design (no wind module, Gardena
+disabled). Adjust there and commit — no code change needed.
+
 ## Dashboard & ioBroker Integration
 
 The wall-tablet dashboard (ioBroker vis-2, served from the Pi) has two layers:
