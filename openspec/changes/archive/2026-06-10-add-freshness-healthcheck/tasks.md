@@ -29,4 +29,10 @@
       `weather_rain_mm` (162 days) triggered a real Telegram alert; 15 measurements
       checked, ignore list effective. Recovery notice will fire when the rain-gauge
       batteries are replaced. (User confirmation of Telegram receipt pending.)
-- [ ] 3.3 README: how to add/adjust SLAs
+- [x] 3.3 README: "Freshness monitoring" section (how SLAs/ignore work, where to
+      adjust)
+- [x] 3.4 (added during fire drill) Notifier guards against the silent-delivery
+      mode: telegram users list was empty since July 2023 — every send for 3 years
+      went nowhere "successfully". Notifier now checks `communicate.users` before
+      sending and raises with a register-instruction when empty; user re-registered
+      and confirmed receipt of both test and real alert
