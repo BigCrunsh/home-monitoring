@@ -1,0 +1,57 @@
+:root {
+    --color-red: #A00629;
+    --color-blue: #5080AC;
+    --color-yellow: #F1BE3D;
+    --color-green: #b5fb5b;
+    --color-dark-grey: #111217;
+    --color-grey: #333333;
+    --color-light-grey: #CCCCCC;
+
+    --color-background: var(--color-light-grey);
+    --color-panel: var(--color-dark-grey);
+    --color-button: var(--color-grey);
+    --color-button-active: var(--color-red);
+    --color-border: var(--color-grey);
+    --color-font: var(--color-light-grey);
+}
+
+.rotate90 {
+    transform: rotate(90deg)
+}
+
+.calendar th, .calendar td {
+    padding: 2px;
+    text-align: left;
+    border: 3px solid var(--color-grey);
+    border-bottom-width: 2px;
+    border-top-width: 0px;
+    border-left-width: 0px;
+    border-right-width: 2px;
+    
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    vertical-align: top;
+    color: var(--color-light-grey);
+    background-color: var(--color-grey);
+    font-family: RobotoCondensed-Regular;
+}
+
+.calendar .details {
+    width: 3008px;
+}
+
+.calendar .weekday {
+    width: 100;
+}
+
+.calendar tr:first-child td {
+    background-color: var(--color-yellow);
+    color: var(--color-dark-grey);
+}
+
+.calendar .samstag, .calendar .sonntag {
+    background-color: var(--color-blue);
+    color: var(--color-dark-grey);
+}
