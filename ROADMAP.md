@@ -29,7 +29,7 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 |---|---|---|
 | `add-freshness-healthcheck` | Telegram alert when any measurement goes stale (rain was dead 5 months unnoticed) | ~½ day |
 | `version-iobroker-scripts` | All 14 deployed JS scripts in git; deploy-from-git; reconcile drift (deployed `tibber_states` is outdated) | ~1 day |
-| `fix-solaredge-power-metrics` | Fix the always-0 Autarkie/Eigenverbrauch (SolarEdge ~2 h consumption-data lag vs. latest-row query) | ~½ day |
+| `fix-solaredge-power-metrics` | Fix the always-0 Autarkie/Eigenverbrauch (SolarEdge ~2 h consumption-data lag vs. latest-row query) — **deployed 2026-06-10**, dashboard shows real autarky for the first time | ~½ day |
 | `harden-collector-runtime` | Timeouts/retries on API calls, cron locking, shell safety, logging consistency | ~1 day |
 
 ### P2 — Engineering hygiene
