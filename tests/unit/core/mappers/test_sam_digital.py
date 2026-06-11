@@ -113,3 +113,62 @@ def test_to_measurements_ignores_non_numeric_values() -> None:
     measurements = SamDigitalMapper.to_measurements(timestamp, devices)
 
     assert measurements == []
+
+
+def test_to_measurements_sanitizes_address_in_device_name() -> None:
+    """Device names containing a street address are replaced (unhappy path)."""
+    devices = [
+        {
+            "id": 1,
+            "category": "Gateway",
+            "name": "G Musterstr. 12A",
+            "data": [{"id": "MBR_10", "value": "21.5"}],
+        }
+    ]
+
+    measurements = SamDigitalMapper.to_measurements(
+        datetime(2024, 2, 16, 20, 0, 0, tzinfo=UTC), devices
+    )
+
+    assert measurements
+    for m in measurements:
+        assert m.tags["device_name"] == "Gateway"
+        assert "Musterstr" not in str(m.tags)
+
+
+def test_to_measurements_empty_device_name_falls_back() -> None:
+    """An empty device name yields a stable fallback tag (unhappy path)."""
+    devices = [
+        {
+            "id": 7,
+            "name": "",
+            "data": [{"id": "MBR_10", "value": "21.5"}],
+        }
+    ]
+
+    measurements = SamDigitalMapper.to_measurements(
+        datetime(2024, 2, 16, 20, 0, 0, tzinfo=UTC), devices
+    )
+
+    assert measurements
+    for m in measurements:
+        assert m.tags["device_name"] == "device_7"
+
+
+def test_to_measurements_clean_device_name_passes_through() -> None:
+    """A name without personal data is stored unchanged (happy path)."""
+    devices = [
+        {
+            "id": 2,
+            "name": "Heizkreis 1",
+            "data": [{"id": "MBR_10", "value": "21.5"}],
+        }
+    ]
+
+    measurements = SamDigitalMapper.to_measurements(
+        datetime(2024, 2, 16, 20, 0, 0, tzinfo=UTC), devices
+    )
+
+    assert measurements
+    for m in measurements:
+        assert m.tags["device_name"] == "Heizkreis 1"

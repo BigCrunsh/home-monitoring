@@ -129,3 +129,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .cascade/
+sam_digital_devices.json

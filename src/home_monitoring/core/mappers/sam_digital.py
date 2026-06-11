@@ -1,5 +1,6 @@
 """Mapper for Sam Digital reader data to InfluxDB measurements."""
 
+import re
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, ClassVar
@@ -127,21 +128,46 @@ class SamDigitalMapper(BaseMapper):
 
         return measurements
 
+    # German street-address pattern as it appears in vendor-assigned device
+    # names (e.g. "G Musterstr. 12A") — such names must not reach stored tags
+    _ADDRESS_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
+        r"\w+str(?:\.|a(?:ss|ß)e)?\s+\d+", re.IGNORECASE
+    )
+
     @staticmethod
     def _build_tags(device: Mapping[str, Any]) -> dict[str, str]:
         """Build common tags for Sam Digital measurements.
 
         We attach device-level context rather than per-datapoint labels to
         match the aggregated measurement style used in SolarEdgeMapper.
+        Device names are sanitized: names containing a street address are
+        replaced by the device category (or a stable id-based fallback).
         """
         tags: dict[str, str] = {}
 
         device_id = device.get("id")
-        device_name = device.get("name")
+        device_name = SamDigitalMapper._sanitize_device_name(device)
 
         if device_id is not None:
             tags["device_id"] = str(device_id)
         if device_name is not None:
-            tags["device_name"] = str(device_name)
+            tags["device_name"] = device_name
 
         return tags
+
+    @staticmethod
+    def _sanitize_device_name(device: Mapping[str, Any]) -> str | None:
+        """Return a device name that is safe to persist (no personal data)."""
+        raw = device.get("name")
+        name = str(raw).strip() if raw is not None else ""
+        if name and not SamDigitalMapper._ADDRESS_PATTERN.search(name):
+            return name
+
+        # address-bearing or empty name: fall back to category, then id
+        category = device.get("category")
+        if category:
+            return str(category)
+        device_id = device.get("id")
+        if device_id is not None:
+            return f"device_{device_id}"
+        return None
