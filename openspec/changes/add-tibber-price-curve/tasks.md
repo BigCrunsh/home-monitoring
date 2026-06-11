@@ -19,13 +19,16 @@
       day separators + hour ticks in Europe/Berlin)
 - [x] 2.2 Chart deployed and rendering (48 bars at first run, grows to ~144 once
       tomorrow publishes)
-- [ ] 2.3 Placement: widget added to the **Energy view** (Main view is dense; spec
-      preferred Main). User to judge on the tablet and drag/copy it to Main in
-      the vis editor if wanted, then `export_vis.sh` + commit
+- [x] 2.3 Placement: user reviewed on the tablet and chose to keep it on the
+      **Energy view** (2026-06-11). Main stays uncluttered; can be copied to Main
+      later via the vis editor + export_vis if ever wanted
 
 ## 3. Failure modes
 
 - [x] 3.1 "kein Preis-Forecast verfügbar" fallback implemented and unit-smoke-tested
       (renders on empty result)
-- [ ] 3.2 Verify the 13:00 publication boundary live (chart should extend to
-      tomorrow) and the midnight rollover
+- [x] 3.2 13:00 publication boundary verified live (2026-06-11 15:25 Berlin:
+      130 future slots, forecast extends to 2026-06-12 23:45 — at 13:45 it had
+      only reached today). Midnight rollover uses the same mechanism (absolute
+      slot timestamps + `now()-15m` window + Berlin day-separator) so it follows
+      from the verified extension; left as a passive watch item, not a blocker
