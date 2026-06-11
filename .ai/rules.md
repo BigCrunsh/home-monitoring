@@ -2,7 +2,7 @@
 
 ## Python Version & Environment
 - Python 3.11+ (use modern syntax)
-- Use `uv` for dependency management (preferred) or `pip` with `requirements.txt`
+- Use `pip install -e ".[dev]"` from pyproject.toml (single dependency source)
 - Virtual environment required for all development
 
 ## Code Style & Formatting
