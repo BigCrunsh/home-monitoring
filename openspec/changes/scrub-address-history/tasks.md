@@ -26,10 +26,12 @@
 
 ## 3. Verification & follow-up
 
-- [ ] 3.1 GitHub still serves the file at the old unreachable SHA (cached objects
-      survive until GitHub's GC). **User action**: open a GitHub support request
-      ("repo BigCrunsh/home-monitoring had a sensitive-data history rewrite; please
-      remove cached/unreachable commits", per GitHub's removing-sensitive-data guide)
+- [x] 3.1 GitHub still serves the file at the old unreachable SHA (cached objects
+      survive until GitHub's eventual GC). Support request attempted 2026-06-11:
+      the support form offers no matching category/path (tried "Deletes"; suggested
+      actions don't apply). **Parked — risk accepted by user**; retry via the form
+      or support@github.com email later if desired. Old SHAs are unlisted
+      (require knowing the hash) and the data is a street address, not a credential
 - [x] 3.2 README notes the 2026-06-11 history rewrite (old clones must re-clone)
 
 ## 4. Added during execution

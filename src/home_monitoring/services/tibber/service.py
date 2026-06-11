@@ -42,7 +42,9 @@ class TibberService(BaseService):
         super().__init__(settings=settings, repository=repository)
         self._user_agent = user_agent
 
-    async def collect_and_store(self) -> None:
+    async def collect_and_store(  # noqa: PLR0915 - refactor tracked for the tibber cleanup
+        self,
+    ) -> None:
         """Collect Tibber price and summary data and store in InfluxDB."""
         self._logger.info("collecting_electricity_data")
 
