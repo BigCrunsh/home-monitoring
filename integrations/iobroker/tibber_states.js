@@ -490,7 +490,7 @@ function renderPriceForecastChart(rows) {
     function yFor(v) { return PAD_T + plotH - (maxV > 0 ? (v / maxV) * plotH : 0); }
 
     // dashed percentile thresholds, colored like the band they bound
-    [[p20, '#4ECCA3'], [p80, '#FF6B6B']].forEach(function (pair) {
+    [[p20, '#b5fb5b'], [p80, '#A00629']].forEach(function (pair) {
         var t = pair[0];
         if (t > 0 && t < maxV) {
             parts.push('<line x1="0" y1="' + yFor(t).toFixed(1) + '" x2="' + W
@@ -507,10 +507,9 @@ function renderPriceForecastChart(rows) {
     rows.forEach(function (r, i) {
         var v = r.total;
         var h = maxV > 0 ? (v / maxV) * plotH : 0;
-        var color = v <= p20 ? '#4ECCA3' : (v >= p80 ? '#FF6B6B' : '#D9C95E');
+        var color = v <= p20 ? '#b5fb5b' : (v >= p80 ? '#A00629' : '#F1BE3D');
         var bp = berlinParts(r.ts);
-        // R6: bars touch within the hour; small gap before each full hour
-        var gap = (bp && bp.minute === 45) ? 1.4 : 0.15;
+        var gap = 0.8;  // uniform gap; hour structure comes from the tick labels
         parts.push('<rect x="' + (i * bw).toFixed(2)
             + '" y="' + (PAD_T + plotH - h).toFixed(2)
             + '" width="' + Math.max(bw - gap, 0.5).toFixed(2)
@@ -554,7 +553,7 @@ function renderPriceForecastChart(rows) {
         var b2 = berlinParts(rows[bestStart + WIN - 1].ts + slotMs);
         parts.push('<rect x="' + winX0.toFixed(1) + '" y="' + (H - PAD_B + 1)
             + '" width="' + (winX1 - winX0).toFixed(1)
-            + '" height="2.5" fill="#4ECCA3" opacity="0.9"/>');
+            + '" height="2.5" fill="#b5fb5b" opacity="0.9"/>');
         if (b1 && b2) {
             var fmt = function (p) { return p.hour + ':' + (p.minute < 10 ? '0' : '') + p.minute; };
             var avg = euro(bestSum / WIN);
@@ -568,7 +567,7 @@ function renderPriceForecastChart(rows) {
                 totals.slice(bestStart, bestStart + WIN)));
             parts.push('<text x="' + lx.toFixed(1) + '" y="'
                 + Math.max(windowTopY - 5, 11).toFixed(1)
-                + '" fill="#4ECCA3" stroke="#222" stroke-width="2.5" paint-order="stroke"'
+                + '" fill="#b5fb5b" stroke="#222" stroke-width="2.5" paint-order="stroke"'
                 + ' font-size="10" text-anchor="middle">' + label + '</text>');
         }
     }
