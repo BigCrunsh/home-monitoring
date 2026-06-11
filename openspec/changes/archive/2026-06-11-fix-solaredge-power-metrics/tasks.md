@@ -17,9 +17,11 @@
       window (2026-06-10 ~17:30): script skipped 2 incomplete rows (C=0,
       FeedIn>Production), picked 14:45Z; autarky 100% at 395 W house load /
       1263 W production; energy balance consistent; age 6636 s
-- [ ] 2.2 Check overnight behavior (no production): autarky → 0 legitimately,
-      self-consumption rate handled without division-by-zero artifacts
-      (logic guards in place; verify on live data after one night)
+- [x] 2.2 Overnight verified (2026-06-11 07:14): autarky and self-consumption rate
+      read clean 0, no NaN/div-by-zero, no warnings, hybrid mode stable all night.
+      Side-finding: grid draw was only ~5 W (not the 200–300 W base load) — the
+      Maxxisun battery's zero-export regulation is visible in the Shelly data,
+      quantifying the known autarky-understated limitation until phase A lands
 - [x] 2.3 Confirm the Energy view tiles and Main view tiles update accordingly
       (user confirmed on the tablet 2026-06-10: Autarkie 100%, Eigenverbrauch 395 W)
 
