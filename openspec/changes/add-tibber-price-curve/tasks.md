@@ -2,21 +2,30 @@
 
 ## 1. Data
 
-- [ ] 1.1 Verify hourly price series availability: `tibber_states` / InfluxDB
-      `electricity_prices_euro`; extend `tibber_states.js` to expose today+tomorrow
-      series as a JSON state if needed
-- [ ] 1.2 Reuse existing p20/p80 percentile states for the color bands
+- [x] 1.1 Forecast data path built: new `electricity_price_forecast_euro` measurement
+      (Python collector stores the published curve at the hours' own timestamps).
+      Discovery: Tibber now publishes **15-minute** resolution (96 slots/day,
+      Germany's 2025 quarter-hour settlement) — the chart renders 15-min bars.
+      First deploy caught a pyTibber API difference (no `update_price_info`;
+      `update_info_and_price_info` is correct) — graceful error path worked
+- [x] 1.2 7-day p20/p80 percentile states reused for the color bands
 
 ## 2. Chart
 
-- [ ] 2.1 Install/configure the ECharts adapter (or evaluate vis-2 chart widget)
-- [ ] 2.2 Build the price chart: hourly bars, percentile color bands, current-hour
-      marker, de-DE labels
-- [ ] 2.3 Place on Main view (replace/augment the Strompreis number tile); check
-      legibility on the tablet at viewing distance
+- [x] 2.1 Evaluated ECharts adapter vs hand-rolled: the echarts adapter charts
+      *state history* and cannot render future series — hand-rolled SVG in
+      `tibber_states.js` instead (`price_forecast_chart` state, rebuilt every
+      5 min; bars colored by percentile, current slot highlighted with price,
+      day separators + hour ticks in Europe/Berlin)
+- [x] 2.2 Chart deployed and rendering (48 bars at first run, grows to ~144 once
+      tomorrow publishes)
+- [ ] 2.3 Placement: widget added to the **Energy view** (Main view is dense; spec
+      preferred Main). User to judge on the tablet and drag/copy it to Main in
+      the vis editor if wanted, then `export_vis.sh` + commit
 
 ## 3. Failure modes
 
-- [ ] 3.1 Implement and test the "no forecast" fallback (simulate by blanking the
-      source state)
-- [ ] 3.2 Confirm behavior across the 13:00 publication boundary and midnight rollover
+- [x] 3.1 "kein Preis-Forecast verfügbar" fallback implemented and unit-smoke-tested
+      (renders on empty result)
+- [ ] 3.2 Verify the 13:00 publication boundary live (chart should extend to
+      tomorrow) and the midnight rollover
