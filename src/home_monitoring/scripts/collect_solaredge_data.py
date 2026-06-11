@@ -6,7 +6,9 @@ from datetime import UTC, datetime, timedelta
 
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.services.solaredge import SolarEdgeService
-from home_monitoring.utils.logging import configure_logging
+from home_monitoring.utils.logging import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 async def main() -> int:
@@ -61,7 +63,7 @@ async def main() -> int:
             meters=power_meters,
         )
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("solaredge_collection_failed", error=str(e))
         return 1
     return 0
 

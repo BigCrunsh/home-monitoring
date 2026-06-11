@@ -42,7 +42,6 @@ async def main(args: argparse.Namespace) -> int:
             "tibber_collection_failed",
             error=str(e),
         )
-        print(f"Error collecting Tibber data: {e}", file=sys.stderr)
         return 1
 
 

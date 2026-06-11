@@ -5,7 +5,9 @@ import asyncio
 import sys
 
 from home_monitoring.services.tankerkoenig import TankerkoenigService
-from home_monitoring.utils.logging import configure_logging
+from home_monitoring.utils.logging import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 async def main(args: argparse.Namespace) -> int:
@@ -23,7 +25,7 @@ async def main(args: argparse.Namespace) -> int:
     try:
         await service.collect_and_store(force_update=args.force_update)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("tankerkoenig_collection_failed", error=str(e))
         return 1
     return 0
 

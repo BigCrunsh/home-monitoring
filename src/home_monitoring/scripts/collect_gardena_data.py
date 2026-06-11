@@ -6,7 +6,9 @@ import sys
 from signal import Signals
 
 from home_monitoring.services.gardena import GardenaService
-from home_monitoring.utils.logging import configure_logging
+from home_monitoring.utils.logging import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 async def main() -> int:
@@ -38,7 +40,7 @@ async def main() -> int:
         while True:
             await asyncio.sleep(1)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("gardena_collection_failed", error=str(e))
         return 1
     return 0
 

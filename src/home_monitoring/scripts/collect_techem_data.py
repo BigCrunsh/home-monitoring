@@ -6,7 +6,9 @@ import sys
 
 from home_monitoring.services.techem import TechemService
 from home_monitoring.services.techem.config import SerialConfig
-from home_monitoring.utils.logging import configure_logging
+from home_monitoring.utils.logging import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 async def main(args: argparse.Namespace) -> int:
@@ -32,7 +34,7 @@ async def main(args: argparse.Namespace) -> int:
     try:
         await service.collect_and_store(num_packets=args.serial_num_packets)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("techem_collection_failed", error=str(e))
         return 1
     return 0
 
