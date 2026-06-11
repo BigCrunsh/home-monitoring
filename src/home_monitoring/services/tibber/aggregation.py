@@ -113,7 +113,7 @@ async def aggregate_this_day_data(
     return measurements, day_cost, day_consumption, day_production
 
 
-async def aggregate_this_month_data(
+async def aggregate_this_month_data(  # noqa: PLR0913 - signature refactor tracked for the tibber cleanup
     home,
     connection,
     summary_timestamp: datetime,
@@ -257,7 +257,7 @@ async def aggregate_this_month_data(
     return measurements, month_cost, month_consumption, month_production
 
 
-async def aggregate_this_year_data(
+async def aggregate_this_year_data(  # noqa: PLR0913 - signature refactor tracked for the tibber cleanup
     home,
     connection,
     summary_timestamp: datetime,
