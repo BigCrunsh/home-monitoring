@@ -47,7 +47,7 @@ class FakeNotifier:
         self.sent.append(text)
 
 
-def make_service(  # noqa: PLR0913 - test helper bundles all injection points
+def make_service(
     tmp_path: Path,
     mock_settings: Settings,
     timestamps: dict[str, datetime | None],

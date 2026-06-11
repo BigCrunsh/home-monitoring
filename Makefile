@@ -47,7 +47,12 @@ test-integration:
 	$(PYTHON) -m pytest $(TESTS_DIR)/integration -v
 
 .PHONY: lint
-lint: format type-check ruff
+lint: check type-check
+
+# read-only quality gate (CI-safe): never modifies files
+.PHONY: check
+check: ruff
+	$(PYTHON) -m black --check $(SRC_DIR) $(TESTS_DIR)
 
 .PHONY: format
 format:
