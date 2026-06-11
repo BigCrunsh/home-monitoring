@@ -2,23 +2,37 @@
 
 ## 1. CI
 
-- [ ] 1.1 `.github/workflows/ci.yml`: Python 3.12, `make init`-equivalent install,
-      `make test`
-- [ ] 1.2 Delete `.travis.yml`; add status badge to README
-- [ ] 1.3 Confirm the workflow is green on master (fix whatever it surfaces — mypy
-      warnings noted in TESTING.md may need triage; flag, don't suppress)
+- [x] 1.1 `.github/workflows/ci.yml`: Python 3.12; blocking job = `make check` +
+      hermetic suite (`pytest -m "not integration"`, 136 tests). The 12
+      `integration`-marked tests turned out to be live-system smoke tests
+      (read-only, expect fresh production data) — excluded from CI by design,
+      run manually against the live system
+- [x] 1.2 `.travis.yml` deleted; CI badge in README
+- [x] 1.3 Workflow green on master (first run, 38 s). Surfaced and fixed along the
+      way: integration fixtures created the async client outside the event loop
+      (suite was unrunnable: "Timeout context manager" — fixed with async
+      fixtures); 17 ruff errors hidden behind the always-failing lint chain
+      (test-rules moved to per-file-ignores; 2 production PLR0913 annotated for
+      the tibber cleanup)
+- [ ] 1.4 Burn down the mypy backlog (37 → 30 after central fixes:
+      SettingsConfigDict, get_logger typing). mypy runs as a visible
+      non-blocking CI job until this hits 0, then flip it to blocking
 
 ## 2. Docs truthfulness
 
-- [ ] 2.1 Rewrite `.ai/context.md` for the real architecture (collectors, mappers,
-      InfluxDB repository, ioBroker integration; test ratio policy retained)
-- [ ] 2.2 README: fix measurement list (SAM Digital heat measurements; Techem/Gardena
-      marked disabled), remove `/var/log/home_monitoring` fiction
-- [ ] 2.3 Cross-check INFLUXDB_MEASUREMENTS_DOCUMENTATION.md against live schema
+- [x] 2.1 `.ai/context.md` rewritten for the real architecture (was an unedited
+      FastAPI/PostgreSQL template); `rules.md` requirements.txt reference fixed
+- [x] 2.2 README fixed earlier (2026-06-10 README overhaul commit: measurements,
+      log paths, crontab reality, supported-systems status)
+- [x] 2.3 INFLUXDB_MEASUREMENTS_DOCUMENTATION.md cross-checked: all 25 live
+      measurements documented
 
 ## 3. Tooling
 
-- [ ] 3.1 Delete `requirements.txt`; document `pip install -e ".[dev]"`; verify
-      `make init` path
-- [ ] 3.2 Makefile: `check` = ruff + mypy + black --check; `format` mutates; `lint`
-      aliases `check`
+- [x] 3.1 `requirements.txt` deleted; pyproject is the single source, verified by
+      clean-room install + green suite. Never-imported deps removed (fastapi,
+      solaredge, influxdb, netatmo, websocket-client); pandas/matplotlib moved
+      to an [analysis] notebook extra; oauthlib kept (py-smart-gardena imports
+      it without declaring it)
+- [x] 3.2 Makefile: `check` = ruff + black --check (read-only, CI-safe);
+      `lint` = check + type-check; `format` mutates
