@@ -20,6 +20,50 @@ RANK_NORMAL_THRESHOLD = 0.65
 RANK_EXPENSIVE_THRESHOLD = 0.85
 
 
+PRICE_FORECAST_MEASUREMENT = "electricity_price_forecast_euro"
+
+
+async def collect_price_forecast_data(home: Any) -> list[Measurement]:
+    """Collect the hourly day-ahead price curve (today + tomorrow when published).
+
+    Each forecast hour is stored at its own (possibly future) timestamp in a
+    dedicated measurement, so "latest price" queries on
+    ``electricity_prices_euro`` keep returning the current price. Rows for the
+    same hour are overwritten on every run.
+
+    Args:
+        home: Tibber home object
+
+    Returns:
+        List of forecast measurements (empty on failure)
+    """
+    measurements: list[Measurement] = []
+
+    try:
+        await home.update_price_info()
+        price_total = home.price_total or {}
+        for ts_str, total in price_total.items():
+            if total is None:
+                continue
+            measurements.append(
+                Measurement(
+                    timestamp=datetime.fromisoformat(ts_str),
+                    measurement=PRICE_FORECAST_MEASUREMENT,
+                    tags={},
+                    fields={"total": float(total)},
+                )
+            )
+        logger.debug("price_forecast_collected", hours=len(measurements))
+    except Exception as e:
+        logger.error(
+            "failed_to_get_price_forecast",
+            error=str(e),
+            error_type=type(e).__name__,
+        )
+
+    return measurements
+
+
 async def collect_price_data(
     home: Any, summary_timestamp: datetime
 ) -> list[Measurement]:

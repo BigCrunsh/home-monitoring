@@ -86,6 +86,9 @@ class TibberService(BaseService):
             )
             measurements.extend(price_measurements)
 
+            # Day-ahead price curve (today + tomorrow once published ~13:00)
+            measurements.extend(await collection.collect_price_forecast_data(home))
+
             # Collect individual period data
             last_hour = await collection.collect_last_hour_data(home, summary_timestamp)
             measurements.extend(last_hour)
