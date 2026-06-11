@@ -8,8 +8,11 @@
       2010 (hm-rpc callback — legitimate, CCU needs it). Corrections to the
       original review: admin **does** require login; MQTT is client-mode with
       **no open broker** (:1883 not listening) — both earlier findings were wrong
-- [ ] 1.2 Check FritzBox port forwards / MyFRITZ shares — **user action**
-      (router UI not reachable from here; the whole threat model hinges on this)
+- [x] 1.2 Resolved 2026-06-11: the only port-forward was for monitoring.sawade.me
+      (remote dashboard) — no longer needed since the user reaches the dashboard
+      via WireGuard. Port-forward removed and the Dynu service disabled by the
+      user; the whole DNS-updater feature was retired (separate commit). Remote
+      access is now WireGuard-only with no inbound port-forwards.
 
 ## 2. InfluxDB
 
