@@ -3,22 +3,23 @@ name = "home-monitoring"
 version = "0.1.0"
 description = "Home monitoring system"
 requires-python = ">=3.12.3"
+# Only packages the code actually imports. Template leftovers (fastapi),
+# superseded libraries (solaredge, netatmo, influxdb, websocket-client,
+# oauthlib), and notebook-only packages were removed 2026-06-11 — see
+# openspec/changes/restore-engineering-hygiene.
 dependencies = [
     "aioinflux==0.9.0",
-    "fastapi==0.110.0",
     "httpx==0.27.0",
-    "pandas==2.0.3",
     "pydantic==2.6.1",
     "pydantic-settings==2.1.0",
     "structlog==24.1.0",
     "lnetatmo>=4.2.0",
-    "solaredge==0.0.4",
     "py-smart-gardena==1.3.9",
+    # py-smart-gardena imports oauthlib but does not declare it (upstream
+    # packaging bug) — keep the explicit pin
+    "oauthlib==3.2.2",
     "pyTibber==0.32.2",
     "pyserial==3.5",
-    "matplotlib==3.8.2",
-    "oauthlib==3.2.2",
-    "setuptools>=69.0.0",
 ]
 
 [project.optional-dependencies]
@@ -30,6 +31,11 @@ dev = [
     "black==24.2.0",
     "ruff==0.2.1",
     "mypy==1.8.0",
+]
+# for the notebooks in analysis/
+analysis = [
+    "pandas==2.2.2",
+    "matplotlib==3.10.0",
 ]
 
 [build-system]
