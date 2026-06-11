@@ -1,6 +1,7 @@
 """SolarEdge service implementation."""
 
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from home_monitoring.config import Settings
@@ -29,17 +30,16 @@ class SolarEdgeService(BaseService):
         """
         super().__init__(settings=settings, repository=repository)
 
-        # Validate required credentials
-        if not all(
-            [
-                self._settings.solaredge_api_key,
-                self._settings.solaredge_site_id,
-            ]
-        ):
+        # Validate required credentials (narrowed copies for typed use)
+        api_key = self._settings.solaredge_api_key
+        site_id = self._settings.solaredge_site_id
+        if not api_key or not site_id:
             raise ValueError(
                 "Missing SolarEdge credentials. Please set SOLAREDGE_API_KEY "
                 "and SOLAREDGE_SITE_ID environment variables."
             )
+        self._api_key: str = api_key
+        self._site_id: str = site_id
 
     async def _get_energy_details(
         self,
@@ -47,7 +47,7 @@ class SolarEdgeService(BaseService):
         end_time: datetime,
         time_unit: str,
         meters: list[str] | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get detailed energy data from SolarEdge energyDetails API.
 
         Args:
@@ -63,11 +63,10 @@ class SolarEdgeService(BaseService):
             APIError: If the API request fails or response format is invalid.
         """
         url = (
-            "https://monitoringapi.solaredge.com/site/"
-            f"{self._settings.solaredge_site_id}/energyDetails"
+            "https://monitoringapi.solaredge.com/site/" f"{self._site_id}/energyDetails"
         )
         params: dict[str, str] = {
-            "api_key": self._settings.solaredge_api_key,
+            "api_key": self._api_key,
             "timeUnit": time_unit,
             "startTime": start_time.strftime("%Y-%m-%d %H:%M:%S"),
             "endTime": end_time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -79,7 +78,7 @@ class SolarEdgeService(BaseService):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
                 response.raise_for_status()
-                data = response.json()
+                data: dict[str, Any] = response.json()
                 if "energyDetails" not in data:
                     raise APIError("Invalid response format")
                 return data
@@ -158,7 +157,7 @@ class SolarEdgeService(BaseService):
         start_time: datetime,
         end_time: datetime,
         meters: list[str] | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Get detailed power data from SolarEdge powerDetails API.
 
         Args:
@@ -173,11 +172,10 @@ class SolarEdgeService(BaseService):
             APIError: If the API request fails or response format is invalid.
         """
         url = (
-            "https://monitoringapi.solaredge.com/site/"
-            f"{self._settings.solaredge_site_id}/powerDetails"
+            "https://monitoringapi.solaredge.com/site/" f"{self._site_id}/powerDetails"
         )
         params: dict[str, str] = {
-            "api_key": self._settings.solaredge_api_key,
+            "api_key": self._api_key,
             "startTime": start_time.strftime("%Y-%m-%d %H:%M:%S"),
             "endTime": end_time.strftime("%Y-%m-%d %H:%M:%S"),
             "timeUnit": "QUARTER_OF_AN_HOUR",
@@ -189,7 +187,7 @@ class SolarEdgeService(BaseService):
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params)
                 response.raise_for_status()
-                data = response.json()
+                data: dict[str, Any] = response.json()
                 if "powerDetails" not in data:
                     raise APIError("Invalid response format")
                 return data

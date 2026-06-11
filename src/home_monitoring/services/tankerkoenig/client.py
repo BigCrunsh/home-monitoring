@@ -156,7 +156,7 @@ class TankerkoenigClient:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
                 response.raise_for_status()
-                data = response.json()
+                data: dict[str, Any] = response.json()
 
                 # Cache the response
                 if self._cache_dir and data.get("ok", False):
@@ -190,7 +190,8 @@ class TankerkoenigClient:
 
         try:
             with cache_file.open("r") as f:
-                return json.load(f)
+                cached: dict[str, Any] = json.load(f)
+                return cached
         except Exception as e:
             self._logger.error(
                 "failed_to_load_cache",

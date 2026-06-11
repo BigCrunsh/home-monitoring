@@ -73,6 +73,7 @@ mypy_path = "src"
 [[tool.mypy.overrides]]
 module = [
     "lnetatmo",
+    "serial",  # pyserial ships no type stubs
     "gardena.smart_system",
     "aioinflux",
     "tibber",

@@ -46,9 +46,15 @@ class TibberService(BaseService):
         """Collect Tibber price and summary data and store in InfluxDB."""
         self._logger.info("collecting_electricity_data")
 
+        access_token = self._settings.tibber_access_token
+        if not access_token:
+            raise ValueError(
+                "Missing Tibber credentials. Please set TIBBER_ACCESS_TOKEN."
+            )
+
         try:
             connection = tibber.Tibber(
-                access_token=self._settings.tibber_access_token,
+                access_token=access_token,
                 user_agent=self._user_agent,
             )
             await connection.update_info()

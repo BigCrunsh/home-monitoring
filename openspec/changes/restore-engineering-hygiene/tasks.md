@@ -14,9 +14,12 @@
       fixtures); 17 ruff errors hidden behind the always-failing lint chain
       (test-rules moved to per-file-ignores; 2 production PLR0913 annotated for
       the tibber cleanup)
-- [ ] 1.4 Burn down the mypy backlog (37 → 30 after central fixes:
-      SettingsConfigDict, get_logger typing). mypy runs as a visible
-      non-blocking CI job until this hits 0, then flip it to blocking
+- [x] 1.4 mypy backlog burned to ZERO (was 37) and flipped to a blocking CI step.
+      Beyond annotations, this hardened real fragility: Optional credential
+      narrowing with explicit errors (Tibber/Tankerkoenig/SolarEdge/SAM),
+      None-safe production accumulation in the tibber aggregations (the
+      `month_production += sum(...)` path could have crashed on a drifted
+      invariant), and typed JSON returns
 
 ## 2. Docs truthfulness
 

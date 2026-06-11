@@ -49,8 +49,13 @@ class TankerkoenigService(BaseService):
             cache_dir: Directory to cache station details. If None, disabled.
         """
         super().__init__(settings=settings, repository=repository)
+        api_key = self._settings.tankerkoenig_api_key
+        if not api_key:
+            raise ValueError(
+                "Missing Tankerkoenig credentials. " "Please set TANKERKOENIG_API_KEY."
+            )
         self._client = TankerkoenigClient(
-            api_key=self._settings.tankerkoenig_api_key,
+            api_key=api_key,
             cache_dir=cache_dir,
         )
 

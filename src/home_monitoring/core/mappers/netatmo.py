@@ -70,7 +70,7 @@ class NetatmoMapper(BaseMapper):
         device: Mapping[str, Any], timestamp: datetime
     ) -> list[Measurement]:
         """Process individual device/module data into measurements."""
-        measurements = []
+        measurements: list[Measurement] = []
 
         # Check required fields
         required_keys = ["_id", "type", "module_name"]

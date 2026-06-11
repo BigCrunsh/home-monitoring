@@ -5,6 +5,7 @@ direct API calls without complex aggregation logic.
 """
 
 from datetime import datetime
+from typing import Any
 
 import structlog
 from home_monitoring.core.mappers.tibber import TibberMapper
@@ -19,7 +20,9 @@ RANK_NORMAL_THRESHOLD = 0.65
 RANK_EXPENSIVE_THRESHOLD = 0.85
 
 
-async def collect_price_data(home, summary_timestamp: datetime) -> list[Measurement]:
+async def collect_price_data(
+    home: Any, summary_timestamp: datetime
+) -> list[Measurement]:
     """Collect current electricity price data.
 
     Args:
@@ -29,7 +32,7 @@ async def collect_price_data(home, summary_timestamp: datetime) -> list[Measurem
     Returns:
         List of price measurements
     """
-    measurements = []
+    measurements: list[Measurement] = []
 
     try:
         total, _, rank = home.current_price_data()
@@ -72,7 +75,7 @@ async def collect_price_data(home, summary_timestamp: datetime) -> list[Measurem
 
 
 async def collect_last_hour_data(
-    home, summary_timestamp: datetime
+    home: Any, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect last completed hour consumption data.
 
@@ -83,7 +86,7 @@ async def collect_last_hour_data(
     Returns:
         List of measurements for last hour
     """
-    measurements = []
+    measurements: list[Measurement] = []
 
     try:
         hourly_data = await home.get_historic_data(n_data=1, resolution="HOURLY")
@@ -167,7 +170,9 @@ async def collect_last_hour_data(
     return measurements
 
 
-async def collect_last_day_data(home, summary_timestamp: datetime) -> list[Measurement]:
+async def collect_last_day_data(
+    home: Any, summary_timestamp: datetime
+) -> list[Measurement]:
     """Collect last completed day (yesterday) consumption data.
 
     Args:
@@ -177,7 +182,7 @@ async def collect_last_day_data(home, summary_timestamp: datetime) -> list[Measu
     Returns:
         List of measurements for last day
     """
-    measurements = []
+    measurements: list[Measurement] = []
 
     try:
         daily_data = await home.get_historic_data(n_data=1, resolution="DAILY")
@@ -246,7 +251,7 @@ async def collect_last_day_data(home, summary_timestamp: datetime) -> list[Measu
 
 
 async def collect_this_hour_data(
-    home, summary_timestamp: datetime
+    home: Any, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect current incomplete hour consumption data.
 
@@ -257,7 +262,7 @@ async def collect_this_hour_data(
     Returns:
         List of measurements for this hour
     """
-    measurements = []
+    measurements: list[Measurement] = []
 
     try:
         this_hour_data = await home.get_historic_data(n_data=1, resolution="HOURLY")
@@ -320,7 +325,7 @@ async def collect_this_hour_data(
 
 
 async def collect_last_month_data(
-    home, summary_timestamp: datetime
+    home: Any, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect last completed month consumption data.
 
@@ -331,7 +336,7 @@ async def collect_last_month_data(
     Returns:
         List of measurements for last month
     """
-    measurements = []
+    measurements: list[Measurement] = []
 
     try:
         monthly_data = await home.get_historic_data(n_data=1, resolution="MONTHLY")
@@ -400,7 +405,7 @@ async def collect_last_month_data(
 
 
 async def collect_last_year_data(
-    home, summary_timestamp: datetime
+    home: Any, summary_timestamp: datetime
 ) -> list[Measurement]:
     """Collect last completed year consumption data.
 
@@ -411,7 +416,7 @@ async def collect_last_year_data(
     Returns:
         List of measurements for last year
     """
-    measurements = []
+    measurements: list[Measurement] = []
 
     try:
         last_year_data = await home.get_historic_data(n_data=2, resolution="ANNUAL")

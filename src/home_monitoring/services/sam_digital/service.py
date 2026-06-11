@@ -34,11 +34,13 @@ class SamDigitalService(BaseService):
         super().__init__(settings=settings, repository=repository)
         self._base_url = base_url.rstrip("/")
 
-        if not self._settings.sam_digital_api_key:
+        api_key = self._settings.sam_digital_api_key
+        if not api_key:
             raise ValueError(
                 "Missing Sam Digital API key. Please set SAM_DIGITAL_API_KEY "
                 "environment variable."
             )
+        self._api_key: str = api_key
 
     async def _fetch_devices(self) -> Sequence[dict[str, Any]]:
         """Fetch devices from Sam Digital API.
@@ -52,7 +54,7 @@ class SamDigitalService(BaseService):
         url = f"{self._base_url}/devices"
         headers = {
             "Accept": "application/json",
-            "X-sde-api-key": self._settings.sam_digital_api_key,
+            "X-sde-api-key": self._api_key,
         }
 
         try:

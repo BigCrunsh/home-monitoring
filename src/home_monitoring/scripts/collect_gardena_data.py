@@ -21,7 +21,7 @@ async def main() -> int:
     # Set up signal handlers
     loop = asyncio.get_running_loop()
 
-    tasks: list[asyncio.Task] = []
+    tasks: list[asyncio.Task[None]] = []
 
     def handle_signal(sig: signal.Signals) -> None:
         """Create a shutdown task for the given signal."""

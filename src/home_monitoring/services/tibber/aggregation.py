@@ -1,6 +1,7 @@
 """Tibber data aggregation functions for period calculations."""
 
 from datetime import datetime
+from typing import Any
 
 import structlog
 from home_monitoring.core.mappers.tibber import TibberMapper
@@ -10,7 +11,10 @@ logger = structlog.get_logger()
 
 
 async def aggregate_this_day_data(
-    home, connection, summary_timestamp: datetime, now: datetime | None = None
+    home: Any,
+    connection: Any,
+    summary_timestamp: datetime,
+    now: datetime | None = None,
 ) -> tuple[list[Measurement], float | None, float | None, float | None]:
     """Aggregate this day (today so far) consumption data.
 
@@ -25,10 +29,10 @@ async def aggregate_this_day_data(
     Returns:
         Tuple of (measurements, day_cost, day_consumption, day_production)
     """
-    measurements = []
-    day_cost = None
-    day_consumption = None
-    day_production = None
+    measurements: list[Measurement] = []
+    day_cost: float | None = None
+    day_consumption: float | None = None
+    day_production: float | None = None
 
     try:
         from datetime import datetime as dt
@@ -57,16 +61,16 @@ async def aggregate_this_day_data(
                     total_hours=len(today_hourly),
                 )
             else:
-                day_cost = sum(costs)
-                day_consumption = sum(consumptions)
+                day_cost = float(sum(c for c in costs if c is not None))
+                day_consumption = float(sum(c for c in consumptions if c is not None))
                 day_production = 0.0
 
                 if today_hourly_production:
                     productions = [
                         node.get("production") for node in today_hourly_production
                     ]
-                    day_production = sum(
-                        p if p is not None else 0.0 for p in productions
+                    day_production = float(
+                        sum(p if p is not None else 0.0 for p in productions)
                     )
 
                 day_grid_consumption = max(0.0, day_consumption - day_production)
@@ -113,9 +117,9 @@ async def aggregate_this_day_data(
     return measurements, day_cost, day_consumption, day_production
 
 
-async def aggregate_this_month_data(  # noqa: PLR0913 - signature refactor tracked for the tibber cleanup
-    home,
-    connection,
+async def aggregate_this_month_data(  # noqa: PLR0913, PLR0912 - refactor tracked for the tibber cleanup
+    home: Any,
+    connection: Any,
     summary_timestamp: datetime,
     day_cost: float | None,
     day_consumption: float | None,
@@ -138,10 +142,10 @@ async def aggregate_this_month_data(  # noqa: PLR0913 - signature refactor track
     Returns:
         Tuple of (measurements, month_cost, month_consumption, month_production)
     """
-    measurements = []
-    month_cost = None
-    month_consumption = None
-    month_production = None
+    measurements: list[Measurement] = []
+    month_cost: float | None = None
+    month_consumption: float | None = None
+    month_production: float | None = None
 
     if day_cost is not None:
         try:
@@ -156,7 +160,9 @@ async def aggregate_this_month_data(  # noqa: PLR0913 - signature refactor track
 
             month_cost = day_cost
             month_consumption = day_consumption
-            month_production = day_production
+            # day_cost is not None implies day_production was computed; the
+            # fallback keeps the type checker honest if that invariant drifts
+            month_production = day_production if day_production is not None else 0.0
 
             logger.debug(
                 "this_month_calculation",
@@ -193,10 +199,16 @@ async def aggregate_this_month_data(  # noqa: PLR0913 - signature refactor track
                         month_cost = None
                         month_consumption = None
                     else:
-                        completed_days_cost = sum(costs)
-                        completed_days_consumption = sum(consumptions)
-                        month_cost += completed_days_cost
-                        month_consumption += completed_days_consumption
+                        completed_days_cost = float(
+                            sum(c for c in costs if c is not None)
+                        )
+                        completed_days_consumption = float(
+                            sum(c for c in consumptions if c is not None)
+                        )
+                        if month_cost is not None:
+                            month_cost += completed_days_cost
+                        if month_consumption is not None:
+                            month_consumption += completed_days_consumption
 
                         logger.debug(
                             "this_month_completed_days",
@@ -211,8 +223,8 @@ async def aggregate_this_month_data(  # noqa: PLR0913 - signature refactor track
                     productions = [
                         node.get("production") for node in monthly_production
                     ]
-                    month_production += sum(
-                        p if p is not None else 0.0 for p in productions
+                    month_production += float(
+                        sum(p if p is not None else 0.0 for p in productions)
                     )
 
             if month_cost is not None and month_consumption is not None:
@@ -257,9 +269,9 @@ async def aggregate_this_month_data(  # noqa: PLR0913 - signature refactor track
     return measurements, month_cost, month_consumption, month_production
 
 
-async def aggregate_this_year_data(  # noqa: PLR0913 - signature refactor tracked for the tibber cleanup
-    home,
-    connection,
+async def aggregate_this_year_data(  # noqa: PLR0913, PLR0912 - refactor tracked for the tibber cleanup
+    home: Any,
+    connection: Any,
     summary_timestamp: datetime,
     month_cost: float | None,
     month_consumption: float | None,
@@ -282,7 +294,7 @@ async def aggregate_this_year_data(  # noqa: PLR0913 - signature refactor tracke
     Returns:
         List of measurements for this_year
     """
-    measurements = []
+    measurements: list[Measurement] = []
 
     if month_cost is not None:
         try:
@@ -295,9 +307,10 @@ async def aggregate_this_year_data(  # noqa: PLR0913 - signature refactor tracke
             )
             months_completed = now.month - 1
 
-            year_cost = month_cost
-            year_consumption = month_consumption
-            year_production = month_production
+            year_cost: float | None = month_cost
+            year_consumption: float | None = month_consumption
+            # same invariant note as in the month aggregation
+            year_production = month_production if month_production is not None else 0.0
 
             logger.debug(
                 "this_year_calculation",
@@ -334,10 +347,16 @@ async def aggregate_this_year_data(  # noqa: PLR0913 - signature refactor tracke
                         year_cost = None
                         year_consumption = None
                     else:
-                        completed_months_cost = sum(costs)
-                        completed_months_consumption = sum(consumptions)
-                        year_cost += completed_months_cost
-                        year_consumption += completed_months_consumption
+                        completed_months_cost = float(
+                            sum(c for c in costs if c is not None)
+                        )
+                        completed_months_consumption = float(
+                            sum(c for c in consumptions if c is not None)
+                        )
+                        if year_cost is not None:
+                            year_cost += completed_months_cost
+                        if year_consumption is not None:
+                            year_consumption += completed_months_consumption
 
                         logger.debug(
                             "this_year_completed_months",
@@ -350,8 +369,8 @@ async def aggregate_this_year_data(  # noqa: PLR0913 - signature refactor tracke
 
                 if yearly_production:
                     productions = [node.get("production") for node in yearly_production]
-                    year_production += sum(
-                        p if p is not None else 0.0 for p in productions
+                    year_production += float(
+                        sum(p if p is not None else 0.0 for p in productions)
                     )
 
             if year_cost is not None and year_consumption is not None:

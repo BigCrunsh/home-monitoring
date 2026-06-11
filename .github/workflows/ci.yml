@@ -19,23 +19,10 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Check (ruff + black --check)
         run: make check PYTHON=python
+      - name: Type-check (mypy strict)
+        run: make type-check PYTHON=python
       # tests marked 'integration' are live-system smoke tests (read-only
       # queries against the production InfluxDB data) — run manually with
       # `pytest -m integration` against the live system, never in CI
       - name: Unit + hermetic integration tests
         run: PYTHONPATH=src python -m pytest tests -m "not integration" -v --cov=src/home_monitoring
-
-  type-check:
-    name: mypy (non-blocking until the ~30-error backlog is burned down)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Install
-        run: pip install -e ".[dev]"
-      - name: mypy
-        run: make type-check PYTHON=python
