@@ -40,7 +40,7 @@ async def collect_price_forecast_data(home: Any) -> list[Measurement]:
     measurements: list[Measurement] = []
 
     try:
-        await home.update_price_info()
+        await home.update_info_and_price_info()
         price_total = home.price_total or {}
         for ts_str, total in price_total.items():
             if total is None:

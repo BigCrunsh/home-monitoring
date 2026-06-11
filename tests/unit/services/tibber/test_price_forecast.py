@@ -12,7 +12,7 @@ from home_monitoring.services.tibber.collection import (
 
 def make_home(price_total: object) -> MagicMock:
     home = MagicMock()
-    home.update_price_info = AsyncMock()
+    home.update_info_and_price_info = AsyncMock()
     home.price_total = price_total
     return home
 
@@ -62,6 +62,6 @@ async def test_forecast_empty_when_no_data() -> None:
 async def test_forecast_survives_api_failure() -> None:
     """An API failure is logged and yields an empty list (unhappy path)."""
     home = make_home({})
-    home.update_price_info = AsyncMock(side_effect=RuntimeError("api down"))
+    home.update_info_and_price_info = AsyncMock(side_effect=RuntimeError("api down"))
 
     assert await collect_price_forecast_data(home) == []
