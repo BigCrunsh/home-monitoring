@@ -441,12 +441,111 @@ createPriceStates();
 createConsumptionStates();
 createCostStates();
 
+
+// ============================================================================
+// PRICE FORECAST CHART (SVG, rendered by a vis HTML widget)
+// ============================================================================
+
+createState(`${stateBasePath}.price_forecast_chart`, '', {
+    desc: 'Preis-Forecast als SVG (heute + morgen, 15-min-Aufloesung)',
+    type: 'string',
+    role: 'html'
+});
+
+function berlinParts(ts) {
+    // the Pi runs Europe/London; the household clock is Europe/Berlin
+    var s = new Date(ts).toLocaleString('de-DE', {
+        timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit',
+        weekday: 'short', hour12: false
+    });
+    // e.g. "Do., 14:00"
+    var m = s.match(/(\w+)\.?,?\s+(\d+):(\d+)/);
+    return m ? { day: m[1], hour: parseInt(m[2], 10), minute: parseInt(m[3], 10) } : null;
+}
+
+function renderPriceForecastChart(rows) {
+    var W = 580, H = 150, PAD_T = 16, PAD_B = 16;
+    var svgOpen = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '">';
+    if (!rows.length) {
+        return svgOpen + '<text x="290" y="80" fill="#999" font-size="14" '
+            + 'text-anchor="middle">kein Preis-Forecast verf\u00fcgbar</text></svg>';
+    }
+
+    var totals = rows.map(function (r) { return r.total; });
+    var maxV = Math.max.apply(null, totals);
+    var p20s = getState(stateBasePath + '.energy_price_euro_p20');
+    var p80s = getState(stateBasePath + '.energy_price_euro_p80');
+    var minV = Math.min.apply(null, totals);
+    var p20 = (p20s && typeof p20s.val === 'number') ? p20s.val : minV + (maxV - minV) / 3;
+    var p80 = (p80s && typeof p80s.val === 'number') ? p80s.val : minV + 2 * (maxV - minV) / 3;
+
+    var now = Date.now();
+    var plotH = H - PAD_T - PAD_B;
+    var bw = W / rows.length;
+    var parts = [svgOpen];
+    var labelEvery = rows.length > 100 ? 6 : 3;  // hour labels every 6h / 3h
+
+    rows.forEach(function (r, i) {
+        var v = r.total;
+        var h = maxV > 0 ? (v / maxV) * plotH : 0;
+        var color = v <= p20 ? '#4ECCA3' : (v >= p80 ? '#FF6B6B' : '#D9C95E');
+        var isNow = r.ts <= now && now < r.ts + 15 * 60000;
+        parts.push('<rect x="' + (i * bw).toFixed(2)
+            + '" y="' + (PAD_T + plotH - h).toFixed(2)
+            + '" width="' + Math.max(bw - 0.4, 0.5).toFixed(2)
+            + '" height="' + h.toFixed(2)
+            + '" fill="' + color + '"'
+            + (isNow ? ' stroke="#ffffff" stroke-width="1.2"' : '') + '/>');
+
+        var bp = berlinParts(r.ts);
+        if (bp && bp.minute === 0) {
+            if (bp.hour === 0 && i > 0) {
+                // midnight: day separator + weekday label
+                parts.push('<line x1="' + (i * bw).toFixed(1) + '" y1="0" x2="'
+                    + (i * bw).toFixed(1) + '" y2="' + H + '" stroke="#888" stroke-width="0.7"/>');
+                parts.push('<text x="' + (i * bw + 4).toFixed(1) + '" y="12" fill="#bbb" font-size="10">' + bp.day + '</text>');
+            } else if (bp.hour % labelEvery === 0 && bp.hour !== 0) {
+                parts.push('<text x="' + (i * bw).toFixed(1) + '" y="' + (H - 4)
+                    + '" fill="#888" font-size="9" text-anchor="middle">' + bp.hour + '</text>');
+            }
+        }
+        if (isNow) {
+            var lx = Math.min(Math.max(i * bw + bw / 2, 28), W - 28);
+            parts.push('<text x="' + lx.toFixed(1) + '" y="12" fill="#ffffff" font-size="11" '
+                + 'font-weight="bold" text-anchor="middle">'
+                + v.toFixed(3).replace('.', ',') + ' \u20ac</text>');
+        }
+    });
+
+    parts.push('</svg>');
+    return parts.join('');
+}
+
+function buildPriceForecastChart() {
+    sendTo(influxAdapter, 'query',
+        'SELECT total FROM home_monitoring.autogen.electricity_price_forecast_euro'
+        + ' WHERE time > now() - 15m ORDER BY time ASC LIMIT 200',
+        function (result) {
+            if (result.error) {
+                console.error('[Tibber Chart] ' + result.error);
+                return;
+            }
+            var rows = (result.result && result.result[0]) || [];
+            setState(`${stateBasePath}.price_forecast_chart`, renderPriceForecastChart(rows));
+        }
+    );
+}
+
 // Wait for states to be created before running first query (createState is async)
 setTimeout(function() {
     queryInfluxDBTibber();
+    buildPriceForecastChart();
 }, 2000);
 
 // Schedule to run every 5 minutes, 1 minute after collection script (*/5)
-schedule("1,6,11,16,21,26,31,36,41,46,51,56 * * * *", queryInfluxDBTibber);
+schedule("1,6,11,16,21,26,31,36,41,46,51,56 * * * *", function () {
+    queryInfluxDBTibber();
+    buildPriceForecastChart();
+});
 
 console.log('[Tibber Integration] Script initialized and scheduled');
