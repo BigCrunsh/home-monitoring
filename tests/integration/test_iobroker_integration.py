@@ -15,7 +15,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(scope="function")
-def influxdb_repo():
+async def influxdb_repo():
     """Create InfluxDB repository for testing.
 
     Note: These tests require a running InfluxDB instance.

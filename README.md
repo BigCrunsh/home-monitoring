@@ -2,6 +2,8 @@
 
 # Home Monitoring
 
+[![CI](https://github.com/BigCrunsh/home-monitoring/actions/workflows/ci.yml/badge.svg)](https://github.com/BigCrunsh/home-monitoring/actions/workflows/ci.yml)
+
 A centralized monitoring system for smart home devices and services. Python collectors
 gather metrics from vendor APIs and store them in InfluxDB; an ioBroker vis-2 dashboard
 (the screenshot above) visualizes them on a wall tablet, fed by version-controlled
