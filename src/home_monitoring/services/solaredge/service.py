@@ -3,12 +3,12 @@
 from datetime import UTC, datetime
 from typing import Any
 
-import httpx
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.solaredge import SolarEdgeMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.services.base_service import BaseService
+from home_monitoring.utils.http import make_async_client, request_with_retries
 
 
 class SolarEdgeService(BaseService):
@@ -75,8 +75,8 @@ class SolarEdgeService(BaseService):
             params["meters"] = ",".join(meters)
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, params=params)
+            async with make_async_client() as client:
+                response = await request_with_retries(client, "GET", url, params=params)
                 response.raise_for_status()
                 data: dict[str, Any] = response.json()
                 if "energyDetails" not in data:
@@ -184,8 +184,8 @@ class SolarEdgeService(BaseService):
             params["meters"] = ",".join(meters)
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, params=params)
+            async with make_async_client() as client:
+                response = await request_with_retries(client, "GET", url, params=params)
                 response.raise_for_status()
                 data: dict[str, Any] = response.json()
                 if "powerDetails" not in data:

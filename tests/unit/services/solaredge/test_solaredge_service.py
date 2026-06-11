@@ -38,6 +38,7 @@ def mock_client() -> MagicMock:
 
     # Set up the client methods
     client.get = AsyncMock(return_value=mock_response)
+    client.request = client.get  # request_with_retries calls client.request
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
 
@@ -57,7 +58,7 @@ def service(
         lambda *args, **kwargs: mock_db,
     )
     monkeypatch.setattr(
-        "home_monitoring.services.solaredge.service.httpx.AsyncClient",
+        "home_monitoring.services.solaredge.service.make_async_client",
         lambda *args, **kwargs: mock_client,
     )
     return SolarEdgeService(settings=settings)

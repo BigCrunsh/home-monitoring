@@ -34,6 +34,7 @@ def mock_client() -> MagicMock:
     mock_response.json = MagicMock()
 
     client.get = AsyncMock(return_value=mock_response)
+    client.request = client.get  # request_with_retries calls client.request
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
 
@@ -53,7 +54,7 @@ def service(
         lambda *args, **kwargs: mock_db,
     )
     monkeypatch.setattr(
-        "home_monitoring.services.sam_digital.service.httpx.AsyncClient",
+        "home_monitoring.services.sam_digital.service.make_async_client",
         lambda *args, **kwargs: mock_client,
     )
     return SamDigitalService(settings=settings)

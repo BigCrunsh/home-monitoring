@@ -33,6 +33,7 @@ async def test_get_prices_single_station_success() -> None:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client.__aenter__.return_value = mock_client
+        mock_client.request = mock_client.get  # retries call client.request
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 
@@ -63,6 +64,7 @@ async def test_get_prices_all_batches_fail() -> None:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(return_value=mock_response)
         mock_client.__aenter__.return_value = mock_client
+        mock_client.request = mock_client.get  # retries call client.request
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 
@@ -84,6 +86,7 @@ async def test_get_prices_network_error() -> None:
         mock_client = AsyncMock()
         mock_client.get.side_effect = httpx.ConnectError("Connection failed")
         mock_client.__aenter__.return_value = mock_client
+        mock_client.request = mock_client.get  # retries call client.request
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 
@@ -124,6 +127,7 @@ async def test_get_prices_batching_over_10_stations() -> None:
         mock_client = AsyncMock()
         mock_client.get.side_effect = mock_get
         mock_client.__aenter__.return_value = mock_client
+        mock_client.request = mock_client.get  # retries call client.request
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 
@@ -168,6 +172,7 @@ async def test_get_prices_partial_batch_failure() -> None:
         mock_client = AsyncMock()
         mock_client.get.side_effect = mock_get
         mock_client.__aenter__.return_value = mock_client
+        mock_client.request = mock_client.get  # retries call client.request
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 
@@ -196,6 +201,7 @@ async def test_get_prices_http_error() -> None:
         )
         mock_client.get.return_value = mock_response
         mock_client.__aenter__.return_value = mock_client
+        mock_client.request = mock_client.get  # retries call client.request
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 

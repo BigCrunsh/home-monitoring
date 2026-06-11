@@ -6,8 +6,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-import httpx
 from home_monitoring.core.exceptions import APIError
+from home_monitoring.utils.http import make_async_client, request_with_retries
 from home_monitoring.utils.logging import get_logger
 from structlog.stdlib import BoundLogger
 
@@ -56,14 +56,14 @@ class TankerkoenigClient:
         prices: dict[str, Any] = {}
         failed_batches = 0
 
-        async with httpx.AsyncClient() as client:
+        async with make_async_client() as client:
             for batch in batches:
                 url = (
                     "https://creativecommons.tankerkoenig.de/json/prices.php"
                     f"?ids={','.join(batch)}&apikey={self._api_key}"
                 )
                 try:
-                    response = await client.get(url)
+                    response = await request_with_retries(client, "GET", url)
                     response.raise_for_status()
                     data = response.json()
                     if not data.get("ok", False):
@@ -153,8 +153,8 @@ class TankerkoenigClient:
         )
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url)
+            async with make_async_client() as client:
+                response = await request_with_retries(client, "GET", url)
                 response.raise_for_status()
                 data: dict[str, Any] = response.json()
 

@@ -4,12 +4,12 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-import httpx
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
 from home_monitoring.core.mappers.sam_digital import SamDigitalMapper
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.services.base_service import BaseService
+from home_monitoring.utils.http import make_async_client, request_with_retries
 
 
 class SamDigitalService(BaseService):
@@ -58,8 +58,10 @@ class SamDigitalService(BaseService):
         }
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, headers=headers)
+            async with make_async_client() as client:
+                response = await request_with_retries(
+                    client, "GET", url, headers=headers
+                )
                 response.raise_for_status()
                 data = response.json()
         except Exception as exc:  # pragma: no cover - network issues
