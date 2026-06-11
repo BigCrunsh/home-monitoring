@@ -1,94 +1,86 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $(basename $0) [-h] [-u user] [-i RASPBERRY_PI]"
-  echo "Backups a named Raspberry Pi at a given IP address."
-  echo "Three rotating backups are kept. If rsync fails then the preceding backups are retained."
-  echo "The script expects authorized keys: https://wiki.qnap.com/wiki/SSH:_How_To_Set_Up_Authorized_Keys"
+  echo "Usage: $(basename "$0") [-h] [-u user] [-i RASPBERRY_PI]"
+  echo "Backs up a named Raspberry Pi to the Synology via rsync."
+  echo "Uses --link-dest hardlink incrementals: each daily snapshot is a full"
+  echo "browsable tree, but unchanged files cost no extra space. Keeps 14 days."
+  echo "On success it touches a marker on the Pi so the freshness healthcheck can"
+  echo "alert if backups stop. If rsync fails, existing snapshots are retained."
+  echo "Expects authorized keys NAS->Pi: https://wiki.qnap.com/wiki/SSH:..."
   echo
-  echo '   -u USER          User name on raspberrypi'
-  echo '   -i RASPBERRY_PI  raspberrypi IP'
-  echo
-  echo 'This script is based on https://www.cososo.co.uk/2015/09/backup-and-restore-raspberry-pi-to-synology-diskstation/'
+  echo '   -u USER          User name on raspberrypi (default: pi)'
+  echo '   -i RASPBERRY_PI  raspberrypi IP/host'
 }
 
 function log {
-    echo "[$(basename $0): $(date --rfc-3339=seconds)]: $*" >> $LOGFILE 2>&1
+    echo "[$(basename "$0"): $(date --rfc-3339=seconds)]: $*" >> "$LOGFILE" 2>&1
 }
 
 # global settings
 USER=pi
 SERVER=raspberrypi
 NOW=$(date +"%Y-%m-%d")
+KEEP=14
 BACKUP_DIR="/volume1/rpi_backup"
 SERVERDIR="$BACKUP_DIR/$SERVER"
 LOGFILE="$BACKUP_DIR/logs/$SERVER-$NOW.log"
-BASENAME="$SERVERDIR/$SERVER"
+LATEST="$SERVERDIR/latest"
+DEST="$SERVERDIR/$NOW"
 
-while getopts 'hu:i:' opt
-do
+while getopts 'hu:i:' opt; do
   case "${opt}" in
     h) usage && exit 0;;
-    u) USER="${OPTARG}"
-       ;;
-    i) RASPBERRY_PI="${OPTARG}"
-       ;;
+    u) USER="${OPTARG}";;
+    i) RASPBERRY_PI="${OPTARG}";;
   esac
 done
 
-# check for mandatory arguments
-if [ -z "$RASPBERRY_PI" ] ; then
+if [ -z "${RASPBERRY_PI:-}" ]; then
     log "Missing RASPBERRY_PI"
     exit 1
 fi
 
-# Create top level backup directory if it does not exist
-if ! [ -d $SERVERDIR ] ; then
-    log "Create backup directory $SERVERDIR"
-    mkdir $SERVERDIR ;
-fi
+mkdir -p "$SERVERDIR" "$BACKUP_DIR/logs"
 
+# Clean up a previous failed/partial run
+rm -rf "$DEST.partial"
 
-# Clean up failed backups (backups are stored to $BASENAME.0 and moved if successful)
-if [ -d $BASENAME.0 ] ; then
-    log "Remove failed backup"
-    rm -rf $BASENAME.0 ;
-fi;
-
-log "Run backup"
+log "Run backup -> $DEST (link-dest: ${LATEST})"
+# --link-dest hardlinks unchanged files against the previous snapshot.
 rsync \
-    --recursive \
-    --links \
-    --times \
+    --archive \
     --compress \
-    --update \
-    --rsync-path='/usr/bin/sudo /usr/bin/rsync' \
-    --exclude-from=$BACKUP_DIR/scripts/rsync-exclude.txt \
     --delete \
-    --rsh "ssh -p 22" $USER@$RASPBERRY_PI:/ \
-    $BASENAME.0 >> $LOGFILE 2>&1
+    --link-dest="$LATEST" \
+    --exclude-from="$BACKUP_DIR/scripts/rsync-exclude.txt" \
+    --rsync-path='/usr/bin/sudo /usr/bin/rsync' \
+    --rsh "ssh -p 22" "$USER@$RASPBERRY_PI:/" \
+    "$DEST.partial" >> "$LOGFILE" 2>&1
 
 error_code=$?
-if [ "$error_code" -ne "0" ] ; then
-    log "$error_code: rsync failed"
+if [ "$error_code" -ne 0 ]; then
+    log "$error_code: rsync failed; keeping existing snapshots"
+    rm -rf "$DEST.partial"
     exit 1
 fi
 
-log "Rotate the existing backups"
-if [ -d $BASENAME.3 ] ; then
-    log "Remove oldest backup $BASENAME.3"
-    rm -rf $BASENAME.3 ;
-fi;
-if [ -d $BASENAME.2 ] ; then
-    log "mv $BASENAME.2 $BASENAME.3"
-    mv $BASENAME.2 $BASENAME.3 ;
-fi;
-if [ -d $BASENAME.1 ] ; then
-    log "mv $BASENAME.1 $BASENAME.2"
-    mv $BASENAME.1 $BASENAME.2 ;
-fi;
-if [ -d $BASENAME.0 ] ; then
-    log "mv $BASENAME.0 $BASENAME.1"
-    mv $BASENAME.0 $BASENAME.1 ;
-fi;
+# Promote the partial snapshot atomically and repoint 'latest'
+rm -rf "$DEST"
+mv "$DEST.partial" "$DEST"
+ln -sfn "$DEST" "$LATEST"
+chmod 0750 "$DEST"
+
+# Prune to the newest $KEEP dated snapshots
+log "Prune to newest $KEEP snapshots"
+# shellcheck disable=SC2012
+ls -1d "$SERVERDIR"/20*-*-* 2>/dev/null | sort | head -n "-$KEEP" | while read -r old; do
+    log "Remove old snapshot $old"
+    rm -rf "$old"
+done
+
+# Touch a success marker on the Pi for the freshness healthcheck
+ssh -p 22 "$USER@$RASPBERRY_PI" 'touch /home/pi/.last_nas_backup_success' \
+    >> "$LOGFILE" 2>&1 || log "warning: could not touch success marker on Pi"
+
 log "Done"
