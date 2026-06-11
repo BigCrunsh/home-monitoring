@@ -1,10 +1,11 @@
 """Logging configuration for the application."""
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from home_monitoring.config import get_settings
+from structlog.stdlib import BoundLogger
 from structlog.types import Processor
 
 
@@ -38,6 +39,6 @@ def configure_logging(verbose: bool = False) -> None:
     )
 
 
-def get_logger(*args: Any) -> structlog.BoundLogger:
+def get_logger(*args: Any) -> BoundLogger:
     """Get a structured logger instance."""
-    return structlog.get_logger(*args)
+    return cast(BoundLogger, structlog.get_logger(*args))
