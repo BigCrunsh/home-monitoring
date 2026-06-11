@@ -464,7 +464,7 @@ function berlinParts(ts) {
 }
 
 function renderPriceForecastChart(rows) {
-    var W = 580, H = 150, PAD_T = 16, PAD_B = 16;
+    var W = 580, H = 150, PAD_T = 18, PAD_B = 16;
     var svgOpen = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '">';
     if (!rows.length) {
         return svgOpen + '<text x="290" y="80" fill="#999" font-size="14" '
@@ -473,49 +473,118 @@ function renderPriceForecastChart(rows) {
 
     var totals = rows.map(function (r) { return r.total; });
     var maxV = Math.max.apply(null, totals);
+    var minV = Math.min.apply(null, totals);
     var p20s = getState(stateBasePath + '.energy_price_euro_p20');
     var p80s = getState(stateBasePath + '.energy_price_euro_p80');
-    var minV = Math.min.apply(null, totals);
     var p20 = (p20s && typeof p20s.val === 'number') ? p20s.val : minV + (maxV - minV) / 3;
     var p80 = (p80s && typeof p80s.val === 'number') ? p80s.val : minV + 2 * (maxV - minV) / 3;
 
     var now = Date.now();
     var plotH = H - PAD_T - PAD_B;
     var bw = W / rows.length;
+    var slotMs = 15 * 60000;
     var parts = [svgOpen];
-    var labelEvery = rows.length > 100 ? 6 : 3;  // hour labels every 6h / 3h
+    var labelEvery = rows.length > 100 ? 6 : 3;
+
+    function euro(v) { return v.toFixed(2).replace('.', ','); }
+    function yFor(v) { return PAD_T + plotH - (maxV > 0 ? (v / maxV) * plotH : 0); }
+
+    // R3: dashed percentile threshold lines (the color semantics, made visible)
+    [p20, p80].forEach(function (t) {
+        if (t > 0 && t < maxV) {
+            parts.push('<line x1="0" y1="' + yFor(t).toFixed(1) + '" x2="' + W
+                + '" y2="' + yFor(t).toFixed(1)
+                + '" stroke="#888" stroke-width="0.6" stroke-dasharray="4 3" opacity="0.7"/>');
+        }
+    });
+
+    var minIdx = totals.indexOf(minV);
+    var maxIdx = totals.indexOf(maxV);
+    var nowX = null;
+    var nowVal = null;
 
     rows.forEach(function (r, i) {
         var v = r.total;
         var h = maxV > 0 ? (v / maxV) * plotH : 0;
         var color = v <= p20 ? '#4ECCA3' : (v >= p80 ? '#FF6B6B' : '#D9C95E');
-        var isNow = r.ts <= now && now < r.ts + 15 * 60000;
+        var bp = berlinParts(r.ts);
+        // R6: bars touch within the hour; small gap before each full hour
+        var gap = (bp && bp.minute === 45) ? 1.4 : 0.15;
         parts.push('<rect x="' + (i * bw).toFixed(2)
             + '" y="' + (PAD_T + plotH - h).toFixed(2)
-            + '" width="' + Math.max(bw - 0.4, 0.5).toFixed(2)
+            + '" width="' + Math.max(bw - gap, 0.5).toFixed(2)
             + '" height="' + h.toFixed(2)
-            + '" fill="' + color + '"'
-            + (isNow ? ' stroke="#ffffff" stroke-width="1.2"' : '') + '/>');
+            + '" fill="' + color + '"/>');
 
-        var bp = berlinParts(r.ts);
+        if (r.ts <= now && now < r.ts + slotMs) {
+            nowX = i * bw + bw * ((now - r.ts) / slotMs);
+            nowVal = v;
+        }
+
         if (bp && bp.minute === 0) {
+            var x = i * bw;
             if (bp.hour === 0 && i > 0) {
-                // midnight: day separator + weekday label
-                parts.push('<line x1="' + (i * bw).toFixed(1) + '" y1="0" x2="'
-                    + (i * bw).toFixed(1) + '" y2="' + H + '" stroke="#888" stroke-width="0.7"/>');
-                parts.push('<text x="' + (i * bw + 4).toFixed(1) + '" y="12" fill="#bbb" font-size="10">' + bp.day + '</text>');
-            } else if (bp.hour % labelEvery === 0 && bp.hour !== 0) {
-                parts.push('<text x="' + (i * bw).toFixed(1) + '" y="' + (H - 4)
+                parts.push('<line x1="' + x.toFixed(1) + '" y1="0" x2="' + x.toFixed(1)
+                    + '" y2="' + H + '" stroke="#888" stroke-width="0.7"/>');
+                parts.push('<text x="' + (x + 4).toFixed(1)
+                    + '" y="12" fill="#bbb" font-size="10">' + bp.day + '</text>');
+            } else if (bp.hour % labelEvery === 0 && bp.hour !== 0
+                       && x > 12 && x < W - 12) {  // R5: no clipped edge labels
+                parts.push('<text x="' + x.toFixed(1) + '" y="' + (H - 4)
                     + '" fill="#888" font-size="9" text-anchor="middle">' + bp.hour + '</text>');
             }
         }
-        if (isNow) {
-            var lx = Math.min(Math.max(i * bw + bw / 2, 28), W - 28);
-            parts.push('<text x="' + lx.toFixed(1) + '" y="12" fill="#ffffff" font-size="11" '
-                + 'font-weight="bold" text-anchor="middle">'
-                + v.toFixed(3).replace('.', ',') + ' \u20ac</text>');
-        }
     });
+
+    // R2: min/max value labels at their bars (skipped near the now-label)
+    [[minIdx, minV], [maxIdx, maxV]].forEach(function (pair) {
+        var x = pair[0] * bw + bw / 2;
+        if (nowX !== null && Math.abs(x - nowX) < 45) { return; }
+        parts.push('<text x="' + Math.min(Math.max(x, 16), W - 16).toFixed(1)
+            + '" y="' + Math.max(yFor(pair[1]) - 4, 11).toFixed(1)
+            + '" fill="#ddd" stroke="#222" stroke-width="2.5" paint-order="stroke"'
+            + ' font-size="9" text-anchor="middle">' + euro(pair[1]) + '</text>');
+    });
+
+    // R4: cheapest contiguous 2h window in the future
+    var WIN = 8;  // 8 x 15min
+    var bestStart = -1, bestSum = Infinity;
+    for (var s = 0; s + WIN <= rows.length; s++) {
+        if (rows[s].ts + slotMs <= now) { continue; }
+        var sum = 0;
+        for (var k = s; k < s + WIN; k++) { sum += rows[k].total; }
+        if (sum < bestSum) { bestSum = sum; bestStart = s; }
+    }
+    if (bestStart >= 0) {
+        var bx = bestStart * bw, bwd = WIN * bw;
+        var b1 = berlinParts(rows[bestStart].ts);
+        var b2 = berlinParts(rows[bestStart + WIN - 1].ts + slotMs);
+        parts.push('<rect x="' + bx.toFixed(1) + '" y="' + (H - PAD_B + 1)
+            + '" width="' + bwd.toFixed(1) + '" height="2.5" fill="#4ECCA3" opacity="0.9"/>');
+        if (b1 && b2) {
+            var fmt = function (p) { return p.hour + ':' + (p.minute < 10 ? '0' : '') + p.minute; };
+            var lx = Math.min(Math.max(bx + bwd / 2, 50), W - 50);
+            var windowTopY = yFor(Math.max.apply(null,
+                totals.slice(bestStart, bestStart + WIN)));
+            parts.push('<text x="' + lx.toFixed(1) + '" y="'
+                + Math.max(windowTopY - 5, 11).toFixed(1)
+                + '" fill="#4ECCA3" stroke="#222" stroke-width="2.5" paint-order="stroke"'
+                + ' font-size="10" text-anchor="middle">g\u00fcnstig '
+                + fmt(b1) + '\u2013' + fmt(b2) + '</text>');
+        }
+    }
+
+    // R1: full-height now-line with the current price pinned to it
+    if (nowX !== null) {
+        parts.push('<line x1="' + nowX.toFixed(1) + '" y1="2" x2="' + nowX.toFixed(1)
+            + '" y2="' + (H - PAD_B) + '" stroke="#ffffff" stroke-width="1.8"/>');
+        var tx = nowX + 5, anchor = 'start';
+        if (nowX > W - 70) { tx = nowX - 5; anchor = 'end'; }
+        parts.push('<text x="' + tx.toFixed(1) + '" y="12" fill="#ffffff" '
+            + 'stroke="#222" stroke-width="2.5" paint-order="stroke" font-size="11" '
+            + 'font-weight="bold" text-anchor="' + anchor + '">'
+            + (nowVal !== null ? euro(nowVal) + ' \u20ac' : 'jetzt') + '</text>');
+    }
 
     parts.push('</svg>');
     return parts.join('');
