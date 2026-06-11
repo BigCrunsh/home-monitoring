@@ -28,5 +28,17 @@
     "weather_windangle_angles",
     "weather_guststrength_kph",
     "weather_gustangle_angles"
+  ],
+  "backups": [
+    {
+      "name": "iobroker",
+      "path": "/opt/iobroker/backups/*.tar.gz",
+      "sla_minutes": 1560
+    },
+    {
+      "name": "nas-pull",
+      "path": "/home/pi/.last_nas_backup_success",
+      "sla_minutes": 1560
+    }
   ]
 }

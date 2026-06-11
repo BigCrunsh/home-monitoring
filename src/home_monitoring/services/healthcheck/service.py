@@ -34,6 +34,8 @@ class FreshnessConfig:
     default_sla_minutes: int = 120
     slas: dict[str, int] = field(default_factory=dict)
     ignore: list[str] = field(default_factory=list)
+    # each: {"name": str, "path": str (file or glob), "sla_minutes": int}
+    backups: list[dict[str, object]] = field(default_factory=list)
 
     @classmethod
     def load(cls, path: Path) -> "FreshnessConfig":
@@ -50,6 +52,7 @@ class FreshnessConfig:
             default_sla_minutes=data.get("default_sla_minutes", 120),
             slas=data.get("slas", {}),
             ignore=data.get("ignore", []),
+            backups=data.get("backups", []),
         )
 
     def sla_for(self, measurement: str) -> timedelta:
@@ -152,10 +155,38 @@ class HealthcheckService(BaseService):
             self._notifier.send("✅ Healthcheck: InfluxDB wieder erreichbar.")
             sent += 1
 
+        # backup freshness is filesystem-only; check it regardless of the DB
+        sent += self._check_backups(now)
+
         self._store.save()
         self._logger.info(
             "healthcheck_completed", measurements=len(measurements), sent=sent
         )
+        return sent
+
+    def _check_backups(self, now: datetime) -> int:
+        """Alert when a configured backup is missing or past its SLA."""
+        sent = 0
+        for backup in self._config.backups:
+            name = str(backup["name"])
+            key = f"backup:{name}"
+            sla = timedelta(minutes=int(str(backup["sla_minutes"])))
+            newest = _newest_mtime(str(backup["path"]))
+            stale = newest is None or now - newest > sla
+
+            if stale:
+                age = "nie" if newest is None else _format_age(now - newest)
+                if self._send_dedup(
+                    key,
+                    now,
+                    f"⚠️ Backup '{name}': letzter Stand vor {age} "
+                    f"(SLA {int(sla.total_seconds() // 60)} min).",
+                ):
+                    sent += 1
+            elif self._store.is_stale(key):
+                self._store.mark_recovered(key)
+                self._notifier.send(f"✅ Backup '{name}': wieder aktuell.")
+                sent += 1
         return sent
 
     async def _list_measurements(self) -> list[str]:
@@ -213,6 +244,27 @@ class HealthcheckService(BaseService):
 # unit boundaries for human-readable ages
 MINUTES_AS_MINUTES = 120
 MINUTES_AS_HOURS = 48 * 60
+
+
+def _newest_mtime(path_or_glob: str) -> datetime | None:
+    """Return the newest mtime among files matching a path or glob, or None.
+
+    A literal path matches itself; a glob (``*``) matches its newest file. None
+    is returned when nothing matches — treated as a stale/missing backup.
+    """
+    from glob import glob
+    from pathlib import Path
+
+    matches = glob(path_or_glob) if "*" in path_or_glob else [path_or_glob]
+    mtimes = []
+    for m in matches:
+        try:
+            mtimes.append(Path(m).stat().st_mtime)
+        except OSError:
+            continue
+    if not mtimes:
+        return None
+    return datetime.fromtimestamp(max(mtimes), tz=UTC)
 
 
 def _format_age(age: timedelta) -> str:

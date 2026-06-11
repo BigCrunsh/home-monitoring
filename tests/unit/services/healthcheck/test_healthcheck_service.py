@@ -266,3 +266,89 @@ def test_config_load_and_defaults(tmp_path) -> None:
     assert config.sla_for("a") == timedelta(minutes=10)
     assert config.sla_for("unknown") == timedelta(minutes=45)
     assert "b" in config.ignore
+
+
+@pytest.mark.asyncio
+async def test_fresh_backup_no_alert(tmp_path, mock_settings) -> None:
+    """A backup file within its SLA does not alert (happy path)."""
+    bk = tmp_path / "iobroker_backup.tar.gz"
+    bk.write_text("x")
+    config = FreshnessConfig(
+        backups=[{"name": "iobroker", "path": str(bk), "sla_minutes": 1560}]
+    )
+    service, notifier, _ = make_service(tmp_path, mock_settings, {}, config=config)
+
+    sent = await service.run()
+
+    assert sent == 0
+    assert notifier.sent == []
+
+
+@pytest.mark.asyncio
+async def test_stale_backup_alerts(tmp_path, mock_settings) -> None:
+    """A backup older than its SLA alerts (unhappy path)."""
+    import os
+    import time
+
+    bk = tmp_path / "old_backup.tar.gz"
+    bk.write_text("x")
+    old = time.time() - 3 * 24 * 3600
+    os.utime(bk, (old, old))
+    config = FreshnessConfig(
+        backups=[{"name": "iobroker", "path": str(bk), "sla_minutes": 1560}]
+    )
+    service, notifier, store = make_service(tmp_path, mock_settings, {}, config=config)
+
+    sent = await service.run()
+
+    assert sent == 1
+    assert "iobroker" in notifier.sent[0]
+    assert store.is_stale("backup:iobroker")
+
+
+@pytest.mark.asyncio
+async def test_missing_backup_alerts(tmp_path, mock_settings) -> None:
+    """A configured backup whose file is absent alerts 'nie' (unhappy path)."""
+    config = FreshnessConfig(
+        backups=[
+            {
+                "name": "nas-pull",
+                "path": str(tmp_path / "does_not_exist"),
+                "sla_minutes": 1560,
+            }
+        ]
+    )
+    service, notifier, _ = make_service(tmp_path, mock_settings, {}, config=config)
+
+    sent = await service.run()
+
+    assert sent == 1
+    assert "nie" in notifier.sent[0]
+
+
+@pytest.mark.asyncio
+async def test_backup_glob_picks_newest(tmp_path, mock_settings) -> None:
+    """A glob path uses the newest matching file (unhappy-adjacent path)."""
+    import os
+    import time
+
+    old = tmp_path / "iobroker_2026_06_01.tar.gz"
+    new = tmp_path / "iobroker_2026_06_11.tar.gz"
+    old.write_text("x")
+    new.write_text("x")
+    stale = time.time() - 10 * 24 * 3600
+    os.utime(old, (stale, stale))  # old one is stale; newest is fresh
+    config = FreshnessConfig(
+        backups=[
+            {
+                "name": "iobroker",
+                "path": str(tmp_path / "iobroker_*.tar.gz"),
+                "sla_minutes": 1560,
+            }
+        ]
+    )
+    service, notifier, _ = make_service(tmp_path, mock_settings, {}, config=config)
+
+    sent = await service.run()
+
+    assert sent == 0  # newest file is fresh -> no alert despite the stale one
