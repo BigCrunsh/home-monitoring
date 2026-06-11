@@ -1,39 +1,45 @@
 # Tasks
 
-## 1. Backup-freshness monitoring (finding #5) — autonomous
+## 1. Backup-freshness monitoring (finding #5) — DONE
 
-- [ ] 1.1 Extend the healthcheck with a backup-age check: newest
-      `/opt/iobroker/backups/*.tar.gz` and a NAS-pull success marker
-      (`/home/pi/.last_nas_backup_success`), each with an SLA in conf
-- [ ] 1.2 Telegram alert on staleness + recovery notice (reuse the existing
-      notifier/dedup); tests 2:1 unhappy:happy
-- [ ] 1.3 Dashboard tile "Letztes Backup: vor N …" on the Energy/Advanced view
+- [x] 1.1 Healthcheck backup-age check: newest `/opt/iobroker/backups/*.tar.gz`
+      and the `/home/pi/.last_nas_backup_success` marker, SLAs in conf (26 h each)
+- [x] 1.2 Telegram alert + recovery notice (reuses notifier/dedup); 4 tests.
+      Deployed + verified live on the Pi (both backups evaluated fresh, sent=0)
+- [ ] 1.3 Dashboard tile "Letztes Backup" — DEFERRED (Telegram alerting already
+      delivers the visibility; tile is nice-to-have, needs a state-export path)
 
-## 2. Consistent DB dump + improved backup script (#2, #3, #7)
+## 2. Consistent DB dump + improved backup script (#2, #3, #7) — DONE
 
-- [ ] 2.1 Pi-side nightly `influxd backup` (portable) to a local dir before the NAS
-      pull (docker exec); script + cron, logged
-- [ ] 2.2 Rewrite `deps/general/bin/backup_pi.sh`: `--link-dest` hardlink
-      incrementals, ≥14 generations, success-marker touched back on the Pi,
-      tightened backup-dir permissions
-- [ ] 2.3 Deploy: Pi cron (influx dump) + copy backup_pi.sh to
-      `/volume1/rpi_backup/scripts/` on the NAS (user-approved writes)
+- [x] 2.1 `influx_backup.sh` (portable `influxd backup`, atomic swap under
+      /home/pi); Pi cron 03:30 (before the 04:00 pull); run live → 8.4 MB, 63 files
+- [x] 2.2 `backup_pi.sh` rewritten: `--link-dest` incrementals, 14 dated
+      snapshots + `latest` symlink, atomic `.partial`, success-marker touch-back,
+      `chmod 0750`
+- [x] 2.3 Deployed: Pi influx cron added; new backup_pi.sh on the NAS (old saved
+      as `.orig-20260611`). Validated by rsync dry-run from the NAS (exit 0:
+      connection + sudo rsync-path + exclude + link-dest) and marker-SSH ok. First
+      real run = tonight's 04:00 scheduled job, monitored; old `raspberrypi.{1,2,3}`
+      retained as rollback
 
-## 3. Recovery test (#1)
+## 3. Recovery test (#1) — DONE
 
-- [ ] 3.1 Partial restore drill now: load the influx dump into a throwaway
-      `influxdb:1.8` container and confirm it is queryable (proves consistency +
-      recoverability)
-- [ ] 3.2 Document the full restore procedure (fresh OS → restore ioBroker archive,
-      influx dump, collectors, crontab) — folds into the upgrade-pi-os runbook
+- [x] 3.1 Restore drill executed: portable dump restored into a throwaway
+      `influxdb:1.8` container → `electricity_prices_euro` returned 288 rows (24 h),
+      **matching the live DB** — consistency + recoverability proven
+- [x] 3.2 Restore procedure documented in the README backup section; feeds the
+      upgrade-pi-os runbook
 
 ## 4. User actions (DSM UI — cannot automate)
 
 - [ ] 4.1 Configure an offsite copy of `/volume1/rpi_backup` (#4): HyperBackup to
-      cloud, or CloudSync the folder — documented steps
-- [ ] 4.2 Patch + reboot the NAS (#6): DSM update; verify RAID healthy after
+      cloud, or CloudSync the folder. **User action.**
+- [ ] 4.2 NAS patching/reboot (#6): note — DS214play is **EOL** (stuck on DSM 6,
+      no DSM 7), so "patch" is limited to available DSM 6 updates + an occasional
+      reboot (441-day uptime). Longer term: replace the NAS. **User action.**
 
-## 5. Documentation
+## 5. Documentation — DONE
 
-- [ ] 5.1 README backup section: the two mechanisms, the freshness alerting, the
-      restore procedure, and the 3-2-1 status
+- [x] 5.1 README backup & recovery section: both mechanisms, the consistent dump,
+      freshness alerting, the verified restore procedure, and the known 3-2-1 / EOL
+      gaps

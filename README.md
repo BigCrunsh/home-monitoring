@@ -167,6 +167,37 @@ The Pi is a **LAN-only** host; no service is intended to face the internet.
   ioBroker admin/vis) to the internet. The former `monitoring.sawade.me` (Dynu)
   port-forward + dynamic-DNS updater have been retired in favour of WireGuard.
 
+### Backup & recovery
+
+Two independent, daily backups:
+
+1. **ioBroker `backitup`** — app-level archive of the ioBroker config/objects/
+   scripts/vis, 02:40 daily, 10 kept in `/opt/iobroker/backups/`.
+2. **Synology NAS pull** (`deps/general/bin/backup_pi.sh`, runs *on the NAS* via
+   DSM Task Scheduler, 04:00) — rsyncs the whole Pi filesystem (incl. `/home/pi`,
+   `/opt/iobroker`, and the InfluxDB data) to `/volume1/rpi_backup/raspberrypi/`
+   as `--link-dest` hardlink-incremental dated snapshots, 14 days retained.
+
+A consistent InfluxDB snapshot is produced on the Pi at 03:30
+(`deps/general/bin/influx_backup.sh`, portable `influxd backup` →
+`/home/pi/influx_backup`) so the 04:00 pull captures a clean dump rather than
+live data files. Deploy the NAS script by copying it to
+`/volume1/rpi_backup/scripts/backup_pi.sh`.
+
+**Monitoring:** the hourly healthcheck alerts via Telegram if either backup goes
+stale (newest `backitup` archive, or the `/home/pi/.last_nas_backup_success`
+marker the NAS pull touches) — SLAs in `conf/healthcheck.json`.
+
+**Restore (verified 2026-06-11):** InfluxDB — `influxd restore -portable -db
+home_monitoring -newdb <tmp> /backup` into a throwaway `influxdb:1.8` container,
+confirm row counts, then restore into production. ioBroker — restore the
+`backitup` archive via the adapter. Collectors — `git clone`, venv, `.env`,
+crontab. This procedure is the dry-run for `upgrade-pi-os`.
+
+**Known gaps (tracked):** no verified offsite copy (both copies are on-site — 3-2-1
+gap); the NAS (DS214play) is EOL and unpatched. See
+`openspec/changes/.../harden-backup-and-recovery`.
+
 ### Freshness monitoring
 
 An hourly healthcheck (`home_monitoring.scripts.healthcheck`, cron `30 * * * *`)
