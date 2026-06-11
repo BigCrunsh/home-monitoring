@@ -20719,6 +20719,34 @@
           "bindings": []
         },
         "widgetSet": "basic"
+      },
+      "w000900": {
+        "tpl": "tplHtml",
+        "data": {
+          "g_fixed": false,
+          "g_visibility": false,
+          "g_css_font_text": false,
+          "g_css_background": false,
+          "g_css_shadow_padding": false,
+          "g_css_border": false,
+          "g_gestures": false,
+          "g_signals": false,
+          "g_last_change": false,
+          "html": "<div style='padding:6px 10px;'><div style='color:#bbb;font-size:13px;margin-bottom:2px;'>Strompreis heute & morgen (15 min)</div>{javascript.0.tibber_states.price_forecast_chart}</div>",
+          "refreshInterval": "0"
+        },
+        "style": {
+          "left": 20,
+          "top": 795,
+          "background-color": "var(--color-panel)",
+          "width": "620px",
+          "height": "200px",
+          "z-index": "1",
+          "box-shadow": "2px 2px 2px var(--color-border)",
+          "border-radius": "12px",
+          "bindings": []
+        },
+        "widgetSet": "basic"
       }
     },
     "activeWidgets": []
