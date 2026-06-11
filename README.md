@@ -376,6 +376,10 @@ InfluxQL mode) or ioBroker, if you choose to use them.
 
 ## Contributing
 
+> **Note:** on 2026-06-11 the git history was rewritten (`git filter-repo`, removal of
+> a file with personal data) and the default branch renamed `master` → `main`. Clones
+> made before that date must be re-cloned; their commit hashes no longer match.
+
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
