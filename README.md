@@ -157,6 +157,21 @@ collectors every 5 minutes, DNS hourly; Gardena and Techem are disabled):
 
 Logs land in `/home/pi/logs/` and are rotated weekly (4 weeks kept).
 
+### Security posture
+
+The Pi is a **LAN-only** host; no service is intended to face the internet.
+
+- **InfluxDB (8086)** is bound to `127.0.0.1` — reachable only on the Pi (the
+  collectors use `127.0.0.1`, the ioBroker `influxdb.0` adapter uses `localhost`).
+- **ioBroker admin (8081)** requires a login. **vis (8082)** is served without a
+  login on the trusted LAN — acceptable only because nothing is port-forwarded.
+- **Disabled** as unused attack surface: the `terminal` ioBroker adapter (8090)
+  and `xrdp`/Remote Desktop (3389).
+- **Remote access policy: VPN only (e.g. WireGuard).** Never port-forward raw
+  services (InfluxDB, ioBroker admin/vis) to the internet. `monitoring.sawade.me`
+  (Dynu) must not have router port-forwards behind it — verify in the FritzBox
+  under Internet → Freigaben.
+
 ### Freshness monitoring
 
 An hourly healthcheck (`home_monitoring.scripts.healthcheck`, cron `30 * * * *`)
