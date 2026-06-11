@@ -489,12 +489,13 @@ function renderPriceForecastChart(rows) {
     function euro(v) { return v.toFixed(2).replace('.', ','); }
     function yFor(v) { return PAD_T + plotH - (maxV > 0 ? (v / maxV) * plotH : 0); }
 
-    // R3: dashed percentile threshold lines (the color semantics, made visible)
-    [p20, p80].forEach(function (t) {
+    // dashed percentile thresholds, colored like the band they bound
+    [[p20, '#4ECCA3'], [p80, '#FF6B6B']].forEach(function (pair) {
+        var t = pair[0];
         if (t > 0 && t < maxV) {
             parts.push('<line x1="0" y1="' + yFor(t).toFixed(1) + '" x2="' + W
-                + '" y2="' + yFor(t).toFixed(1)
-                + '" stroke="#888" stroke-width="0.6" stroke-dasharray="4 3" opacity="0.7"/>');
+                + '" y2="' + yFor(t).toFixed(1) + '" stroke="' + pair[1]
+                + '" stroke-width="0.8" stroke-dasharray="4 3" opacity="0.8"/>');
         }
     });
 
@@ -536,17 +537,7 @@ function renderPriceForecastChart(rows) {
         }
     });
 
-    // R2: min/max value labels at their bars (skipped near the now-label)
-    [[minIdx, minV], [maxIdx, maxV]].forEach(function (pair) {
-        var x = pair[0] * bw + bw / 2;
-        if (nowX !== null && Math.abs(x - nowX) < 45) { return; }
-        parts.push('<text x="' + Math.min(Math.max(x, 16), W - 16).toFixed(1)
-            + '" y="' + Math.max(yFor(pair[1]) - 4, 11).toFixed(1)
-            + '" fill="#ddd" stroke="#222" stroke-width="2.5" paint-order="stroke"'
-            + ' font-size="9" text-anchor="middle">' + euro(pair[1]) + '</text>');
-    });
-
-    // R4: cheapest contiguous 2h window in the future
+    // cheapest contiguous 2h window in the future
     var WIN = 8;  // 8 x 15min
     var bestStart = -1, bestSum = Infinity;
     for (var s = 0; s + WIN <= rows.length; s++) {
@@ -555,24 +546,43 @@ function renderPriceForecastChart(rows) {
         for (var k = s; k < s + WIN; k++) { sum += rows[k].total; }
         if (sum < bestSum) { bestSum = sum; bestStart = s; }
     }
+    var winX0 = -1, winX1 = -1;
     if (bestStart >= 0) {
-        var bx = bestStart * bw, bwd = WIN * bw;
+        winX0 = bestStart * bw;
+        winX1 = winX0 + WIN * bw;
         var b1 = berlinParts(rows[bestStart].ts);
         var b2 = berlinParts(rows[bestStart + WIN - 1].ts + slotMs);
-        parts.push('<rect x="' + bx.toFixed(1) + '" y="' + (H - PAD_B + 1)
-            + '" width="' + bwd.toFixed(1) + '" height="2.5" fill="#4ECCA3" opacity="0.9"/>');
+        parts.push('<rect x="' + winX0.toFixed(1) + '" y="' + (H - PAD_B + 1)
+            + '" width="' + (winX1 - winX0).toFixed(1)
+            + '" height="2.5" fill="#4ECCA3" opacity="0.9"/>');
         if (b1 && b2) {
             var fmt = function (p) { return p.hour + ':' + (p.minute < 10 ? '0' : '') + p.minute; };
-            var lx = Math.min(Math.max(bx + bwd / 2, 50), W - 50);
+            var avg = euro(bestSum / WIN);
+            var nowInWindow = now >= rows[bestStart].ts
+                && now < rows[bestStart + WIN - 1].ts + slotMs;
+            var label = nowInWindow
+                ? 'jetzt g\u00fcnstig (bis ' + fmt(b2) + ') \u00b7 \u00d8 ' + avg + ' \u20ac'
+                : 'g\u00fcnstig ' + fmt(b1) + '\u2013' + fmt(b2) + ' \u00b7 \u00d8 ' + avg + ' \u20ac';
+            var lx = Math.min(Math.max((winX0 + winX1) / 2, 75), W - 75);
             var windowTopY = yFor(Math.max.apply(null,
                 totals.slice(bestStart, bestStart + WIN)));
             parts.push('<text x="' + lx.toFixed(1) + '" y="'
                 + Math.max(windowTopY - 5, 11).toFixed(1)
                 + '" fill="#4ECCA3" stroke="#222" stroke-width="2.5" paint-order="stroke"'
-                + ' font-size="10" text-anchor="middle">g\u00fcnstig '
-                + fmt(b1) + '\u2013' + fmt(b2) + '</text>');
+                + ' font-size="10" text-anchor="middle">' + label + '</text>');
         }
     }
+
+    // min/max value labels (suppressed inside the labeled cheap window / near now)
+    [[minIdx, minV], [maxIdx, maxV]].forEach(function (pair) {
+        var x = pair[0] * bw + bw / 2;
+        if (nowX !== null && Math.abs(x - nowX) < 45) { return; }
+        if (winX0 >= 0 && x >= winX0 - 10 && x <= winX1 + 10) { return; }
+        parts.push('<text x="' + Math.min(Math.max(x, 16), W - 16).toFixed(1)
+            + '" y="' + Math.max(yFor(pair[1]) - 4, 11).toFixed(1)
+            + '" fill="#ddd" stroke="#222" stroke-width="2.5" paint-order="stroke"'
+            + ' font-size="9" text-anchor="middle">' + euro(pair[1]) + '</text>');
+    });
 
     // R1: full-height now-line with the current price pinned to it
     if (nowX !== null) {
