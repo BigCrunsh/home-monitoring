@@ -25,7 +25,6 @@ Active:
 - [Tibber](https://tibber.com/) - Dynamic electricity tariff: hourly prices, consumption, costs
 - SAM Digital - Heating system gateway (flow/return/storage temperatures, valve signals)
 - Shelly 3EM - Live grid power at the connection point (via MQTT into ioBroker; anchors the real-time energy states)
-- Dynu DNS - Dynamic DNS updates for remote access
 
 Currently disabled (cron entries commented out):
 
@@ -112,9 +111,6 @@ PYTHONPATH=src python -m home_monitoring.scripts.collect_tankerkoenig_data --cac
 PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data
 PYTHONPATH=src python -m home_monitoring.scripts.collect_sam_digital_data
 PYTHONPATH=src python -m home_monitoring.scripts.collect_techem_data --serial-port /dev/ttyUSB0
-
-# DNS Updates
-PYTHONPATH=src python -m home_monitoring.scripts.update_dns
 ```
 
 Note: The `-v` flag is not supported by all scripts.
@@ -142,7 +138,7 @@ PYTHONPATH=src python -m home_monitoring.scripts.collect_tibber_data --user-agen
 
 Collections run via cron through the wrapper script (make it executable once:
 `chmod +x run_home_monitoring.sh`). The crontab as deployed on the Pi (active
-collectors every 5 minutes, DNS hourly; Gardena and Techem are disabled):
+collectors every 5 minutes, healthcheck hourly; Gardena and Techem are disabled):
 
 ```
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_netatmo_data >> /home/pi/logs/netatmo.log 2>&1
@@ -150,7 +146,7 @@ collectors every 5 minutes, DNS hourly; Gardena and Techem are disabled):
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_tankerkoenig_data --cache-dir /home/pi/src/github.com/BigCrunsh/home-monitoring/cache >> /home/pi/logs/tankerkoenig.log 2>&1
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_tibber_data >> /home/pi/logs/tibber.log 2>&1
 */5 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.collect_sam_digital_data >> /home/pi/logs/sam_digital.log 2>&1
-0 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.update_dns >> /home/pi/logs/update_dns.log 2>&1
+30 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/run_home_monitoring.sh home_monitoring.scripts.healthcheck >> /home/pi/logs/healthcheck.log 2>&1
 #*/30 * * * * ... collect_gardena_data   (disabled — see ROADMAP open questions)
 #0 1 * * *   ... collect_techem_data     (disabled)
 ```
@@ -167,10 +163,9 @@ The Pi is a **LAN-only** host; no service is intended to face the internet.
   login on the trusted LAN — acceptable only because nothing is port-forwarded.
 - **Disabled** as unused attack surface: the `terminal` ioBroker adapter (8090)
   and `xrdp`/Remote Desktop (3389).
-- **Remote access policy: VPN only (e.g. WireGuard).** Never port-forward raw
-  services (InfluxDB, ioBroker admin/vis) to the internet. `monitoring.sawade.me`
-  (Dynu) must not have router port-forwards behind it — verify in the FritzBox
-  under Internet → Freigaben.
+- **Remote access is WireGuard-only.** Never port-forward raw services (InfluxDB,
+  ioBroker admin/vis) to the internet. The former `monitoring.sawade.me` (Dynu)
+  port-forward + dynamic-DNS updater have been retired in favour of WireGuard.
 
 ### Freshness monitoring
 

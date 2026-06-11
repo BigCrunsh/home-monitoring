@@ -12,7 +12,6 @@ SCRIPTS = [
     "collect_tankerkoenig_data",
     "collect_tibber_data",
     "collect_techem_data",
-    "update_dns",
 ]
 
 

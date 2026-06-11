@@ -49,11 +49,6 @@ class Settings(BaseSettings):
     # Sam Digital settings
     sam_digital_api_key: str | None = None
 
-    # Dynu DNS settings
-    dynu_host: str | None = None
-    dynu_username: str | None = None
-    dynu_password: str | None = None
-
     # Logging
     log_level: str = "INFO"
     json_logs: bool = True
