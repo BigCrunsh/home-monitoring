@@ -1,0 +1,21 @@
+[Unit]
+# Gardena collector — a long-running WebSocket daemon (NOT a cron one-shot like
+# the other collectors). Install: copy to /etc/systemd/system/, then
+#   sudo systemctl daemon-reload && sudo systemctl enable --now home-monitoring-gardena
+Description=Home Monitoring - Gardena irrigation collector (WebSocket daemon)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/src/github.com/BigCrunsh/home-monitoring
+Environment=PYTHONPATH=src
+ExecStart=/usr/local/bin/python3.12 -m home_monitoring.scripts.collect_gardena_data
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/home/pi/logs/gardena.log
+StandardError=append:/home/pi/logs/gardena.log
+
+[Install]
+WantedBy=multi-user.target
