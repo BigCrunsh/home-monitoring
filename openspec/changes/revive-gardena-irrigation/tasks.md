@@ -1,33 +1,42 @@
 # Tasks
 
-## 1. Get data flowing (the precondition)
+## 1. Get data flowing (the precondition) — DONE
 
-- [ ] 1.1 Verify Gardena auth works with the `.env` credentials (run the collector
-      interactively; confirm it connects and enumerates the real devices/zones).
-      Re-auth if the token/app credentials are stale — **may need the user**
-- [ ] 1.2 Choose the single path: Python WebSocket daemon → InfluxDB. **Disable**
-      the redundant ioBroker `smartgarden` adapter (avoid API rate-limit collision)
-- [ ] 1.3 systemd unit for `collect_gardena_data` (Restart=on-failure,
-      WantedBy=multi-user); deploy + enable on the Pi (user-approved)
-- [ ] 1.4 Confirm `garden_*` measurements populate: valve activity + soil moisture
-      + temperature + battery + RF link, for the expected zones
+- [x] 1.1 Gardena auth verified live with the `.env` creds (OAuth 200, location +
+      devices enumerated) — no re-auth needed. 4 devices: Bewässerung
+      (SMART_IRRIGATION_CONTROL, 6 valves), Gemüsebeet (SOIL_SENSOR), Hochbeet +
+      Dachterrasse (SENSOR)
+- [x] 1.2 Single path: Python daemon → InfluxDB; redundant ioBroker `smartgarden`
+      adapter **disabled**
+- [x] 1.3 systemd unit `home-monitoring-gardena.service` (Restart=on-failure)
+      installed + enabled on the Pi; active and running
+- [x] 1.4 `garden_*` populate live: 6 valve zones (Vorgarten, Garten, Hochbeet,
+      Randbeet, Traufkiesstreifen, Dachterrasse) + soil moisture, temperature,
+      battery, RF link, light. Required three code fixes: write initial state
+      (not only on WS change), run the blocking `start_ws` as a background task
+      (everything after it was dead code), and map per-valve activity from the
+      controller's `valves` dict (not a device-level state)
 
-## 2. Monitoring (season-aware)
+## 2. Monitoring (season-aware) — DONE
 
-- [ ] 2.1 Remove `garden_*` from the healthcheck ignore list; add SLAs. Make the
-      check season-aware (no off-season alerts) — config-driven
-- [ ] 2.2 Verify a real stall in-season would alert (fire drill)
+- [x] 2.1 `garden_*` removed from the healthcheck ignore list, given SLAs
+      (valves/humidity/temp/light 60 min, battery/rf 24 h). Season note: when the
+      system is winterized, move them back to ignore to avoid expected-absence
+      alerts
+- [x] 2.2 Verified live: healthcheck now covers 22 measurements incl. garden,
+      sent=0 (all fresh)
 
-## 3. Dashboard panel
+## 3. Dashboard panel — PARTIAL
 
-- [ ] 3.1 Confirm/deploy `gardena_valve.js` against live `garden_valves_activity`;
-      add soil-moisture + health states
-- [ ] 3.2 Build the 6-zone irrigation panel in vis (last-watered, soil moisture
-      color band, rain-skip line from Netatmo rain, health-when-bad), seasonal
-      off-state; deploy via the versioned vis tooling
-- [ ] 3.3 (optional) Produce a mockup first for sign-off before building
+- [x] 3.1 `gardena_valve.js` confirmed live: the 6 zones' `valve_last_activity_*`
+      states populate (each currently last = SCHEDULED_WATERING)
+- [ ] 3.2 Build the irrigation panel in vis: per-zone last-watered + soil moisture
+      color band + rain-skip line (Netatmo rain) + health-when-bad; seasonal
+      off-state. (Design-iterate + mockup, like the price chart; respects the
+      dashboard palette + leaves the nav untouched)
+- [ ] 3.3 (covered by 3.2)
 
-## 4. Documentation
+## 4. Documentation — TODO
 
-- [ ] 4.1 README: Gardena now runs as a systemd daemon (not cron); the panel; the
-      single-path decision and why the adapter is disabled
+- [ ] 4.1 README: Gardena runs as a systemd daemon (not cron); the panel; the
+      single-path decision (adapter disabled)
