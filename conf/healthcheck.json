@@ -15,15 +15,15 @@
     "weather_co2_ppm": 60,
     "weather_noise_db": 60,
     "weather_system_battery_percentage": 60,
-    "weather_rain_mm": 120
+    "weather_rain_mm": 120,
+    "garden_valves_activity": 60,
+    "garden_humidity_percentage": 60,
+    "garden_temperature_celsius": 60,
+    "garden_system_battery_percentage": 1440,
+    "garden_rf_link_level_percentage": 1440,
+    "garden_light_intensity_lux": 60
   },
   "ignore": [
-    "garden_temperature_celsius",
-    "garden_humidity_percentage",
-    "garden_light_intensity_lux",
-    "garden_rf_link_level_percentage",
-    "garden_system_battery_percentage",
-    "garden_valves_activity",
     "weather_windstrength_kph",
     "weather_windangle_angles",
     "weather_guststrength_kph",
