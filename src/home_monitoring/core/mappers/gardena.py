@@ -49,26 +49,24 @@ class GardenaMapper(BaseMapper):
         }
 
         if device.type == "SMART_IRRIGATION_CONTROL":
-            # Valve activity measurement
-            # Map state to 0/1 (inactive/active)
-            state_value = 1 if device.state == "active" else 0
-            measurements.append(
-                Measurement(
-                    measurement="garden_valves_activity",
-                    tags={
-                        **base_tags,
-                        "activity": (
-                            device.activity
-                            if hasattr(device, "activity")
-                            else "UNKNOWN"
-                        ),
-                    },
-                    timestamp=timestamp,
-                    fields={
-                        "state": state_value,
-                    },
+            # The controller holds one valve per watering zone; emit a row per
+            # valve. activity is e.g. CLOSED / MANUAL_WATERING / SCHEDULED_
+            # WATERING; state=1 marks a valve that is actively watering.
+            inactive = ("CLOSED", "UNKNOWN", "N/A", "")
+            for valve in getattr(device, "valves", {}).values():
+                activity = str(valve.get("activity", "UNKNOWN"))
+                measurements.append(
+                    Measurement(
+                        measurement="garden_valves_activity",
+                        tags={
+                            **base_tags,
+                            "valve_name": str(valve.get("name", "N/A")),
+                            "activity": activity,
+                        },
+                        timestamp=timestamp,
+                        fields={"state": 0 if activity in inactive else 1},
+                    )
                 )
-            )
 
         elif device.type == "SENSOR":
             # Ambient temperature measurement

@@ -10,33 +10,46 @@ EXPECTED_SOIL_SENSOR_MEASUREMENT_COUNT = 2
 
 
 def test_to_measurements_control_data() -> None:
-    """Test mapping of irrigation control data."""
-    # Arrange
-    device = Mock()
+    """Irrigation control maps one row per valve, state=1 only when watering."""
+    # Arrange: a controller with two valves — one watering, one closed
+    device = Mock(spec=["id", "name", "type", "valves"])
     device.id = "test-id"
-    device.name = "test-device"
+    device.name = "Bewässerung"
     device.type = "SMART_IRRIGATION_CONTROL"
-    device.state = "active"
-    device.activity = "test-activity"
+    device.valves = {
+        "v1": {
+            "id": "v1",
+            "name": "Vorgarten",
+            "activity": "SCHEDULED_WATERING",
+            "state": "OK",
+        },
+        "v2": {"id": "v2", "name": "Hochbeet", "activity": "CLOSED", "state": "OK"},
+    }
     timestamp = datetime.now(UTC)
 
     # Act
     measurements = GardenaMapper.to_measurements(timestamp, device)
 
-    # Assert
-    assert len(measurements) == 1
-    measurement = measurements[0]
-    assert measurement.measurement == "garden_valves_activity"
-    assert measurement.tags == {
-        "id": "test-id",
-        "name": "test-device",
-        "type": "SMART_IRRIGATION_CONTROL",
-        "activity": "test-activity",
-    }
-    assert measurement.timestamp == timestamp
-    assert measurement.fields == {
-        "state": 1,
-    }
+    # Assert: one measurement per valve, named, with the right active state
+    assert len(measurements) == 2
+    by_zone = {m.tags["valve_name"]: m for m in measurements}
+    assert all(m.measurement == "garden_valves_activity" for m in measurements)
+    assert by_zone["Vorgarten"].tags["activity"] == "SCHEDULED_WATERING"
+    assert by_zone["Vorgarten"].fields == {"state": 1}
+    assert by_zone["Hochbeet"].fields == {"state": 0}
+
+
+def test_to_measurements_control_no_valves() -> None:
+    """A controller with no valves yields no rows (unhappy path)."""
+    device = Mock(spec=["id", "name", "type", "valves"])
+    device.id = "c"
+    device.name = "Bewässerung"
+    device.type = "SMART_IRRIGATION_CONTROL"
+    device.valves = {}
+
+    measurements = GardenaMapper.to_measurements(datetime.now(UTC), device)
+
+    assert measurements == []
 
 
 def test_to_measurements_sensor_data() -> None:
