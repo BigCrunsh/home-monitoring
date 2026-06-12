@@ -71,11 +71,32 @@ class GardenaService(BaseService):
             ],
         )
 
-        # Set up device callbacks
-        device_types = ["SENSOR", "SMART_IRRIGATION_CONTROL", "SOIL_SENSOR"]
-        for device_type in device_types:
-            for device in location.find_device_by_type(device_type):
-                device.add_callback(self._handle_device_update)
+        # Set up device callbacks (fire on WebSocket change events) and persist
+        # the initial state now, so InfluxDB has a baseline immediately rather
+        # than only when a valve opens or a sensor next pushes.
+        for device in self._supported_devices():
+            device.add_callback(self._handle_device_update)
+            await self._handle_device_update(device)
+
+    SUPPORTED_TYPES = ("SENSOR", "SMART_IRRIGATION_CONTROL", "SOIL_SENSOR")
+
+    def _supported_devices(self) -> list[Any]:
+        """Return all devices of the supported types at the active location."""
+        location = self._smart_system.location
+        devices: list[Any] = []
+        for device_type in self.SUPPORTED_TYPES:
+            devices.extend(location.find_device_by_type(device_type))
+        return devices
+
+    async def refresh_all(self) -> None:
+        """Persist the current in-memory state of every supported device.
+
+        The WebSocket keeps device objects up to date with no extra API calls;
+        re-writing them on a fixed cadence gives InfluxDB a regular heartbeat
+        (for the dashboard and freshness monitoring) even when nothing changed.
+        """
+        for device in self._supported_devices():
+            await self._handle_device_update(device)
 
     async def stop(self) -> None:
         """Stop the Gardena service and disconnect from devices."""

@@ -10,6 +10,9 @@ from home_monitoring.utils.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
+# re-write current device state this often (in-memory; no extra Gardena API calls)
+REFRESH_INTERVAL_SECONDS = 600
+
 
 async def main() -> int:
     """Run the Gardena data collection service.
@@ -36,9 +39,11 @@ async def main() -> int:
 
     try:
         await service.start()
-        # Keep the script running
+        # WebSocket callbacks write on change; this re-writes current state on a
+        # fixed cadence so InfluxDB has a regular heartbeat regardless.
         while True:
-            await asyncio.sleep(1)
+            await asyncio.sleep(REFRESH_INTERVAL_SECONDS)
+            await service.refresh_all()
     except Exception as e:
         logger.error("gardena_collection_failed", error=str(e))
         return 1

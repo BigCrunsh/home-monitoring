@@ -165,3 +165,67 @@ async def test_stop_success(
     await service.stop()
 
     assert mock_smart_system.quit.await_count == 1
+
+
+def _real_sensor() -> MagicMock:
+    """A SENSOR device with real numeric attributes (not MagicMock auto-attrs)."""
+    d = MagicMock(
+        spec=[
+            "id",
+            "name",
+            "type",
+            "ambient_temperature",
+            "soil_humidity",
+            "light_intensity",
+            "rf_link_level",
+            "battery_level",
+            "add_callback",
+        ]
+    )
+    d.id = "s1"
+    d.name = "Garten"
+    d.type = "SENSOR"
+    d.ambient_temperature = 20.5
+    d.soil_humidity = 42.0
+    d.light_intensity = 1200.0
+    d.rf_link_level = 80.0
+    d.battery_level = 95.0
+    return d
+
+
+@pytest.mark.asyncio
+async def test_start_writes_initial_state(
+    service: GardenaService, mock_smart_system: MagicMock
+) -> None:
+    """start() persists the initial device state, not just on later changes."""
+    sensor = _real_sensor()
+    loc = next(iter(mock_smart_system.locations.values()))
+    loc.find_device_by_type = MagicMock(
+        side_effect=lambda t: [sensor] if t == "SENSOR" else []
+    )
+    mock_smart_system.location = loc
+    service._db = AsyncMock()
+
+    await service.start()
+
+    # registered for future change events AND wrote the baseline now
+    sensor.add_callback.assert_called_once()
+    assert service._db.write_measurements.await_count >= 1
+
+
+@pytest.mark.asyncio
+async def test_refresh_all_rewrites_current_state(
+    service: GardenaService, mock_smart_system: MagicMock
+) -> None:
+    """refresh_all() re-persists current device state (the cadence heartbeat)."""
+    sensor = _real_sensor()
+    loc = next(iter(mock_smart_system.locations.values()))
+    loc.find_device_by_type = MagicMock(
+        side_effect=lambda t: [sensor] if t == "SENSOR" else []
+    )
+    mock_smart_system.location = loc
+    service._db = AsyncMock()
+
+    await service.refresh_all()
+
+    assert service._db.write_measurements.await_count >= 1
