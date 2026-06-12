@@ -124,7 +124,11 @@ async def test_start_success(
     assert mock_smart_system.authenticate.await_count == 1
     assert mock_smart_system.update_locations.await_count == 1
     assert mock_smart_system.update_devices.await_count == 1
-    assert mock_smart_system.start_ws.await_count == 1
+    # start_ws is launched as a background task (it blocks running the WS loop),
+    # so assert it was scheduled, not awaited inline
+    assert mock_smart_system.start_ws.call_count == 1
+    if service._ws_task is not None:
+        service._ws_task.cancel()
 
 
 @pytest.mark.asyncio(scope="function")

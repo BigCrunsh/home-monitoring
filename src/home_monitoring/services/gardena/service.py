@@ -1,5 +1,6 @@
 """Gardena smart system service implementation."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -48,6 +49,7 @@ class GardenaService(BaseService):
             client_secret=self._settings.gardena_application_secret,
         )
         self._callbacks: list[tuple[str, Callable[..., Any]]] = []
+        self._ws_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Start the Gardena service and connect to devices."""
@@ -61,7 +63,6 @@ class GardenaService(BaseService):
         location = next(iter(self._smart_system.locations.values()))
         self._smart_system.location = location
         await self._smart_system.update_devices(location)
-        await self._smart_system.start_ws(location)
 
         self._logger.info(
             "devices_found",
@@ -71,12 +72,16 @@ class GardenaService(BaseService):
             ],
         )
 
-        # Set up device callbacks (fire on WebSocket change events) and persist
-        # the initial state now, so InfluxDB has a baseline immediately rather
-        # than only when a valve opens or a sensor next pushes.
+        # Register callbacks (fire on WebSocket change events) and persist the
+        # initial state now — BEFORE start_ws, which blocks running the WS
+        # receive loop and never returns. Everything after it would be dead code.
         for device in self._supported_devices():
             device.add_callback(self._handle_device_update)
             await self._handle_device_update(device)
+
+        # Run the blocking WebSocket loop as a background task so the collector
+        # can keep running its periodic refresh.
+        self._ws_task = asyncio.create_task(self._smart_system.start_ws(location))
 
     SUPPORTED_TYPES = ("SENSOR", "SMART_IRRIGATION_CONTROL", "SOIL_SENSOR")
 
