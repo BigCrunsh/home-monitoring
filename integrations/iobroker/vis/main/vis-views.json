@@ -27464,8 +27464,8 @@
           "refreshInterval": "0"
         },
         "style": {
-          "left": 20,
-          "top": 795,
+          "left": 410,
+          "top": 5,
           "width": "620px",
           "height": "320px",
           "z-index": "1",
