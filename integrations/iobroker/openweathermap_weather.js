@@ -45,7 +45,7 @@ function renderForecast(hours) {
     var p = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '">'];
     p.push('<rect width="' + W + '" height="' + H + '" rx="12" fill="' + BG + '"/>');
     p.push('<text x="16" y="26" fill="' + FG + '" font-size="16" font-weight="bold">Stundenvorhersage</text>');
-    p.push('<text x="' + (W - 16) + '" y="26" fill="' + MUTE + '" font-size="11" text-anchor="end">nächste ' + hours.length + ' h · 🌡 Temp · ☀ Sonne · ▮ Regen</text>');
+    p.push('<text x="' + (W - 16) + '" y="26" fill="' + MUTE + '" font-size="11" text-anchor="end">nächste ' + hours.length + ' h · 🌡 Temp · ☁ Wolken · ▮ Regen</text>');
     if (!hours.length) {
         p.push('<text x="' + (W / 2) + '" y="95" fill="' + MUTE + '" font-size="14" text-anchor="middle">keine Vorhersage verfügbar</text></svg>');
         return p.join('');
@@ -55,7 +55,7 @@ function renderForecast(hours) {
     var tmin = Math.min.apply(null, temps), tmax = Math.max.apply(null, temps);
     var top = 46, bot = 86;
     function ty(t) { return bot - (t - tmin) / Math.max(tmax - tmin, 1) * (bot - top); }
-    var SUN = '#F1BE3D';
+    var CLOUD = '#bfc8d0';
     var b0 = 152, b1 = 132;  // rain band (shorter, leaves room for the sun % line)
     hours.forEach(function (h, i) {
         var cx = i * cw + cw / 2;
@@ -73,8 +73,8 @@ function renderForecast(hours) {
         p.push('<circle cx="' + cx.toFixed(1) + '" cy="' + ty(h.temp).toFixed(1) + '" r="2.5" fill="' + TEMPC + '"/>');
         p.push('<text x="' + cx.toFixed(1) + '" y="' + (ty(h.temp) - 7).toFixed(1) + '" fill="' + FG + '" font-size="11" text-anchor="middle">' + Math.round(h.temp) + '°</text>');
         p.push('<text x="' + cx.toFixed(1) + '" y="104" font-size="14" text-anchor="middle">' + h.emoji + '</text>');
-        // sun % (= 100 - cloudiness): PV-yield proxy
-        p.push('<text x="' + cx.toFixed(1) + '" y="121" fill="' + SUN + '" font-size="10" text-anchor="middle">☀' + h.sun + '%</text>');
+        // cloudiness % (meaningful day and night; low = good PV by day)
+        p.push('<text x="' + cx.toFixed(1) + '" y="121" fill="' + CLOUD + '" font-size="10" text-anchor="middle">☁' + h.clouds + '%</text>');
     });
     p.push('</svg>');
     return p.join('');
@@ -130,7 +130,7 @@ async function fetchWeatherData() {
                     hour: berlinHour(hour.dt),
                     temp: hour.temp,
                     pop: Math.round((hour.pop || 0) * 100),
-                    sun: Math.max(0, 100 - Math.round(hour.clouds || 0)),
+                    clouds: Math.round(hour.clouds || 0),
                     emoji: emoji(hour.weather[0].icon),
                 });
             }
