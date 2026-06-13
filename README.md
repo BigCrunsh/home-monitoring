@@ -166,6 +166,10 @@ The Pi is a **LAN-only** host; no service is intended to face the internet.
 - **Remote access is WireGuard-only.** Never port-forward raw services (InfluxDB,
   ioBroker admin/vis) to the internet. The former `monitoring.sawade.me` (Dynu)
   port-forward + dynamic-DNS updater have been retired in favour of WireGuard.
+- **Secrets in ioBroker scripts** live in ioBroker states set on the Pi, not in the
+  repo — e.g. the OpenWeatherMap key in `javascript.0.owm_apikey`
+  (`iobroker state set javascript.0.owm_apikey "<key>"`). The OWM key was
+  previously hardcoded and is in git history — **rotate it** at openweathermap.org.
 
 ### Backup & recovery
 
