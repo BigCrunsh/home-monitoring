@@ -10,8 +10,9 @@ from home_monitoring.utils.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
-# re-write current device state this often (in-memory; no extra Gardena API calls)
-REFRESH_INTERVAL_SECONDS = 600
+# re-write current device state this often (in-memory; no extra Gardena API calls).
+# 60s resolves short cycle-and-soak valve pulses that 600s sampling misses.
+REFRESH_INTERVAL_SECONDS = 60
 
 
 async def main() -> int:
