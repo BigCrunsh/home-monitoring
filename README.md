@@ -25,10 +25,10 @@ Active:
 - [Tibber](https://tibber.com/) - Dynamic electricity tariff: hourly prices, consumption, costs
 - SAM Digital - Heating system gateway (flow/return/storage temperatures, valve signals)
 - Shelly 3EM - Live grid power at the connection point (via MQTT into ioBroker; anchors the real-time energy states)
+- [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart irrigation: 6 watering zones + soil sensors. Runs as a **systemd service** (`home-monitoring-gardena`, a long-running WebSocket daemon — not cron); the redundant ioBroker `smartgarden` adapter is disabled (single path, one client for the rate-limited API). Dashboard: the Bewässerung panel on the Weather view.
 
 Currently disabled (cron entries commented out):
 
-- [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart gardening system (the ioBroker smartgarden adapter is also without data; keep/retire is an open roadmap question)
 - Techem Compact V - Heat meter via nanoCUL USB stick (requires pyserial)
 
 Pending:
