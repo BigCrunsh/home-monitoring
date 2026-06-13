@@ -206,7 +206,7 @@ async function build() {
     // rain only if fresh (the gauge battery can die — then show unavailable)
     var rainTxt = 'Regen heute: – (Sensor leer)';
     if (rainRows.length) {
-        var rt = new Date(rainRows[0].time).getTime();
+        var rt = new Date(rainRows[0].ts).getTime();
         if (Date.now() - rt < 24 * 3600 * 1000) {
             var mm = rainRows[0].last || rainRows[0].last_rain || 0;
             rainTxt = 'Regen heute: ' + Number(mm).toFixed(1).replace('.', ',') + ' mm';
@@ -248,7 +248,7 @@ async function build() {
         } else {
             p.push('<text x="250" y="' + y + '" fill="' + MUTE + '" font-size="13">–</text>');
         }
-        var last = w ? hhmm(w.time) + ' ✓' : '–';
+        var last = w ? hhmm(w.ts) + ' ✓' : '–';
         p.push('<text x="430" y="' + y + '" fill="' + (w ? FG : MUTE) + '" font-size="13">' + last + '</text>');
         if (b !== null && b !== undefined && b <= 10) {
             p.push('<text x="510" y="' + y + '" fill="' + RED + '" font-size="13">⚠ Batterie ' + Math.round(b) + '%</text>');
