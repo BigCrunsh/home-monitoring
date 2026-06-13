@@ -55,7 +55,7 @@ function renderForecast(hours) {
     var tmin = Math.min.apply(null, temps), tmax = Math.max.apply(null, temps);
     var top = 46, bot = 86;
     function ty(t) { return bot - (t - tmin) / Math.max(tmax - tmin, 1) * (bot - top); }
-    var b0 = 150, b1 = 116;
+    var b0 = 150, b1 = 122;  // rain band; keeps the 100% label clear of the emoji
     hours.forEach(function (h, i) {
         var cx = i * cw + cw / 2;
         if (h.pop > 0) {
