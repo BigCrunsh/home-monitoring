@@ -45,7 +45,7 @@ function renderForecast(hours) {
     var p = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '">'];
     p.push('<rect width="' + W + '" height="' + H + '" rx="12" fill="' + BG + '"/>');
     p.push('<text x="16" y="26" fill="' + FG + '" font-size="16" font-weight="bold">Stundenvorhersage</text>');
-    p.push('<text x="' + (W - 16) + '" y="26" fill="' + MUTE + '" font-size="12" text-anchor="end">nächste ' + hours.length + ' h · OpenWeatherMap</text>');
+    p.push('<text x="' + (W - 16) + '" y="26" fill="' + MUTE + '" font-size="11" text-anchor="end">nächste ' + hours.length + ' h · 🌡 Temp · ☀ Sonne · ▮ Regen</text>');
     if (!hours.length) {
         p.push('<text x="' + (W / 2) + '" y="95" fill="' + MUTE + '" font-size="14" text-anchor="middle">keine Vorhersage verfügbar</text></svg>');
         return p.join('');
@@ -55,19 +55,16 @@ function renderForecast(hours) {
     var tmin = Math.min.apply(null, temps), tmax = Math.max.apply(null, temps);
     var top = 46, bot = 86;
     function ty(t) { return bot - (t - tmin) / Math.max(tmax - tmin, 1) * (bot - top); }
-    var b0 = 150, b1 = 122;  // rain band; keeps the 100% label clear of the emoji
+    var SUN = '#F1BE3D';
+    var b0 = 152, b1 = 132;  // rain band (shorter, leaves room for the sun % line)
     hours.forEach(function (h, i) {
         var cx = i * cw + cw / 2;
         if (h.pop > 0) {
             var bh = (h.pop / 100) * (b0 - b1);
             p.push('<rect x="' + (cx - 9).toFixed(1) + '" y="' + (b0 - bh).toFixed(1)
                 + '" width="18" height="' + bh.toFixed(1) + '" rx="2" fill="' + RAIN + '" opacity="0.85"/>');
-            if (h.pop >= 30) {
-                p.push('<text x="' + cx.toFixed(1) + '" y="' + (b0 - bh - 3).toFixed(1)
-                    + '" fill="' + RAIN + '" font-size="9" text-anchor="middle">' + Math.round(h.pop) + '%</text>');
-            }
         }
-        p.push('<text x="' + cx.toFixed(1) + '" y="165" fill="' + MUTE + '" font-size="11" text-anchor="middle">' + h.hour + '</text>');
+        p.push('<text x="' + cx.toFixed(1) + '" y="167" fill="' + MUTE + '" font-size="11" text-anchor="middle">' + h.hour + '</text>');
     });
     var pts = hours.map(function (h, i) { return (i * cw + cw / 2).toFixed(1) + ',' + ty(h.temp).toFixed(1); }).join(' ');
     p.push('<polyline points="' + pts + '" fill="none" stroke="' + TEMPC + '" stroke-width="2"/>');
@@ -75,7 +72,9 @@ function renderForecast(hours) {
         var cx = i * cw + cw / 2;
         p.push('<circle cx="' + cx.toFixed(1) + '" cy="' + ty(h.temp).toFixed(1) + '" r="2.5" fill="' + TEMPC + '"/>');
         p.push('<text x="' + cx.toFixed(1) + '" y="' + (ty(h.temp) - 7).toFixed(1) + '" fill="' + FG + '" font-size="11" text-anchor="middle">' + Math.round(h.temp) + '°</text>');
-        p.push('<text x="' + cx.toFixed(1) + '" y="108" font-size="15" text-anchor="middle">' + h.emoji + '</text>');
+        p.push('<text x="' + cx.toFixed(1) + '" y="104" font-size="14" text-anchor="middle">' + h.emoji + '</text>');
+        // sun % (= 100 - cloudiness): PV-yield proxy
+        p.push('<text x="' + cx.toFixed(1) + '" y="121" fill="' + SUN + '" font-size="10" text-anchor="middle">☀' + h.sun + '%</text>');
     });
     p.push('</svg>');
     return p.join('');
@@ -131,6 +130,7 @@ async function fetchWeatherData() {
                     hour: berlinHour(hour.dt),
                     temp: hour.temp,
                     pop: Math.round((hour.pop || 0) * 100),
+                    sun: Math.max(0, 100 - Math.round(hour.clouds || 0)),
                     emoji: emoji(hour.weather[0].icon),
                 });
             }
