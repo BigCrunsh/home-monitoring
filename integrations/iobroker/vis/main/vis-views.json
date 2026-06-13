@@ -27447,6 +27447,31 @@
           "background-origin": null
         },
         "widgetSet": "basic"
+      },
+      "w000950": {
+        "tpl": "tplHtml",
+        "data": {
+          "g_fixed": false,
+          "g_visibility": false,
+          "g_css_font_text": false,
+          "g_css_background": false,
+          "g_css_shadow_padding": false,
+          "g_css_border": false,
+          "g_gestures": false,
+          "g_signals": false,
+          "g_last_change": false,
+          "html": "{javascript.0.garden_panel}",
+          "refreshInterval": "0"
+        },
+        "style": {
+          "left": 20,
+          "top": 795,
+          "width": "620px",
+          "height": "320px",
+          "z-index": "1",
+          "bindings": []
+        },
+        "widgetSet": "basic"
       }
     },
     "activeWidgets": []
