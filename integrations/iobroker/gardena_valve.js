@@ -185,6 +185,41 @@ function esc(t) {
     return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Instant of Berlin midnight today, as UTC ISO — process-timezone-independent
+// (the Pi runs Europe/London), DST-safe (uses actual Berlin wall-clock).
+function berlinMidnightUTC() {
+    var now = new Date();
+    var parts = {};
+    new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Europe/Berlin', hour12: false,
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(now).forEach(function (p) { parts[p.type] = p.value; });
+    var h = (+parts.hour) % 24;  // Intl can yield "24" at midnight
+    var secSinceMidnight = h * 3600 + (+parts.minute) * 60 + (+parts.second);
+    return new Date(now.getTime() - secSinceMidnight * 1000).toISOString();
+}
+
+// Per-zone watering today: { valve_name: {count, min} } from the state series.
+// count = rising edges to state 1; min = integrated time in state 1 (+ ongoing).
+function todayStats(rows) {
+    var byZone = {};
+    rows.forEach(function (r) { (byZone[r.valve_name] = byZone[r.valve_name] || []).push(r); });
+    var out = {};
+    Object.keys(byZone).forEach(function (z) {
+        var count = 0, ms = 0, prev = null;
+        byZone[z].forEach(function (r) {
+            if (prev && prev.state === 1) {
+                ms += new Date(r.ts).getTime() - new Date(prev.ts).getTime();
+            }
+            if (r.state === 1 && (!prev || prev.state !== 1)) count++;
+            prev = r;
+        });
+        if (prev && prev.state === 1) ms += Date.now() - new Date(prev.ts).getTime();
+        out[z] = { count: count, min: Math.round(ms / 60000) };
+    });
+    return out;
+}
+
 async function build() {
     var DB = 'home_monitoring.autogen.';
     var wateredRows = await query(
@@ -197,8 +232,13 @@ async function build() {
     var batRows = await query(
         'SELECT last(battery_level) FROM ' + DB + 'garden_system_battery_percentage GROUP BY "name"');
     var rainRows = await query('SELECT last(*) FROM ' + DB + 'weather_rain_mm');
+    // today's per-zone valve states (for run count + total minutes)
+    var todayRows = await query(
+        'SELECT state, valve_name FROM ' + DB + 'garden_valves_activity'
+        + " WHERE time > '" + berlinMidnightUTC() + "' GROUP BY valve_name ORDER BY time ASC");
 
     var watered = latestByKey(wateredRows, 'valve_name');
+    var today = todayStats(todayRows);
     var moist = latestByKey(moistRows, 'name');
     var temp = latestByKey(tempRows, 'name');
     var bat = latestByKey(batRows, 'name');
@@ -219,9 +259,9 @@ async function build() {
     p.push('<text x="16" y="30" fill="' + FG + '" font-size="18" font-weight="bold">Bewässerung</text>');
     p.push('<text x="' + (W - 16) + '" y="30" fill="' + MUTE + '" font-size="13" text-anchor="end">☔ ' + esc(rainTxt) + '</text>');
     p.push('<text x="16" y="' + y0 + '" fill="' + MUTE + '" font-size="11">Zone</text>');
-    p.push('<text x="250" y="' + y0 + '" fill="' + MUTE + '" font-size="11">Feuchte</text>');
-    p.push('<text x="430" y="' + y0 + '" fill="' + MUTE + '" font-size="11">zuletzt</text>');
-    p.push('<text x="510" y="' + y0 + '" fill="' + MUTE + '" font-size="11">Status</text>');
+    p.push('<text x="210" y="' + y0 + '" fill="' + MUTE + '" font-size="11">Feuchte</text>');
+    p.push('<text x="375" y="' + y0 + '" fill="' + MUTE + '" font-size="11">heute (Anzahl · Dauer · zuletzt)</text>');
+    p.push('<text x="565" y="' + y0 + '" fill="' + MUTE + '" font-size="11">Status</text>');
     p.push('<line x1="16" y1="' + (y0 + 6) + '" x2="' + (W - 16) + '" y2="' + (y0 + 6) + '" stroke="#333"/>');
 
     var allRows = ZONES.map(function (z) { return { zone: z, sensorName: z }; });
@@ -240,20 +280,27 @@ async function build() {
         if (m !== null && m !== undefined) {
             var col = moistColor(m), filled = Math.round(m / 100 * 4);
             for (var seg = 0; seg < 4; seg++) {
-                p.push('<rect x="' + (250 + seg * 16) + '" y="' + (y - 12)
-                    + '" width="13" height="13" rx="2" fill="' + (seg < filled ? col : '#3a3a3a') + '"/>');
+                p.push('<rect x="' + (210 + seg * 15) + '" y="' + (y - 12)
+                    + '" width="12" height="13" rx="2" fill="' + (seg < filled ? col : '#3a3a3a') + '"/>');
             }
-            var lbl = Math.round(m) + '%' + (t !== null && t !== undefined ? '  ' + Math.round(t) + '°' : '');
-            p.push('<text x="320" y="' + y + '" fill="' + FG + '" font-size="13">' + lbl + '</text>');
+            var lbl = Math.round(m) + '%' + (t !== null && t !== undefined ? ' ' + Math.round(t) + '°' : '');
+            p.push('<text x="276" y="' + y + '" fill="' + FG + '" font-size="13">' + lbl + '</text>');
         } else {
-            p.push('<text x="250" y="' + y + '" fill="' + MUTE + '" font-size="13">–</text>');
+            p.push('<text x="210" y="' + y + '" fill="' + MUTE + '" font-size="13">–</text>');
         }
-        var last = w ? hhmm(w.ts) + ' ✓' : '–';
-        p.push('<text x="430" y="' + y + '" fill="' + (w ? FG : MUTE) + '" font-size="13">' + last + '</text>');
+        // heute: runs × · total minutes · last start
+        var st = today[row.zone];
+        var heute = '–';
+        if (st && st.count > 0) {
+            heute = st.count + '× · ' + st.min + ' min' + (w ? ' · ' + hhmm(w.ts) : '');
+        } else if (w) {
+            heute = 'zuletzt ' + hhmm(w.ts);
+        }
+        p.push('<text x="375" y="' + y + '" fill="' + (heute === '–' ? MUTE : FG) + '" font-size="12">' + heute + '</text>');
         if (b !== null && b !== undefined && b <= 10) {
-            p.push('<text x="510" y="' + y + '" fill="' + RED + '" font-size="13">⚠ Batterie ' + Math.round(b) + '%</text>');
+            p.push('<text x="565" y="' + y + '" fill="' + RED + '" font-size="12">⚠ ' + Math.round(b) + '%</text>');
         } else {
-            p.push('<text x="510" y="' + y + '" fill="' + GREEN + '" font-size="13">ok</text>');
+            p.push('<text x="565" y="' + y + '" fill="' + GREEN + '" font-size="12">ok</text>');
         }
     });
 
