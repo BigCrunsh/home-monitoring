@@ -2,35 +2,37 @@
 
 ## ADDED Requirements
 
-### Requirement: The opener responds within a predictable bound
-Actuating the door opener SHALL complete within a predictable, documented time
-bound under normal conditions, or the cause of variance SHALL be identified by
-measurement and a remediation recommended.
-
-#### Scenario: Central radio duty cycle is measured, not assumed
-- **WHEN** the opener latency is investigated
-- **THEN** the CCU3 central HmIP `DUTY_CYCLE_LEVEL` and `CARRIER_SENSE_LEVEL` are
-  logged to InfluxDB and a slow "Öffnen" is correlated against them, confirming or
-  ruling out central-transmit contention as the cause
+### Requirement: The opener's latency cause is established by measurement
+The cause of variable "Öffnen" latency SHALL be established from logged evidence,
+not assumption, before any remediation is chosen.
 
 #### Scenario: Actuation latency is quantified
 - **WHEN** an open command is issued
-- **THEN** the elapsed time from `LOCK_TARGET_LEVEL`→`OPEN` until `PROCESS`/
-  `LOCK_STATE` changes is derivable from logged data, giving a real latency figure
-  rather than an impression
+- **THEN** the elapsed time from `LOCK_TARGET_LEVEL`→`OPEN` until `LOCK_STATE`/`PROCESS`
+  moves is derivable from InfluxDB (62–63 s observed on slow opens)
 
-#### Scenario: Device side ruled out via the direct-link remote
-- **WHEN** distinguishing radio contention from a lock-side fault
-- **THEN** the evidence that a directly device-linked remote opens instantly (bypassing
-  the CCU) is recorded, establishing that the lock's receiver, battery and RF signal
-  are not the bottleneck
+#### Scenario: Radio congestion is ruled out, not assumed
+- **WHEN** a slow open is captured
+- **THEN** the central `DUTY_CYCLE_LEVEL` at that moment is checked, and because it was
+  low (8–11 %), central-transmit congestion is rejected as the cause and metering-actuator
+  throttling is NOT pursued
 
-### Requirement: RF load on the shared radio is bounded
-Background HmIP traffic on the CCU3 radio SHALL be kept low enough that
-control commands are not starved of transmit budget.
+#### Scenario: Device receiver ruled out via the direct-link remote
+- **WHEN** distinguishing a CCU-path delay from a lock-side fault
+- **THEN** the evidence that a directly device-linked remote opens instantly is recorded,
+  establishing that the lock's receiver, battery and signal are not the bottleneck
 
-#### Scenario: Chatty devices are throttled
-- **WHEN** central duty cycle is found to spike under normal operation
-- **THEN** the continuously-reporting metering actuators are reconfigured to report
-  less often (longer interval / larger power delta) and the central duty cycle is
-  re-measured to confirm improvement
+### Requirement: A predictable instant-open path is documented
+An instant-open path SHALL be documented (the direct-link remote) and the dashboard
+SHALL give immediate feedback, since CCU-routed commands to the battery lock are
+inherently best-effort.
+
+#### Scenario: Instant path is the direct device link
+- **WHEN** an instant open is required
+- **THEN** the directly device-linked remote (or an added wall button) is used since it
+  bypasses the CCU; the dashboard "Öffnen" is documented as best-effort (~up to 1 min)
+
+#### Scenario: Dashboard gives optimistic feedback
+- **WHEN** "Öffnen" is pressed on the dashboard
+- **THEN** the button reflects "Öffne …" immediately so a slow CCU path does not read as
+  a dead control
