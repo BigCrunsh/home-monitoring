@@ -57,7 +57,6 @@ the admin UI in a pinch; export and commit such edits promptly.
 | `openweathermap_weather.js` | OpenWeatherMap supplementary weather states |
 | `ical_events.js` | Calendar events for the dashboard agenda |
 | `suncalc_phases.js` | Sun phase times (sunrise/sunset) |
-| `telegram_waschmaschine.js` | Telegram notification when the washing machine finishes |
 | `reset_lock_target_state.js` | Resets a lock's target state after actuation |
 
 ## Scripts
