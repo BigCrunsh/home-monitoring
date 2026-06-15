@@ -10,9 +10,12 @@
 //               them ~2h late and attributes everything to FeedIn until then).
 //   stale     — nothing usable; previous values are kept.
 //
-// Known limitation: the Maxxisun PV+battery system is not captured yet (CCU2 local
-// API pending), so consumption omits its output and autarky is understated. Purchase
-// and feed-in are exact regardless.
+// Maxxisun: the PV+battery's gross AC is metered by a Shelly Plug S Gen3 (signed apower;
+// negative = feeding/producing, positive = charging). In hybrid mode its feed-in is added
+// to production, so consumption/autarky now include it; its charging is captured by the
+// grid anchor as consumption. The signed value + status are also published for the
+// dashboard (power_maxxisun / maxxisun_status). The solaredge fallback row does NOT
+// include the Maxxisun. Purchase and feed-in are exact regardless.
 
 createState('power_consumption', 0, {
     desc: 'Aktueller Leistungsverbrauch',
@@ -74,6 +77,19 @@ createState('power_calc_mode', 'stale', {
     role: 'state',
 });
 
+createState('power_maxxisun', 0, {
+    desc: 'Maxxisun AC-Leistung (negativ = Einspeisung, positiv = Laden)',
+    type: 'number',
+    role: 'value',
+    unit: 'Watt'
+});
+
+createState('maxxisun_status', 'Bereit', {
+    desc: 'Maxxisun Lade-/Einspeisestatus (Speist | Laedt | Bereit)',
+    type: 'string',
+    role: 'state',
+});
+
 // last createState: its callback triggers the first query, so all states
 // exist before the first setState (avoids the create/set race on deploy)
 createState('power_data_stale', true, {
@@ -90,6 +106,21 @@ var GRID_MAX_AGE_SECONDS = 300;   // Shelly reading older than this -> fallback
 // row is normally ~1h old; the gate only catches genuine collection outages
 var PRODUCTION_MAX_AGE_SECONDS = 7200;
 var GRID_STATE = 'javascript.0.mqtt_shelly.total_act_power';  // negative = export
+// Shelly Plug S Gen3 metering the Maxxisun (signed apower: negative = feeding/producing)
+var MAXXI_STATE = 'mqtt.0.shellyplugsg3-48f6eeb7af98.status.switch:0';
+var MAXXI_MAX_AGE_SECONDS = 120;  // plug publishes every few s; older -> ignore
+
+// Maxxisun AC power (signed; negative = feeding/producing) from the plug's switch:0
+// JSON. Returns null if the reading is missing or stale.
+function readMaxxiApower() {
+    var s = getState(MAXXI_STATE);
+    if (!s || s.val === null || s.val === undefined) return null;
+    if ((Date.now() - s.ts) / 1000 > MAXXI_MAX_AGE_SECONDS) return null;
+    try {
+        var d = typeof s.val === 'string' ? JSON.parse(s.val) : s.val;
+        return typeof d.apower === 'number' ? d.apower : null;
+    } catch (e) { return null; }
+}
 
 // A row is complete once the consumption meter has reported: consumption-side
 // fields are present and feed-in cannot exceed production (1W tolerance).
@@ -174,9 +205,21 @@ function recompute() {
     var productionFresh = cachedProductionRow
         && rowAgeSeconds(cachedProductionRow) < PRODUCTION_MAX_AGE_SECONDS;
 
+    // Maxxisun (Shelly plug): publish its live signed power + status for the dashboard,
+    // and add only its feed-in (negative apower) to production. Its charging (positive
+    // apower) is already captured by the grid anchor as consumption, so it needs nothing.
+    var maxxiApower = readMaxxiApower();
+    var maxxiProd = 0;
+    if (maxxiApower !== null) {
+        maxxiProd = Math.max(0, -maxxiApower);
+        setState('power_maxxisun', Math.round(maxxiApower * 10) / 10);
+        setState('maxxisun_status',
+            maxxiApower < -5 ? 'Speist' : (maxxiApower > 5 ? 'Laedt' : 'Bereit'));
+    }
+
     if (gridFresh && productionFresh) {
         publish(
-            computeHybrid(gridState.val, cachedProductionRow.Production || 0),
+            computeHybrid(gridState.val, (cachedProductionRow.Production || 0) + maxxiProd),
             'hybrid',
             rowAgeSeconds(cachedProductionRow)
         );
@@ -224,6 +267,11 @@ function queryInfluxDB() {
 
 // live recompute on every Shelly reading (~10s); cheap, no InfluxDB round-trip
 on({ id: GRID_STATE, change: 'ne' }, function () {
+    recompute();
+});
+
+// live recompute when the Maxxisun plug reports (negative apower = feeding)
+on({ id: MAXXI_STATE, change: 'ne' }, function () {
     recompute();
 });
 
