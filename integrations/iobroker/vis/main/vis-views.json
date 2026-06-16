@@ -7141,9 +7141,9 @@
         "widgetSet": "basic"
       },
       "w000425": {
-        "tpl": "tplValueFloat",
+        "tpl": "tplValueStringRaw",
         "data": {
-          "oid": "tankerkoenig.0.stations.1.diesel.feed",
+          "oid": "javascript.0.tankerkoenig_quantiles.diesel_html",
           "g_fixed": false,
           "g_visibility": false,
           "g_css_font_text": true,
@@ -7203,7 +7203,6 @@
           "html_append_singular": " €/l",
           "html_append_plural": " €/l",
           "digits": "3",
-          "html_prepend": "",
           "bindings": []
         },
         "style": {
@@ -7366,9 +7365,9 @@
         "widgetSet": "basic"
       },
       "w000428": {
-        "tpl": "tplValueFloat",
+        "tpl": "tplValueStringRaw",
         "data": {
-          "oid": "tankerkoenig.0.stations.1.e5.feed",
+          "oid": "javascript.0.tankerkoenig_quantiles.e5_html",
           "g_fixed": false,
           "g_visibility": false,
           "g_css_font_text": true,
@@ -7444,9 +7443,9 @@
         "widgetSet": "basic"
       },
       "w000429": {
-        "tpl": "tplValueFloat",
+        "tpl": "tplValueStringRaw",
         "data": {
-          "oid": "javascript.0.tankerkoenig_quantiles.diesel_min",
+          "oid": "javascript.0.tankerkoenig_quantiles.diesel_min_html",
           "g_fixed": false,
           "g_visibility": false,
           "g_css_font_text": true,
@@ -7460,7 +7459,6 @@
           "visibility-val": "",
           "visibility-groups-action": "hide",
           "is_comma": true,
-          "factor": "1",
           "signals-cond-0": "==",
           "signals-val-0": true,
           "signals-icon-0": "/vis/signals/lowbattery.png",
@@ -7505,27 +7503,26 @@
           "lc-zindex": 0,
           "html_append_singular": " €/l",
           "html_append_plural": " €/l",
-          "digits": "3",
-          "html_prepend": "",
           "bindings": []
         },
         "style": {
-          "left": 537,
+          "left": "505px",
           "top": 662,
           "z-index": "2",
           "color": "var(--color-font)",
           "font-size": "small",
-          "width": "50px",
+          "width": "77px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
-          "bindings": []
+          "bindings": [],
+          "text-align": "right"
         },
         "widgetSet": "basic"
       },
       "w000430": {
-        "tpl": "tplValueFloat",
+        "tpl": "tplValueStringRaw",
         "data": {
-          "oid": "javascript.0.tankerkoenig_quantiles.diesel_max",
+          "oid": "javascript.0.tankerkoenig_quantiles.diesel_max_html",
           "g_fixed": false,
           "g_visibility": false,
           "g_css_font_text": true,
@@ -7539,7 +7536,6 @@
           "visibility-val": "",
           "visibility-groups-action": "hide",
           "is_comma": true,
-          "factor": "1",
           "signals-cond-0": "==",
           "signals-val-0": true,
           "signals-icon-0": "/vis/signals/lowbattery.png",
@@ -7584,26 +7580,26 @@
           "lc-zindex": 0,
           "html_append_singular": " €/l",
           "html_append_plural": " €/l",
-          "digits": "3",
           "bindings": []
         },
         "style": {
-          "left": "537px",
+          "left": "505px",
           "top": 638,
           "z-index": "2",
           "color": "var(--color-font)",
           "font-size": "small",
-          "width": "50px",
+          "width": "77px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
-          "bindings": []
+          "bindings": [],
+          "text-align": "right"
         },
         "widgetSet": "basic"
       },
       "w000431": {
-        "tpl": "tplValueFloat",
+        "tpl": "tplValueStringRaw",
         "data": {
-          "oid": "javascript.0.tankerkoenig_quantiles.e5_min",
+          "oid": "javascript.0.tankerkoenig_quantiles.e5_min_html",
           "g_fixed": false,
           "g_visibility": false,
           "g_css_font_text": true,
@@ -7617,7 +7613,6 @@
           "visibility-val": "",
           "visibility-groups-action": "hide",
           "is_comma": true,
-          "factor": "1",
           "signals-cond-0": "==",
           "signals-val-0": true,
           "signals-icon-0": "/vis/signals/lowbattery.png",
@@ -7662,27 +7657,26 @@
           "lc-zindex": 0,
           "html_append_singular": " €/l",
           "html_append_plural": " €/l",
-          "digits": "3",
-          "html_prepend": "",
           "bindings": []
         },
         "style": {
-          "left": "537px",
+          "left": "505px",
           "top": "753px",
           "z-index": "2",
           "color": "var(--color-font)",
           "font-size": "small",
-          "width": "50px",
+          "width": "77px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
-          "bindings": []
+          "bindings": [],
+          "text-align": "right"
         },
         "widgetSet": "basic"
       },
       "w000432": {
-        "tpl": "tplValueFloat",
+        "tpl": "tplValueStringRaw",
         "data": {
-          "oid": "javascript.0.tankerkoenig_quantiles.e5_max",
+          "oid": "javascript.0.tankerkoenig_quantiles.e5_max_html",
           "g_fixed": false,
           "g_visibility": false,
           "g_css_font_text": true,
@@ -7696,7 +7690,6 @@
           "visibility-val": "",
           "visibility-groups-action": "hide",
           "is_comma": true,
-          "factor": "1",
           "signals-cond-0": "==",
           "signals-val-0": true,
           "signals-icon-0": "/vis/signals/lowbattery.png",
@@ -7741,19 +7734,19 @@
           "lc-zindex": 0,
           "html_append_singular": " €/l",
           "html_append_plural": " €/l",
-          "digits": "3",
           "bindings": []
         },
         "style": {
-          "left": "537px",
+          "left": "505px",
           "top": "729px",
           "z-index": "2",
           "color": "var(--color-font)",
           "font-size": "small",
-          "width": "50px",
+          "width": "77px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
-          "bindings": []
+          "bindings": [],
+          "text-align": "right"
         },
         "widgetSet": "basic"
       },

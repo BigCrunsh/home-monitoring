@@ -44,6 +44,53 @@ var statsConfig = {
     timeWindow: '14d'
 };
 
+// Current-price feed states (from the tankerkoenig adapter), per fuel.
+// Used to publish a "tankstelle"-style HTML rendering of the live price.
+var fuelFeedOid = {
+    e5: 'tankerkoenig.0.stations.1.e5.feed',
+    diesel: 'tankerkoenig.0.stations.1.diesel.feed'
+};
+
+// Tankstelle-style formatting (German filling-station price display): the third
+// decimal is shown as a small raised index, the way Tankstellen do it.
+var TANKSTELLE_SUP = 'font-size:0.5em;vertical-align:0.72em';
+
+// "1.779" -> "1,77" + superscript "9"  (truncates the third decimal, never rounds)
+function priceSuperHtml(v) {
+    var s = parseFloat(v).toFixed(3);
+    return s.slice(0, 4).replace('.', ',') +
+        '<sup style="' + TANKSTELLE_SUP + '">' + s.slice(4) + '</sup>';
+}
+
+// Current price: "1,77⁹ €/l"
+function formatTankstelleHtml(v) {
+    if (v === null || v === undefined || isNaN(parseFloat(v))) return '';
+    return priceSuperHtml(v) + ' €/l';
+}
+
+// 14-day range value with a dimmed label, e.g. "max 2,10⁹".
+// Unit omitted on purpose — it is shown once on the current price.
+function formatRangeHtml(label, v) {
+    if (v === null || v === undefined || isNaN(parseFloat(v))) return '';
+    return '<span style="color:#8A8A8A">' + label + '</span> ' + priceSuperHtml(v);
+}
+
+// Recompute the current-price HTML for one fuel from its live feed value.
+function updateTankstelleHtml(fuelName) {
+    var feed = fuelFeedOid[fuelName];
+    var st = getState(feed);
+    var val = (st && st.val !== undefined && st.val !== null) ? st.val : null;
+    setState(`${stateBasePath}.${fuelName}_html`, formatTankstelleHtml(val), true);
+}
+
+// Recompute the range (max/min) HTML for one fuel/stat from its quantile state.
+function updateRangeHtml(fuelName, stat) {
+    var src = `${stateBasePath}.${fuelName}_${stat}`;
+    var st = getState(src);
+    var val = (st && st.val !== undefined && st.val !== null) ? st.val : null;
+    setState(`${src}_html`, formatRangeHtml(stat, val), true);
+}
+
 // ============================================================================
 // STATE CREATION - GAS PRICE QUANTILES
 // ============================================================================
@@ -66,6 +113,20 @@ function createQuantileStates() {
             desc: `Timestamp of last Tankerkoenig ${fuel.name.toUpperCase()} quantiles update`,
             type: 'number',
             role: 'value'
+        });
+
+        createState(`${stateBasePath}.${fuel.name}_html`, '', {
+            desc: `Tankerkoenig ${fuel.name.toUpperCase()} current price, tankstelle-style HTML (1,77⁹ €/l)`,
+            type: 'string',
+            role: 'html'
+        });
+
+        ['max', 'min'].forEach(function(stat) {
+            createState(`${stateBasePath}.${fuel.name}_${stat}_html`, '', {
+                desc: `Tankerkoenig ${fuel.name.toUpperCase()} ${stat} (14d), tankstelle-style HTML with label`,
+                type: 'string',
+                role: 'html'
+            });
         });
     });
 }
@@ -156,6 +217,25 @@ createQuantileStates();
 setTimeout(function() {
     queryInfluxDBTankerkoenig();
 }, 2000);
+
+// Tankstelle-style HTML: refresh on every change, plus once at startup.
+// Current price tracks the live feed; the max/min range tracks the quantile states.
+Object.keys(fuelFeedOid).forEach(function(fuelName) {
+    on({ id: fuelFeedOid[fuelName], change: 'any' }, function() {
+        updateTankstelleHtml(fuelName);
+    });
+    ['max', 'min'].forEach(function(stat) {
+        on({ id: `${stateBasePath}.${fuelName}_${stat}`, change: 'any' }, function() {
+            updateRangeHtml(fuelName, stat);
+        });
+    });
+});
+setTimeout(function() {
+    Object.keys(fuelFeedOid).forEach(function(fuelName) {
+        updateTankstelleHtml(fuelName);
+        ['max', 'min'].forEach(function(stat) { updateRangeHtml(fuelName, stat); });
+    });
+}, 2500);
 
 // Schedule to run every 5 minutes, 1 minute after collection script (*/5)
 schedule("1,6,11,16,21,26,31,36,41,46,51,56 * * * *", queryInfluxDBTankerkoenig);
