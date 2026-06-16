@@ -13,6 +13,64 @@
     --color-button-active: var(--color-red);
     --color-border: var(--color-grey);
     --color-font: var(--color-light-grey);
+
+    /* === design-system tokens (2026-06; see DESIGN_SYSTEM.md) — additive === */
+    /* new neutral primitives */
+    --color-text-muted: #8A8A8A;        /* secondary metadata: last-update, min/max, weekday */
+    --color-mute: #7F8A99;              /* inactive SVG-card nodes/links */
+
+    /* semantic colour tokens (static styling layer) */
+    --sem-good: var(--color-green);     /* energy/PV/supply, cheap tier, saving */
+    --sem-import: var(--color-blue);    /* grid import / consumption draw */
+    --sem-cold: var(--color-blue);      /* cold end of temp/comfort scale */
+    --sem-warn: var(--color-yellow);    /* mid/elevated DATA tier — attention, NOT alarm */
+    --sem-alarm: var(--color-red);      /* RARE: stale sensor, door open, lock unlocked, top tier */
+    --sem-muted: var(--color-mute);     /* inactive / low-priority */
+    --acc-control: var(--color-yellow); /* UI control ON/active (distinct concept from --sem-warn) */
+    --text: var(--color-font);          /* default neutral text + ladder p50 branch */
+    --text-on-bright: var(--color-panel); /* dark text on a filled lime/amber bar */
+
+    /* font-size scale — one size per data role, kiosk-deterministic px */
+    --fs-hero: 84px;     /* outside-temp HERO + header clock ONLY */
+    --fs-metric: 36px;   /* every primary one-glance number */
+    --fs-sub: 22px;      /* companion numbers: min/max, humidity, CO2, costs */
+    --fs-label: 16px;    /* names, control captions, section titles, units */
+    --fs-caption: 13px;  /* HARD floor: last-update, weekday names, state strings */
+
+    /* spacing + grid */
+    --space-xs: 4px;     /* page edge margin */
+    --space-sm: 6px;     /* single standard card gutter (H == V) */
+    --space-md: 9px;     /* tile-grid gutter (X == Y) */
+    --space-lg: 12px;    /* internal card padding (== --panel-pad) */
+    --space-xl: 24px;    /* major section separation */
+    --grid-col: 386px;   /* canonical card-column width */
+
+    /* panel / tile chrome */
+    --radius-card: 12px;
+    --radius-tile: 8px;
+    --panel-pad: 12px;
+    --tile-size: 66px;
+    --tile-size-sm: 45px;
+}
+
+/* === design-system component classes (unused until the restyle passes) === */
+.card {
+    background-color: var(--color-panel);
+    border-radius: var(--radius-card);
+    border: 1px solid transparent;
+    padding: var(--panel-pad);
+    box-sizing: border-box;
+}
+.card--accent { border: 1px solid var(--color-green); }   /* the liked "green-framed tile" */
+.card-metric .title { font-size: var(--fs-label); color: var(--color-text-muted); }
+.card-metric .value { font-size: var(--fs-metric); color: var(--text); }
+.tile-control {
+    width: var(--tile-size); height: var(--tile-size);
+    border-radius: var(--radius-tile); box-sizing: border-box;
+}
+.tile-toggle {
+    width: var(--tile-size-sm); height: var(--tile-size-sm);
+    border-radius: var(--radius-tile); box-sizing: border-box;
 }
 
 .rotate90 {
