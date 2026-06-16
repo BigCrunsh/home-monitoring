@@ -5733,7 +5733,7 @@
           "width": "59px",
           "height": "10px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -5811,7 +5811,7 @@
           "width": "59px",
           "height": "10px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -5889,7 +5889,7 @@
           "width": "59px",
           "height": "10px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -5967,7 +5967,7 @@
           "width": "59px",
           "height": "10px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -7211,7 +7211,7 @@
           "top": 638,
           "z-index": "2",
           "color": "{h:tankerkoenig.0.stations.1.diesel.feed; p20:javascript.0.tankerkoenig_quantiles.diesel_p20; p50:javascript.0.tankerkoenig_quantiles.diesel_p50; p80:javascript.0.tankerkoenig_quantiles.diesel_p80; h <= p20 ? \"#b5fb5b\" : h >= p80 ? \"#A00629\" : \"#F1BE3D\"}",
-          "font-size": "xx-large",
+          "font-size": "var(--fs-metric)",
           "width": "124px",
           "height": "39px",
           "font-family": "RobotoCondensed-Regular",
@@ -7435,7 +7435,7 @@
           "top": "729px",
           "z-index": "2",
           "color": "{h:tankerkoenig.0.stations.1.e5.feed; p20:javascript.0.tankerkoenig_quantiles.e5_p20; p50:javascript.0.tankerkoenig_quantiles.e5_p50; p80:javascript.0.tankerkoenig_quantiles.e5_p80; h <= p20 ? \"#b5fb5b\" : h >= p80 ? \"#A00629\" : \"#F1BE3D\"}",
-          "font-size": "xx-large",
+          "font-size": "var(--fs-metric)",
           "width": "124px",
           "height": "39px",
           "font-family": "RobotoCondensed-Regular",
@@ -7514,7 +7514,7 @@
           "top": 662,
           "z-index": "2",
           "color": "var(--color-font)",
-          "font-size": "small",
+          "font-size": "var(--fs-caption)",
           "width": "50px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
@@ -7592,7 +7592,7 @@
           "top": 638,
           "z-index": "2",
           "color": "var(--color-font)",
-          "font-size": "small",
+          "font-size": "var(--fs-caption)",
           "width": "50px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
@@ -7671,7 +7671,7 @@
           "top": "753px",
           "z-index": "2",
           "color": "var(--color-font)",
-          "font-size": "small",
+          "font-size": "var(--fs-caption)",
           "width": "50px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
@@ -7749,7 +7749,7 @@
           "top": "729px",
           "z-index": "2",
           "color": "var(--color-font)",
-          "font-size": "small",
+          "font-size": "var(--fs-caption)",
           "width": "50px",
           "height": "",
           "font-family": "RobotoCondensed-Regular",
@@ -8114,7 +8114,7 @@
           "z-index": "2",
           "width": "120px",
           "height": "120px",
-          "font-size": "84px",
+          "font-size": "var(--fs-sub)",
           "text-align": "center",
           "bindings": []
         },
@@ -8345,7 +8345,7 @@
           "color": "{h:netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c.02-00-00-32-ae-a4.Temperature.Temperature;h <=3 ? \"#CCCCCC\" : h < 12 ? \"#5080AC\" : h < 20 ? \"#b5fb5b\" : h < 27 ? \"#F1BE3D\" : \"#A00629\"}",
           "height": "",
           "z-index": "2",
-          "font-size": "72px",
+          "font-size": "var(--fs-hero)",
           "width": "205px",
           "text-align": "right",
           "font-family": "RobotoCondensed-Regular",
@@ -8754,7 +8754,7 @@
           "color": "{h:netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c.03-00-00-0f-01-6e.Temperature.Temperature;h <=3 ? \"#CCCCCC\" : h < 12 ? \"#5080AC\" : h < 20 ? \"#b5fb5b\" : h < 27 ? \"#F1BE3D\" : \"#A00629\"}",
           "height": "",
           "z-index": "2",
-          "font-size": "36px",
+          "font-size": "var(--fs-metric)",
           "width": "125px",
           "font-family": "RobotoCondensed-Regular",
           "text-align": "center",
@@ -8834,7 +8834,7 @@
           "color": "{h:netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c.03-00-00-0e-16-36.Temperature.Temperature;h <=3 ? \"#CCCCCC\" : h < 12 ? \"#5080AC\" : h < 20 ? \"#b5fb5b\" : h < 27 ? \"#F1BE3D\" : \"#A00629\"}",
           "height": "",
           "z-index": "2",
-          "font-size": "36px",
+          "font-size": "var(--fs-metric)",
           "width": "125px",
           "font-family": "RobotoCondensed-Regular",
           "text-align": "center",
@@ -9470,7 +9470,7 @@
           "color": "{h:netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c.Temperature.Temperature;h <=3 ? \"#CCCCCC\" : h < 12 ? \"#5080AC\" : h < 20 ? \"#b5fb5b\" : h < 27 ? \"#F1BE3D\" : \"#A00629\"}",
           "height": "43px",
           "z-index": "2",
-          "font-size": "36px",
+          "font-size": "var(--fs-metric)",
           "width": "125px",
           "font-family": "RobotoCondensed-Regular",
           "text-align": "center",
@@ -9779,7 +9779,7 @@
           "width": "100px",
           "height": "12px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -9858,7 +9858,7 @@
           "width": "100px",
           "height": "12px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -9937,7 +9937,7 @@
           "width": "100px",
           "height": "12px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -10367,7 +10367,7 @@
           "color": "{h:netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c.02-00-00-32-ae-a4.Humidity.Humidity; h < 40 ? \"#A00629\" : h < 60 ? \"#b5fb5b\" : \"#5080AC\"}",
           "height": "",
           "z-index": "2",
-          "font-size": "48px",
+          "font-size": "var(--fs-sub)",
           "width": "",
           "text-align": "right",
           "font-family": "RobotoCondensed-Regular",
@@ -10448,7 +10448,7 @@
           "color": "{h:daswetter.0.NextDays.Location_1.Day_1.Maximale_Temperatur_value;h <=3 ? \"#CCCCCC\" : h < 12 ? \"#5080AC\" : h < 20 ? \"#b5fb5b\" : h < 27 ? \"#F1BE3D\" : \"#A00629\"}",
           "height": "",
           "z-index": "2",
-          "font-size": "48px",
+          "font-size": "var(--fs-sub)",
           "width": "60px",
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
@@ -10530,7 +10530,7 @@
           "color": "{h:daswetter.0.NextDays.Location_1.Day_1.Minimale_Temperatur_value;h <=3 ? \"#CCCCCC\" : h < 12 ? \"#5080AC\" : h < 20 ? \"#b5fb5b\" : h < 27 ? \"#F1BE3D\" : \"#A00629\"}",
           "height": "",
           "z-index": "2",
-          "font-size": "48px",
+          "font-size": "var(--fs-sub)",
           "width": "60",
           "font-family": "RobotoCondensed-Regular",
           "text-align": "right",
@@ -12158,7 +12158,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12232,7 +12232,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12306,7 +12306,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12380,7 +12380,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12454,7 +12454,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12528,7 +12528,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12602,7 +12602,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12676,7 +12676,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-caption)",
           "text-align": "center"
         },
         "widgetSet": "basic"
@@ -12751,7 +12751,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -12826,7 +12826,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -12901,7 +12901,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -12976,7 +12976,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13051,7 +13051,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13126,7 +13126,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13201,7 +13201,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13276,7 +13276,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13351,7 +13351,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13426,7 +13426,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13501,7 +13501,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -13576,7 +13576,7 @@
           "font-family": "RobotoCondensed-Regular",
           "bindings": [],
           "width": "45px",
-          "font-size": "small",
+          "font-size": "var(--fs-label)",
           "text-align": "right"
         },
         "widgetSet": "basic"
@@ -16755,7 +16755,7 @@
           "color": "{h:netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c.03-00-00-10-e5-42.Temperature.Temperature;h <=3 ? \"#CCCCCC\" : h < 12 ? \"#5080AC\" : h < 20 ? \"#b5fb5b\" : h < 27 ? \"#F1BE3D\" : \"#A00629\"}",
           "height": "",
           "z-index": "2",
-          "font-size": "36px",
+          "font-size": "var(--fs-metric)",
           "width": "125px",
           "font-family": "RobotoCondensed-Regular",
           "text-align": "center",
@@ -17072,7 +17072,7 @@
           "width": "100px",
           "height": "12px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -17224,7 +17224,7 @@
           "width": "100px",
           "height": "12px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
@@ -17303,7 +17303,7 @@
           "width": "100px",
           "height": "12px",
           "font-family": "RobotoCondensed-Regular",
-          "font-size": "x-small",
+          "font-size": "var(--fs-caption)",
           "bindings": []
         },
         "widgetSet": "basic"
