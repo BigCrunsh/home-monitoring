@@ -28,9 +28,12 @@ duplicate.
 - Per-element review of the Main view → a prioritized rework (best encoding per
   metric; trends where a snapshot misleads; remove/replace low-value tiles;
   introduce modern components where they earn their place).
-- Define and apply a **shared visual system**: panel container style, spacing
-  grid, font scale, color/semantic palette, number/locale formatting — across
-  Main, Energy, Advanced, Weather (+ the new panels).
+- Define and apply a **shared visual system** (now defined in
+  `integrations/iobroker/vis/DESIGN_SYSTEM.md`, tokens in `vis-user.css`): semantic
+  colour tokens + a two-layer palette (CSS vars for static styling, JS `*_sem` states
+  for data-driven colour since vis bindings can't read CSS vars), a 5-step font scale,
+  spacing/grid + panel-chrome tokens, and `.card`/`.tile-*` component classes — applied
+  across Main, Energy, Advanced, Weather.
 - Reduce absolute-positioning fragility where feasible (grouped containers /
   reusable templates) so the layout is maintainable.
 
