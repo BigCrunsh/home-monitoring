@@ -53,26 +53,29 @@ var fuelFeedOid = {
 
 // Tankstelle-style formatting (German filling-station price display): the third
 // decimal is shown as a small raised index, the way Tankstellen do it.
-var TANKSTELLE_SUP = 'font-size:0.5em;vertical-align:0.72em';
+// The big current price (xx-large) top-aligns at 0.72em; the small max/min values
+// need a lower raise to top-align with their last digit at that size.
+var SUP_PRICE = 'font-size:0.5em;vertical-align:0.72em';
+var SUP_RANGE = 'font-size:0.5em;vertical-align:0.55em';
 
 // "1.779" -> "1,77" + superscript "9"  (truncates the third decimal, never rounds)
-function priceSuperHtml(v) {
+function priceSuperHtml(v, sup) {
     var s = parseFloat(v).toFixed(3);
     return s.slice(0, 4).replace('.', ',') +
-        '<sup style="' + TANKSTELLE_SUP + '">' + s.slice(4) + '</sup>';
+        '<sup style="' + sup + '">' + s.slice(4) + '</sup>';
 }
 
 // Current price: "1,77⁹ €/l"
 function formatTankstelleHtml(v) {
     if (v === null || v === undefined || isNaN(parseFloat(v))) return '';
-    return priceSuperHtml(v) + ' €/l';
+    return priceSuperHtml(v, SUP_PRICE) + ' €/l';
 }
 
 // 14-day range value with a dimmed label, e.g. "max 2,10⁹".
 // Unit omitted on purpose — it is shown once on the current price.
 function formatRangeHtml(label, v) {
     if (v === null || v === undefined || isNaN(parseFloat(v))) return '';
-    return '<span style="color:#8A8A8A">' + label + '</span> ' + priceSuperHtml(v);
+    return '<span style="color:#8A8A8A">' + label + '</span> ' + priceSuperHtml(v, SUP_RANGE);
 }
 
 // Recompute the current-price HTML for one fuel from its live feed value.
