@@ -1,10 +1,13 @@
 // Publishes real-time energy states anchored on the grid-point meter.
 //
 // Modes (published in power_calc_mode):
+//   modbus    — live inverter production over Modbus TCP (SunSpec, via the
+//               solaredge_modbus script) plus the live Shelly 3EM grid. Preferred:
+//               consumption and autarky are real-time, no cloud lag.
 //   hybrid    — grid power from the live Shelly 3EM (mqtt_shelly states) plus the
 //               newest SolarEdge production reading (~15 min fresh). Purchase and
 //               feed-in are exact for the whole house; consumption and autarky are
-//               derived from the grid anchor.
+//               derived from the grid anchor. Fallback when Modbus is asleep/offline.
 //   solaredge — fallback when the Shelly state is stale: newest COMPLETE SolarEdge
 //               row (consumption-side fields present; the SolarEdge cloud delivers
 //               them ~2h late and attributes everything to FeedIn until then).
@@ -122,6 +125,7 @@ var GRID_MAX_AGE_SECONDS = 300;   // Shelly reading older than this -> fallback
 // SolarEdge publishes quarter-hour power rows ~60-75 min late, so the newest
 // row is normally ~1h old; the gate only catches genuine collection outages
 var PRODUCTION_MAX_AGE_SECONDS = 7200;
+var MODBUS_MAX_AGE_SECONDS = 30;  // live SolarEdge production via Modbus; older -> cloud row
 var GRID_STATE = 'javascript.0.mqtt_shelly.total_act_power';  // negative = export
 // Shelly Plug S Gen3 metering the Maxxisun (signed apower: negative = feeding/producing)
 var MAXXI_STATE = 'mqtt.0.shellyplugsg3-48f6eeb7af98.status.switch:0';
@@ -275,11 +279,13 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, priceMin,
     row(84, 'sun', 'SolarEdge', se, seOn ? GREEN : LBL, VAL, '');
     row(116, 'battery', 'Maxxisun', maxxi, feed ? GREEN : (chg ? AMBER : LBL), feed ? GREEN : (chg ? AMBER : VAL), '');
     row(148, 'grid', 'Netz', grid, exp ? GREEN : (imp ? priceCol : LBL), exp ? GREEN : (imp ? priceCol : VAL), '');
-    row(180, 'house', 'Haus', haus, LBL, LBL, '≈ ');
+    // Haus = live balance of metered sources (SolarEdge + Maxxisun + grid). Only
+    // flagged "≈"/muted when the production feed has fallen back to the stale cloud row.
+    row(180, 'house', 'Haus', haus, LBL, stale ? LBL : VAL, stale ? '≈ ' : '');
 
-    // ===== Autarkie (derived from house → marked ≈ until Modbus) =====
+    // ===== Autarkie (live from Modbus; "geschätzt" only on the stale cloud fallback) =====
     var aPct = Math.round((autark || 0) * 100);
-    p.push('<text x="14" y="212" fill="' + LBL + '" ' + F + ' font-size="11">Autarkie <tspan font-size="10">(≈ geschätzt)</tspan></text>');
+    p.push('<text x="14" y="212" fill="' + LBL + '" ' + F + ' font-size="11">Autarkie' + (stale ? ' <tspan font-size="10">(≈ geschätzt)</tspan>' : '') + '</text>');
     p.push('<text x="372" y="212" fill="' + LBL + '" ' + F + ' font-size="13" text-anchor="end">' + aPct + '%</text>');
     p.push('<rect x="14" y="218" width="358" height="6" rx="3" fill="' + BORDER + '"/>');
     p.push('<rect x="14" y="218" width="' + (3.58 * Math.min(aPct, 100)).toFixed(0) + '" height="6" rx="3" fill="' + GREEN + '"/>');
@@ -371,8 +377,14 @@ function recompute() {
     var gridState = getState(GRID_STATE);
     var gridFresh = gridState && gridState.val !== null
         && (Date.now() - gridState.ts) / 1000 < GRID_MAX_AGE_SECONDS;
-    var productionFresh = cachedProductionRow
-        && rowAgeSeconds(cachedProductionRow) < PRODUCTION_MAX_AGE_SECONDS;
+
+    // Prefer live SolarEdge production over Modbus (SunSpec, via solaredge_modbus);
+    // fall back to the newest cloud row when Modbus is offline/stale (inverter asleep).
+    var mbOnline = getState('javascript.0.solaredge_modbus_online');
+    var mbProd = getState('javascript.0.solaredge_modbus_production');
+    var modbusLive = mbOnline && mbOnline.val === true
+        && mbProd && typeof mbProd.val === 'number'
+        && (Date.now() - mbProd.ts) / 1000 < MODBUS_MAX_AGE_SECONDS;
 
     // Maxxisun (Shelly plug): publish its live signed power + status for the dashboard,
     // and add only its feed-in (negative apower) to production. Its charging (positive
@@ -387,27 +399,38 @@ function recompute() {
         setState('maxxisun_tile', renderMaxxiTile(maxxiApower));
     }
 
+    // Pick the SolarEdge production source: live Modbus, else newest cloud row.
+    var seProd, productionFresh, ageMin;
+    if (modbusLive) {
+        seProd = Math.max(0, mbProd.val);
+        productionFresh = true;
+        ageMin = 0;
+    } else if (cachedProductionRow) {
+        seProd = cachedProductionRow.Production || 0;
+        productionFresh = rowAgeSeconds(cachedProductionRow) < PRODUCTION_MAX_AGE_SECONDS;
+        ageMin = Math.round(rowAgeSeconds(cachedProductionRow) / 60);
+    } else {
+        return false;   // nothing usable yet
+    }
+
     // Always render the hub with best-available data + a staleness flag, so it never
     // silently freezes. Power states are still only published when the data is fresh.
-    if (cachedProductionRow) {
-        var seProd = cachedProductionRow.Production || 0;
-        var gridVal = (gridState && gridState.val !== null) ? gridState.val : 0;
-        var vals = computeHybrid(gridVal, seProd + maxxiProd);
-        var priceS = getState('javascript.0.tibber_states.energy_price_euro');
-        var pMinS = getState('javascript.0.tibber_states.energy_price_euro_min');
-        var pMaxS = getState('javascript.0.tibber_states.energy_price_euro_max');
-        var price = priceS && typeof priceS.val === 'number' ? priceS.val : null;
-        var pMin = pMinS && typeof pMinS.val === 'number' ? pMinS.val : null;
-        var pMax = pMaxS && typeof pMaxS.val === 'number' ? pMaxS.val : null;
-        var fresh = gridFresh && productionFresh;
-        setState('energy_flow_card', renderEnergyFlow(
-            seProd, maxxiApower, gridVal, vals.consumption,
-            vals.rate_autarky, vals.rate_selfconsumption, price, pMin, pMax,
-            !fresh, Math.round(rowAgeSeconds(cachedProductionRow) / 60)));
-        if (fresh) {
-            publish(vals, 'hybrid', rowAgeSeconds(cachedProductionRow));
-            return true;
-        }
+    var gridVal = (gridState && gridState.val !== null) ? gridState.val : 0;
+    var vals = computeHybrid(gridVal, seProd + maxxiProd);
+    var priceS = getState('javascript.0.tibber_states.energy_price_euro');
+    var pMinS = getState('javascript.0.tibber_states.energy_price_euro_min');
+    var pMaxS = getState('javascript.0.tibber_states.energy_price_euro_max');
+    var price = priceS && typeof priceS.val === 'number' ? priceS.val : null;
+    var pMin = pMinS && typeof pMinS.val === 'number' ? pMinS.val : null;
+    var pMax = pMaxS && typeof pMaxS.val === 'number' ? pMaxS.val : null;
+    var fresh = gridFresh && productionFresh;
+    setState('energy_flow_card', renderEnergyFlow(
+        seProd, maxxiApower, gridVal, vals.consumption,
+        vals.rate_autarky, vals.rate_selfconsumption, price, pMin, pMax,
+        !fresh, ageMin));
+    if (fresh) {
+        publish(vals, modbusLive ? 'modbus' : 'hybrid', modbusLive ? 0 : rowAgeSeconds(cachedProductionRow));
+        return true;
     }
     return false;
 }
@@ -458,6 +481,11 @@ on({ id: GRID_STATE, change: 'ne' }, function () {
 on({ id: MAXXI_STATE, change: 'ne' }, function () {
     recompute();
     syncMaxxiRelay();
+});
+
+// live recompute on every fresh Modbus production reading (~6s)
+on({ id: 'javascript.0.solaredge_modbus_production', change: 'ne' }, function () {
+    recompute();
 });
 
 schedule("*/1 * * * *", queryInfluxDB);
