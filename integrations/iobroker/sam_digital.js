@@ -5,6 +5,12 @@ var valveMeasurement = 'home_monitoring.autogen.heat_valve_signal_percentage';
 
 var timeWindowDays = 30
 
+// Reject implausible sensor readings (a faulty/disconnected probe reports e.g.
+// -60 °C). Returns null so the dashboard shows no value instead of a fake one.
+function plausibleTemp(v, lo, hi) {
+    return (typeof v === 'number' && v >= lo && v <= hi) ? v : null;
+}
+
 // --- States: Außentemperatur AF1 ---
 
 createState(`${stateBasePath}.outdoor_temperature`, 0, {
@@ -253,11 +259,11 @@ function queryInfluxDB() {
             } else if (result.result && result.result[0] && result.result[0][0]) {
                 var row = result.result[0][0];
 
-                setState(`${stateBasePath}.outdoor_temperature`, row.outdoor || 0, true);
-                setState(`${stateBasePath}.heating_flow_temperature`, row.heating_flow || 0, true);
-                setState(`${stateBasePath}.heating_return_temperature`, row.heating_return || 0, true);
-                setState(`${stateBasePath}.hotwater_return_temperature`, row.hotwater_return || 0, true);
-                setState(`${stateBasePath}.hotwater_storage_temperature`, row.hotwater_storage || 0, true);
+                setState(`${stateBasePath}.outdoor_temperature`, plausibleTemp(row.outdoor, -40, 55), true);
+                setState(`${stateBasePath}.heating_flow_temperature`, plausibleTemp(row.heating_flow, -5, 120), true);
+                setState(`${stateBasePath}.heating_return_temperature`, plausibleTemp(row.heating_return, -5, 120), true);
+                setState(`${stateBasePath}.hotwater_return_temperature`, plausibleTemp(row.hotwater_return, -5, 120), true);
+                setState(`${stateBasePath}.hotwater_storage_temperature`, plausibleTemp(row.hotwater_storage, 0, 110), true);
             }
         }
     );
