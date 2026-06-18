@@ -187,8 +187,12 @@ function renderAll() {
 // --- 7-day autarky / self-consumption from InfluxDB ------------------------
 function query7d() {
     sendTo('influxdb.0', 'query',
+        // Only complete rows: the SolarEdge cloud back-fills the consumption side ~1–2 h
+        // late, so recent rows read Consumption/SelfConsumption = 0 while Production is
+        // already present — including them deflates the 7-day self-consumption mean.
         'SELECT MEAN(Consumption) AS c, MEAN(Production) AS p, MEAN(SelfConsumption) AS s'
-        + ' FROM home_monitoring.autogen.electricity_power_watt WHERE time > now() - 7d',
+        + ' FROM home_monitoring.autogen.electricity_power_watt'
+        + ' WHERE time > now() - 7d AND Consumption > 0',
         function (res) {
             if (res.error) { console.error('energy_tab 7d: ' + res.error); renderAll(); return; }
             var r = (res.result && res.result[0] && res.result[0][0]) || null;
