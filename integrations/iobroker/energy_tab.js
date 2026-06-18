@@ -45,6 +45,15 @@ function bar(x, y, w, h, frac, col) {
 function comma(v, dec) { return (typeof v === 'number') ? v.toFixed(dec == null ? 1 : dec).replace('.', ',') : '–'; }
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
 function shelly(id) { return sNum('javascript.0.mqtt_shelly.' + id); }
+// Colour by role × magnitude (matches the Energiefluss hub): favourable (produce / feed /
+// export) grey < 75 W → green; cost (consume / charge / import) grey < 150 W → yellow → red ≥ 2000 W.
+var T_PROD = 75, T_CONS_LOW = 150, T_CONS_HIGH = 2000;
+function roleCol(val, favourable) {
+    var m = Math.abs(val || 0);
+    if (favourable) return m < T_PROD ? LBL : GREEN;
+    if (m < T_CONS_LOW) return LBL;
+    return m < T_CONS_HIGH ? AMBER : RED;
+}
 function sam(id) { return sNum('javascript.0.sam_digital.' + id); }
 
 // --- 1) Live-Leistung (Shelly 3EM, 3-phase table) --------------------------
@@ -69,7 +78,7 @@ function renderPower() {
     }
     var fi = function (v) { return Math.round(v); };
     var f1 = function (v) { return comma(v, 1); };
-    var wCol = watt.t != null && watt.t < -50 ? GREEN : VAL;   // net export → green
+    var wCol = roleCol(watt.t, (watt.t || 0) < 0);   // grid: export green, import yellow→red
     row(82, 'Wirkleistung (W)', watt, fi, wCol);
     row(126, 'Scheinleistung (VA)', va, fi, VAL);
     row(170, 'Strom (A)', amp, f1, VAL);
@@ -95,9 +104,9 @@ function renderCosts() {
         c.push(T(14, y, LBL, 13, null, label));
         c.push(T(372, y, col, 15, 'end', (plus && val > 0.0005 ? '+' : '') + eur(val) + ' €/h'));
     }
-    row(58, 'Netzeinkauf', einkauf, einkauf > 0.0005 ? RED : LBL, false);
-    row(88, 'Einspeise-Gewinn', gewinn, gewinn > 0.0005 ? GREEN : LBL, true);
-    row(118, 'Eigenverbrauch gespart', gespart, gespart > 0.0005 ? GREEN : LBL, false);
+    row(58, 'Netzeinkauf', einkauf, roleCol(pur, false), false);        // cost: yellow→red by import W
+    row(88, 'Einspeise-Gewinn', gewinn, roleCol(feed, true), true);     // favourable: green ≥75 W
+    row(118, 'Eigenverbrauch gespart', gespart, roleCol(self, true), false);
     c.push('<line x1="14" y1="140" x2="372" y2="140" stroke="' + BORDER + '"/>');
     c.push(T(14, 178, LBL, 14, null, 'Heute'));
     c.push(T(372, 182, VAL, 26, 'end', today != null ? eur(today) + ' €' : '–'));
