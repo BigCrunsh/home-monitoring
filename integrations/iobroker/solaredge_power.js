@@ -332,25 +332,25 @@ function publish(values, mode, ageSeconds) {
     setState('power_data_stale', false);
 }
 
-// hybrid: grid anchor (live Shelly) + freshest production reading
-function computeHybrid(grid, production) {
-    var purchased = Math.max(0, grid);
-    var feedin = Math.max(0, -grid);
-    // clamp to physical bounds: stale-high production with live export could
-    // otherwise yield negative values
-    var consumption = Math.max(purchased, production + grid);
-    var selfconsumption = Math.min(
-        Math.max(0, production - feedin),
-        consumption
-    );
+// hybrid: grid anchor (live Shelly) + freshest production reading.
+// `production` = SolarEdge + Maxxisun feed-in (generation feeding the house bus).
+// `maxxiCharge` = Maxxisun battery charging (W): storage, NOT household load, so it is
+// excluded from Haus — otherwise charging off a solar surplus inflates consumption.
+function computeHybrid(grid, production, maxxiCharge) {
+    var purchased = Math.max(0, grid);    // grid import (exact)
+    var feedin = Math.max(0, -grid);      // grid export (exact)
+    // Haus = household appliance load = generation + net grid import − battery charging.
+    var consumption = Math.max(0, production + grid - (maxxiCharge || 0));
+    // self-consumption = generation used on-site (incl. battery charging), i.e. not exported.
+    var selfconsumption = Math.max(0, production - feedin);
     return {
         consumption: consumption,
         feedin: feedin,
         production: production,
         purchased: purchased,
         selfconsumption: selfconsumption,
-        rate_autarky: consumption > 0 ? (consumption - purchased) / consumption : 0,
-        rate_selfconsumption: production > 0 ? selfconsumption / production : 0
+        rate_autarky: consumption > 0 ? Math.max(0, Math.min(1, (consumption - purchased) / consumption)) : 0,
+        rate_selfconsumption: production > 0 ? Math.min(1, selfconsumption / production) : 0
     };
 }
 
@@ -386,9 +386,9 @@ function recompute() {
         && mbProd && typeof mbProd.val === 'number'
         && (Date.now() - mbProd.ts) / 1000 < MODBUS_MAX_AGE_SECONDS;
 
-    // Maxxisun (Shelly plug): publish its live signed power + status for the dashboard,
-    // and add only its feed-in (negative apower) to production. Its charging (positive
-    // apower) is already captured by the grid anchor as consumption, so it needs nothing.
+    // Maxxisun (Shelly plug): publish its live signed power + status for the dashboard.
+    // Feed-in (negative apower) adds to generation; charging (positive apower) is battery
+    // storage, subtracted from Haus below so it isn't counted as household consumption.
     var maxxiApower = readMaxxiApower();
     var maxxiProd = 0;
     if (maxxiApower !== null) {
@@ -416,7 +416,8 @@ function recompute() {
     // Always render the hub with best-available data + a staleness flag, so it never
     // silently freezes. Power states are still only published when the data is fresh.
     var gridVal = (gridState && gridState.val !== null) ? gridState.val : 0;
-    var vals = computeHybrid(gridVal, seProd + maxxiProd);
+    var maxxiCharge = (maxxiApower !== null) ? Math.max(0, maxxiApower) : 0;
+    var vals = computeHybrid(gridVal, seProd + maxxiProd, maxxiCharge);
     var priceS = getState('javascript.0.tibber_states.energy_price_euro');
     var pMinS = getState('javascript.0.tibber_states.energy_price_euro_min');
     var pMaxS = getState('javascript.0.tibber_states.energy_price_euro_max');
