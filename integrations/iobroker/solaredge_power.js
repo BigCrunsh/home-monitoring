@@ -235,8 +235,18 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, priceMin,
     p.push('<rect x="1" y="1" width="384" height="279" rx="12" fill="' + PANEL + '" stroke="' + BORDER + '"/>');
 
     function kw(v) { var a = Math.abs(v || 0); return a >= 1000 ? (a / 1000).toFixed(1).replace('.', ',') + ' kW' : Math.round(a) + ' W'; }
-    var imp = grid > 50, exp = grid < -50,
-        feed = maxxi !== null && maxxi < -50, chg = maxxi !== null && maxxi > 50, seOn = se > 50;
+    var imp = grid > 50, exp = grid < -50;
+    // Colour = role × magnitude, on separate scales (production and consumption differ):
+    //   favourable (produce / feed / export): grey < 75 W, else green (meaningful).
+    //   cost (consume / charge / import): grey < 150 W, yellow 150–2000 W, red ≥ 2000 W.
+    var T_PROD = 75, T_CONS_LOW = 150, T_CONS_HIGH = 2000;
+    function roleCol(val, favourable) {
+        var m = Math.abs(val || 0);
+        if (favourable) return m < T_PROD ? LBL : GREEN;
+        if (m < T_CONS_LOW) return LBL;
+        return m < T_CONS_HIGH ? AMBER : RED;
+    }
+    var gridCol = roleCol(grid, grid < 0);
     // price position on today's range -> red→green spectrum colour
     var pf = (typeof price === 'number' && typeof priceMin === 'number' && typeof priceMax === 'number' && priceMax > priceMin)
         ? Math.max(0, Math.min(1, (price - priceMin) / (priceMax - priceMin))) : 0.5;
@@ -245,11 +255,11 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, priceMin,
     // ===== title + status (status smaller; net balance ALWAYS shown, even when balanced) =====
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * FEEDIN_RATE;
     var earning = net < -0.0005;
-    var headCol = exp ? GREEN : (imp ? priceCol : LBL);
+    var headCol = gridCol;
     var statusWord = exp ? 'Einspeisung' : (imp ? 'Netzbezug' : 'Ausgeglichen');
     p.push('<text x="14" y="22" fill="' + VAL + '" ' + F + ' font-size="16">Energiefluss</text>');
     p.push('<text x="14" y="42" fill="' + headCol + '" ' + F + ' font-size="15">' + statusWord + ' ' + kw(grid) + '</text>');
-    p.push('<text x="372" y="42" fill="' + (Math.abs(net) < 0.005 ? LBL : (earning ? GREEN : priceCol)) + '" ' + F + ' font-size="14" text-anchor="end">'
+    p.push('<text x="372" y="42" fill="' + (Math.abs(net) < 0.005 ? LBL : gridCol) + '" ' + F + ' font-size="14" text-anchor="end">'
         + (earning ? '+' : '') + Math.abs(net).toFixed(2).replace('.', ',') + ' €/h</text>');
 
     // ===== price: value + günstig/mittel/teuer + spectrum track =====
@@ -276,12 +286,15 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, priceMin,
         p.push('<rect x="132" y="' + (yy - 3) + '" width="' + (158 * frac).toFixed(0) + '" height="7" rx="3" fill="' + barCol + '"/>');
         p.push('<text x="372" y="' + (yy + 5) + '" fill="' + valCol + '" ' + F + ' font-size="15" text-anchor="end">' + (prefix || '') + w(val) + '</text>');
     }
-    row(84, 'sun', 'SolarEdge', se, seOn ? GREEN : LBL, VAL, '');
-    row(116, 'battery', 'Maxxisun', maxxi, feed ? GREEN : (chg ? AMBER : LBL), feed ? GREEN : (chg ? AMBER : VAL), '');
-    row(148, 'grid', 'Netz', grid, exp ? GREEN : (imp ? priceCol : LBL), exp ? GREEN : (imp ? priceCol : VAL), '');
-    // Haus = live balance of metered sources (SolarEdge + Maxxisun + grid). Only
-    // flagged "≈"/muted when the production feed has fallen back to the stale cloud row.
-    row(180, 'house', 'Haus', haus, LBL, stale ? LBL : VAL, stale ? '≈ ' : '');
+    // Colour each row (icon + bar + value) by role × magnitude via roleCol: grey when near
+    // neutral, green for a meaningful favourable flow, yellow→red for normal→high cost.
+    var seCol = roleCol(se, true);                    // PV: always favourable
+    var mxCol = roleCol(maxxi, maxxi < 0);            // feeding (<0) favourable, charging cost
+    var hsCol = stale ? LBL : roleCol(haus, false);   // Haus: always cost side
+    row(84, 'sun', 'SolarEdge', se, seCol, seCol, '');
+    row(116, 'battery', 'Maxxisun', maxxi, mxCol, mxCol, '');
+    row(148, 'grid', 'Netz', grid, gridCol, gridCol, '');
+    row(180, 'house', 'Haus', haus, hsCol, hsCol, stale ? '≈ ' : '');
 
     // ===== Autarkie (live from Modbus; "geschätzt" only on the stale cloud fallback) =====
     var aPct = Math.round((autark || 0) * 100);
