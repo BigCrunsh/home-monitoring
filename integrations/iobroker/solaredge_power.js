@@ -240,11 +240,11 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, p20, p80,
     //   favourable (produce / feed / export): grey < 75 W, else green (meaningful).
     //   cost (consume / charge / import): grey < 150 W, yellow 150–2000 W, red ≥ 2000 W.
     var T_PROD = 75, T_CONS_LOW = 150, T_CONS_HIGH = 2000;
-    function roleCol(val, favourable) {
+    function roleCol(val, favourable, high) {
         var m = Math.abs(val || 0);
         if (favourable) return m < T_PROD ? LBL : GREEN;
         if (m < T_CONS_LOW) return LBL;
-        return m < T_CONS_HIGH ? AMBER : RED;
+        return m < (high || T_CONS_HIGH) ? AMBER : RED;
     }
     var gridCol = roleCol(grid, grid < 0);
     // price position on today's range -> red→green spectrum colour
@@ -295,7 +295,7 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, p20, p80,
     // Colour each row (icon + bar + value) by role × magnitude via roleCol: grey when near
     // neutral, green for a meaningful favourable flow, yellow→red for normal→high cost.
     var seCol = roleCol(se, true);                    // PV: always favourable
-    var mxCol = roleCol(maxxi, maxxi < 0);            // feeding (<0) favourable, charging cost
+    var mxCol = roleCol(maxxi, maxxi < 0, 500);       // feeding green; charging yellow <=500 W, red above (small battery)
     var hsCol = stale ? LBL : roleCol(haus, false);   // Haus: always cost side
     row(84, 'sun', 'SolarEdge', se, seCol, seCol, '');
     row(116, 'battery', 'Maxxisun', maxxi, mxCol, mxCol, '');
