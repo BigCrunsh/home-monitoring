@@ -223,7 +223,7 @@ function efIcon(kind, cx, cy, col) {
 // Akku below. Arrow thickness scales with flow; colour shows direction. One font
 // (RobotoCondensed), 2-tier greys (value #CCCCCC, label #8A8A8A); palette via CSS vars.
 // `eigen` kept in the signature for the call site but no longer shown (moves to Energy tab).
-function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, priceMin, priceMax, stale, ageMin) {
+function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, p20, p80, stale, ageMin) {
     var VAL = 'var(--color-font)', LBL = 'var(--color-text-muted)',
         GREEN = 'var(--color-green)', BLUE = 'var(--color-blue)', AMBER = 'var(--color-yellow)',
         RED = 'var(--color-red)',
@@ -248,9 +248,15 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, priceMin,
     }
     var gridCol = roleCol(grid, grid < 0);
     // price position on today's range -> red→green spectrum colour
-    var pf = (typeof price === 'number' && typeof priceMin === 'number' && typeof priceMax === 'number' && priceMax > priceMin)
-        ? Math.max(0, Math.min(1, (price - priceMin) / (priceMax - priceMin))) : 0.5;
-    var priceCol = pf < 0.34 ? GREEN : (pf < 0.67 ? AMBER : RED);
+    // Strompreis band by the 7-day distribution (p20/p80) — the SAME rule the forecast chart
+    // uses. NOT today's min/max: a few peak hours stretch that range, so a genuinely expensive
+    // price (e.g. 0,36) sits "low in range" and would wrongly read günstig/green.
+    var pBand = (typeof price === 'number' && typeof p20 === 'number' && typeof p80 === 'number')
+        ? (price <= p20 ? 0 : (price >= p80 ? 2 : 1)) : 1;   // 0 günstig · 1 mittel · 2 teuer
+    var priceCol = [GREEN, AMBER, RED][pBand];
+    // marker position: anchor p20→⅓ and p80→⅔ of the track, so it lands in the band's colour
+    var pf = (typeof price === 'number' && typeof p20 === 'number' && typeof p80 === 'number' && p80 > p20)
+        ? Math.max(0, Math.min(1, 1 / 3 + (price - p20) / (p80 - p20) / 3)) : 0.5;
 
     // ===== title + status (status smaller; net balance ALWAYS shown, even when balanced) =====
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * FEEDIN_RATE;
@@ -264,11 +270,11 @@ function renderEnergyFlow(se, maxxi, grid, haus, autark, eigen, price, priceMin,
 
     // ===== price: value + günstig/mittel/teuer + spectrum track =====
     if (typeof price === 'number' && price > 0) {
-        var word = pf < 0.34 ? 'günstig' : (pf < 0.67 ? 'mittel' : 'teuer');
+        var word = ['günstig', 'mittel', 'teuer'][pBand];
         p.push('<text x="14" y="60" fill="' + LBL + '" ' + F + ' font-size="12">Strompreis '
             + '<tspan fill="' + priceCol + '">' + price.toFixed(2).replace('.', ',') + ' €/kWh</tspan> '
             + '<tspan fill="' + priceCol + '">· ' + word + '</tspan></text>');
-        if (priceMax > priceMin) {
+        if (typeof p20 === 'number' && typeof p80 === 'number' && p80 > p20) {
             var tx0 = 250, tw = 122, ty = 55;
             p.push('<defs><linearGradient id="efprg" x1="0" x2="1"><stop offset="0" stop-color="' + GREEN + '"/><stop offset="0.5" stop-color="' + AMBER + '"/><stop offset="1" stop-color="' + RED + '"/></linearGradient></defs>');
             p.push('<rect x="' + tx0 + '" y="' + ty + '" width="' + tw + '" height="4" rx="2" fill="url(#efprg)" opacity="0.6"/>');
@@ -432,15 +438,15 @@ function recompute() {
     var maxxiCharge = (maxxiApower !== null) ? Math.max(0, maxxiApower) : 0;
     var vals = computeHybrid(gridVal, seProd + maxxiProd, maxxiCharge);
     var priceS = getState('javascript.0.tibber_states.energy_price_euro');
-    var pMinS = getState('javascript.0.tibber_states.energy_price_euro_min');
-    var pMaxS = getState('javascript.0.tibber_states.energy_price_euro_max');
+    var p20S = getState('javascript.0.tibber_states.energy_price_euro_p20');
+    var p80S = getState('javascript.0.tibber_states.energy_price_euro_p80');
     var price = priceS && typeof priceS.val === 'number' ? priceS.val : null;
-    var pMin = pMinS && typeof pMinS.val === 'number' ? pMinS.val : null;
-    var pMax = pMaxS && typeof pMaxS.val === 'number' ? pMaxS.val : null;
+    var p20 = p20S && typeof p20S.val === 'number' ? p20S.val : null;
+    var p80 = p80S && typeof p80S.val === 'number' ? p80S.val : null;
     var fresh = gridFresh && productionFresh;
     setState('energy_flow_card', renderEnergyFlow(
         seProd, maxxiApower, gridVal, vals.consumption,
-        vals.rate_autarky, vals.rate_selfconsumption, price, pMin, pMax,
+        vals.rate_autarky, vals.rate_selfconsumption, price, p20, p80,
         !fresh, ageMin));
     if (fresh) {
         publish(vals, modbusLive ? 'modbus' : 'hybrid', modbusLive ? 0 : rowAgeSeconds(cachedProductionRow));
