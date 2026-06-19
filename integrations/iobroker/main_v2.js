@@ -258,9 +258,15 @@ function renderHeute(x, y, w, h) {
     return p.join('');
 }
 
-function ph(x, y, w, h, title) {
-    return rr(x, y, w, h, CARD_RAD, PANEL, BORDER) + T(x + 18, y + 32, VAL, 17, null, title)
-        + T(x + 18, y + h / 2 + 10, LBL, 14, null, '… folgt');
+// ===== Steuerung zone — the ONLY interactive zone. The SVG draws the panel, title and section
+//       labels; the actual controls are native tappable i-vis-universal widgets overlaid on top
+//       (z-index 2), defined in vis-views.json (see SESSION-HANDOFF §4b). =====
+function renderSteuerung(x, y, w, h) {
+    var p = [rr(x, y, w, h, CARD_RAD, PANEL, BORDER), T(x + 18, y + 30, VAL, 17, null, 'Steuerung')];
+    p.push(T(x + 18, y + 54, LBL, 12, null, 'Licht'));
+    p.push(T(x + 18, y + 136, LBL, 12, null, 'Energie'));        // Maxxisun (guarded) overlay below
+    p.push(T(x + 18, y + h - 8, LBL, 11, null, 'Garten · … folgt'));
+    return p.join('');
 }
 
 function renderMainV2() {
@@ -297,7 +303,7 @@ function renderMainV2() {
     p.push(renderHeute(396, 192, 386, 224));
     p.push(renderEnergie(788, 192, 386, 224));
     p.push(renderTanken(396, 422, 386, 232));
-    p.push(ph(788, 422, 386, 232, 'Steuerung'));   // interactive → native widgets, pending scope
+    p.push(renderSteuerung(788, 422, 386, 232));   // controls overlaid as native vis widgets
 
     p.push('</svg>');
     return p.join('');

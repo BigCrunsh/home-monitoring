@@ -76,10 +76,13 @@ per-room *history/trends* into a tap pop-up / Klima tab (snapshot on Main); fina
 ## 4. Next steps
 1. ✅ Done: Maxxisun-charge fix + rooms-2×2/heating-removal committed & pushed (`e05e57d`, `ba4bf27`).
 2. ✅ Done: Energie + Heute zones built, deployed, screenshot-verified on Main2.
-3. Build **Steuerung** — ✅ inventory + widget mechanism done (see §4b for the turnkey recipe:
-   verified writable state IDs, the `i-vis-universal` clone recipe, owner scope, confirm-guard
-   options). Remaining: author the overlay widgets into Main2, wire the Maxxisun confirm-guard,
-   deploy + tap-verify. Then a prune/move pass with the owner (per-room history → tap pop-up).
+3. Build **Steuerung** — ✅ v1 shipped + verified: **Licht** (Küche/Esstisch/Büro/Couch, verbatim
+   clones of the Main switches) + **Maxxisun on/off with a two-step confirm-guard** (tap arms →
+   `steuerung.js` reveals the real plug switch for 5 s via visibility binding → second tap toggles;
+   arm-step screenshot-verified to NOT switch the plug, auto-disarm confirmed). ⬜ **Gardena
+   deferred** — needs the `State` widget type (no existing example in the project → config
+   unverified) AND the smartgarden start-write format is **untestable without real watering**.
+   See §4b. Next: prune/move pass with the owner (per-room history → tap pop-up).
 4. On sign-off: promote Neu → Main; roll the system to Weather/Advanced (renamed to zones).
 
 ## 4b. Steuerung build recipe (inventory + mechanism — verified, ready to build)
