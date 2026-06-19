@@ -57,18 +57,29 @@ overlay. Compare by tapping Main ↔ Neu.
   <12 blau / <20 grün / <27 gelb / ≥27 rot); all rooms treated as bedrooms.
 - ✅ **Tanken** — Diesel (primary) + E5 pill rows: pump icon · tankstelle price (1,69 + raised ⁹) ·
   günstig/teuer verdict (14-day p20/p80) + "→ tanken/warten" · min/max range.
-- ⬜ **Heute** (calendar/today), **Energie** (port the hub into Bubble style), **Steuerung**
-  (controls — the only INTERACTIVE zone → must use native tappable vis widgets, not SVG).
+- ✅ **Heute** — today's events from `ical.0.data.table` ({_date,event,_allDay}): blue dot · time
+  (or `ganztägig`) · title (XSS-escaped, clipped). "Keine Termine heute" when empty; "+N weitere"
+  past 5 rows.
+- ✅ **Energie** — the Energiefluss hub recreated in Bubble style from the values it already
+  publishes (no recompute): status headline + grid kW, Strompreis verdict (7-day p20/p80 band) +
+  net €/h, four role-coloured flow rows (SolarEdge/Maxxisun/Netz/Haus) with magnitude bars, Autarkie
+  bar. **SolarEdge-only is reconstructed** as `power_production − max(0,−power_maxxisun)` because
+  `power_production` folds in Maxxisun feed-in — otherwise the battery double-counts across rows.
+- ⬜ **Steuerung** — controls; the only INTERACTIVE zone → must use native tappable vis widgets,
+  not SVG. **Scope (owner): Maxxisun battery + Gardena irrigation + lights/plugs.** Next: inventory
+  which target states are actually *writable* (the scripts found so far are read-only).
 
 **Owner decisions captured:** battery + last-update shown **always** (not alarm-only); comfort =
 old bands; all rooms = bedrooms; keep-more; Bubble aesthetic; verdict-led. **Pending:** move
 per-room *history/trends* into a tap pop-up / Klima tab (snapshot on Main); final prune pass.
 
 ## 4. Next steps
-1. Commit the uncommitted production work (Maxxisun-charge fix; rooms 2×2 + heating removal).
-2. Continue Neu: build **Energie** (hub in Bubble style) and **Heute**, then **Steuerung**
-   (native interactive widgets). Then a prune/move pass with the owner.
-3. On sign-off: promote Neu → Main; roll the system to Weather/Advanced (renamed to zones).
+1. ✅ Done: Maxxisun-charge fix + rooms-2×2/heating-removal committed & pushed (`e05e57d`, `ba4bf27`).
+2. ✅ Done: Energie + Heute zones built, deployed, screenshot-verified on Main2.
+3. Build **Steuerung** (native interactive vis widgets, NOT SVG): inventory writable states for
+   Maxxisun / Gardena / lights+plugs first, then add tappable controls to the Main2 view. Then a
+   prune/move pass with the owner (per-room history → tap pop-up / Klima tab).
+4. On sign-off: promote Neu → Main; roll the system to Weather/Advanced (renamed to zones).
 
 ## 5. Technical reference
 - **Deploy existing script:** `scp X.js pi@raspberrypi:/tmp/` →

@@ -1,8 +1,10 @@
 // Prototype of the redesigned Main — "Bubble Card"-inspired aesthetic (pill rows with a
 // circular icon), rendered as one SVG into main_v2_card and shown on the "Main2" view to
-// compare with the live Main. Iteration 3: keep-everything — temp-comfort (old colour bands),
-// humidity, CO2, last-update + battery (staleness alarm), Außen current + forecast min/max,
-// and metric icons. (Bubble Card itself is Home-Assistant-only; this recreates its look.)
+// compare with the live Main. Iteration 4: zones built — Klima (temp-comfort old bands,
+// humidity, CO2, last-update + battery), Tanken (Diesel/E5 verdict), Heute (today's calendar
+// from ical.0.data.table) and Energie (the Energiefluss hub recreated in Bubble style from the
+// values it already publishes). Steuerung remains a placeholder (interactive → native widgets).
+// (Bubble Card itself is Home-Assistant-only; this recreates its look.)
 
 var VAL = 'var(--color-font)', LBL = 'var(--color-text-muted)',
     GREEN = 'var(--color-green)', AMBER = 'var(--color-yellow)', RED = 'var(--color-red)',
@@ -139,6 +141,123 @@ function renderTanken(x, y, w, h) {
     return p.join('');
 }
 
+// ===== Energie zone — the Energiefluss hub recreated in Bubble style. Reads the values the
+//       hub already publishes (no recompute): production, Maxxisun, grid (purchased−feedin),
+//       Haus, autarky, Tibber price. Role × magnitude colours mirror solaredge_power.js. =====
+var EN_NS = 'javascript.0.';
+function enRoleCol(val, favourable, high) {        // same thresholds as the hub
+    var m = Math.abs(val || 0);
+    if (favourable) return m < 75 ? LBL : GREEN;
+    if (m < 150) return LBL;
+    return m < (high || 2000) ? AMBER : RED;
+}
+function watts(v) { var a = Math.abs(v || 0); return a >= 1000 ? comma(a / 1000, 1) + ' kW' : Math.round(a) + ' W'; }
+// compact energy node icons (~9px box), centred at cx,cy
+function enIco(kind, cx, cy, col) {
+    var g = '<g stroke="' + col + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">';
+    if (kind === 'sun') {
+        g += '<circle cx="' + cx + '" cy="' + cy + '" r="4"/>';
+        for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4;
+            g += '<line x1="' + (cx + 6 * Math.cos(a)).toFixed(1) + '" y1="' + (cy + 6 * Math.sin(a)).toFixed(1)
+              + '" x2="' + (cx + 8 * Math.cos(a)).toFixed(1) + '" y2="' + (cy + 8 * Math.sin(a)).toFixed(1) + '"/>'; }
+    } else if (kind === 'house') {
+        g += '<path d="M' + (cx - 8) + ' ' + (cy - 1) + ' L' + cx + ' ' + (cy - 8) + ' L' + (cx + 8) + ' ' + (cy - 1) + '"/>';
+        g += '<rect x="' + (cx - 6) + '" y="' + (cy - 1) + '" width="12" height="8" rx="1"/>';
+    } else if (kind === 'grid') {
+        g += '<line x1="' + (cx - 6) + '" y1="' + (cy + 8) + '" x2="' + (cx - 1.5) + '" y2="' + (cy - 8) + '"/>';
+        g += '<line x1="' + (cx + 6) + '" y1="' + (cy + 8) + '" x2="' + (cx + 1.5) + '" y2="' + (cy - 8) + '"/>';
+        g += '<line x1="' + (cx - 6) + '" y1="' + (cy - 8) + '" x2="' + (cx + 6) + '" y2="' + (cy - 8) + '"/>';
+        g += '<line x1="' + (cx - 4.5) + '" y1="' + cy + '" x2="' + (cx + 4.5) + '" y2="' + cy + '"/>';
+    } else if (kind === 'battery') {
+        g += '<rect x="' + (cx - 8) + '" y="' + (cy - 5) + '" width="15" height="10" rx="1.6"/>';
+        g += '<line x1="' + (cx + 8.5) + '" y1="' + (cy - 2) + '" x2="' + (cx + 8.5) + '" y2="' + (cy + 2) + '" stroke-width="2.4"/>';
+    }
+    return g + '</g>';
+}
+function renderEnergie(x, y, w, h) {
+    var prodTotal = sNum(EN_NS + 'power_production'), maxxi = sNum(EN_NS + 'power_maxxisun'),
+        feedin = sNum(EN_NS + 'power_feedin'), purchased = sNum(EN_NS + 'power_purchased'),
+        haus = sNum(EN_NS + 'power_consumption'), autark = sNum(EN_NS + 'rate_autarky'),
+        price = sNum(EN_NS + 'tibber_states.energy_price_euro'),
+        p20 = sNum(EN_NS + 'tibber_states.energy_price_euro_p20'),
+        p80 = sNum(EN_NS + 'tibber_states.energy_price_euro_p80');
+    var staleS = getState(EN_NS + 'power_data_stale'), stale = !!(staleS && staleS.val === true);
+    // power_production folds in Maxxisun feed-in (= seProd + maxxiFeed); recover SolarEdge-only
+    // so the battery isn't counted twice across the SolarEdge and Maxxisun rows.
+    var se = prodTotal != null ? Math.max(0, prodTotal - Math.max(0, -(maxxi || 0))) : null;
+    var grid = (purchased || 0) - (feedin || 0);          // signed: + import, − export
+    var imp = grid > 50, exp = grid < -50;
+    var gridCol = enRoleCol(grid, grid < 0);
+    var statusWord = exp ? 'Einspeisung' : (imp ? 'Netzbezug' : 'Ausgeglichen');
+    var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * 0.1048;   // €/h (feed-in rate 0.1048)
+    var earning = net < -0.0005, netCol = Math.abs(net) < 0.005 ? LBL : gridCol;
+
+    var p = [rr(x, y, w, h, CARD_RAD, PANEL, BORDER), T(x + 18, y + 30, VAL, 17, null, 'Energie')];
+    p.push(T(x + w - 18, y + 30, gridCol, 15, 'end', statusWord + ' ' + watts(grid)));
+    // price verdict (band by 7-day p20/p80, like the hub) + net €/h
+    var band = (price != null && p20 != null && p80 != null) ? (price <= p20 ? 0 : (price >= p80 ? 2 : 1)) : 1;
+    var priceCol = [GREEN, AMBER, RED][band], word = ['günstig', 'mittel', 'teuer'][band];
+    if (price != null && price > 0) {
+        p.push(T(x + 18, y + 52, LBL, 13, null, 'Strompreis <tspan fill="' + priceCol + '">' + comma(price, 2) + ' €/kWh · ' + word + '</tspan>'));
+        p.push(T(x + w - 18, y + 52, netCol, 13, 'end', (earning ? '+' : '') + comma(Math.abs(net), 2) + ' €/h'));
+    }
+    // four flow rows with magnitude bars (icon · name · bar · value), each role × magnitude coloured
+    var maxV = Math.max(Math.abs(se || 0), Math.abs(maxxi || 0), Math.abs(grid || 0), Math.abs(haus || 0), 1);
+    var bx = x + 150, bw = w - 150 - 72;
+    function frow(yy, kind, name, val, col, prefix) {
+        var frac = Math.min(1, Math.abs(val || 0) / maxV);
+        p.push(enIco(kind, x + 26, yy, col));
+        p.push(T(x + 44, yy + 4, LBL, 13, null, name));
+        p.push('<rect x="' + bx + '" y="' + (yy - 3) + '" width="' + bw + '" height="6" rx="3" fill="' + BORDER + '" opacity="0.5"/>');
+        p.push('<rect x="' + bx + '" y="' + (yy - 3) + '" width="' + (bw * frac).toFixed(0) + '" height="6" rx="3" fill="' + col + '"/>');
+        p.push(T(x + w - 16, yy + 5, col, 14, 'end', (prefix || '') + watts(val)));
+    }
+    var y0 = y + 82, step = 30;
+    frow(y0,            'sun',     'SolarEdge', se,    enRoleCol(se, true), '');
+    frow(y0 + step,     'battery', 'Maxxisun',  maxxi, enRoleCol(maxxi, maxxi < 0, 500), '');
+    frow(y0 + step * 2, 'grid',    'Netz',      grid,  gridCol, '');
+    frow(y0 + step * 3, 'house',   'Haus',      haus,  stale ? LBL : enRoleCol(haus, false), stale ? '≈ ' : '');
+    // autarky bar (bottom)
+    var aPct = Math.round((autark || 0) * 100), ay = y + h - 20;
+    p.push(T(x + 18, ay, LBL, 12, null, 'Autarkie' + (stale ? ' (≈)' : '')));
+    p.push(T(x + w - 18, ay, LBL, 12, 'end', aPct + ' %'));
+    p.push('<rect x="' + (x + 18) + '" y="' + (ay + 5) + '" width="' + (w - 36) + '" height="5" rx="2.5" fill="' + BORDER + '"/>');
+    p.push('<rect x="' + (x + 18) + '" y="' + (ay + 5) + '" width="' + ((w - 36) * Math.min(aPct, 100) / 100).toFixed(0) + '" height="5" rx="2.5" fill="' + GREEN + '"/>');
+    return p.join('');
+}
+
+// ===== Heute zone — today's calendar events from ical.0.data.table ({_date,event,_allDay}) =====
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
+function renderHeute(x, y, w, h) {
+    var tbl = getState('ical.0.data.table'), arr = (tbl && tbl.val) ? tbl.val : [];
+    if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch (e) { arr = []; } }
+    var now = new Date(), todayKey = now.toDateString(), evs = [];
+    (arr || []).forEach(function (e) {
+        var dt = e && e._date ? new Date(e._date) : null;
+        if (!dt || isNaN(dt.getTime()) || dt.toDateString() !== todayKey) return;
+        evs.push({ dt: dt, allDay: e._allDay === true, title: e.event || '' });
+    });
+    evs.sort(function (a, b) { return a.dt - b.dt; });
+
+    var p = [rr(x, y, w, h, CARD_RAD, PANEL, BORDER), T(x + 18, y + 30, VAL, 17, null, 'Heute')];
+    p.push(T(x + w - 18, y + 30, LBL, 13, 'end', DAYS[now.getDay()] + ', ' + now.getDate() + '. ' + MONTHS[now.getMonth()]));
+    if (!evs.length) {
+        p.push(T(x + 18, y + h / 2 + 6, LBL, 14, null, 'Keine Termine heute'));
+        return p.join('');
+    }
+    var ry = y + 60, step = 30, maxRows = 5;
+    evs.slice(0, maxRows).forEach(function (e) {
+        var time = e.allDay ? 'ganztägig' : ('0' + e.dt.getHours()).slice(-2) + ':' + ('0' + e.dt.getMinutes()).slice(-2);
+        p.push('<circle cx="' + (x + 24) + '" cy="' + (ry - 4) + '" r="3" fill="' + BLUE + '"/>');
+        p.push(T(x + 36, ry, LBL, 13, null, time));
+        p.push(T(x + 104, ry, VAL, 14, null, clip(e.title, 28)));
+        ry += step;
+    });
+    if (evs.length > maxRows) p.push(T(x + 36, ry, LBL, 12, null, '+ ' + (evs.length - maxRows) + ' weitere'));
+    return p.join('');
+}
+
 function ph(x, y, w, h, title) {
     return rr(x, y, w, h, CARD_RAD, PANEL, BORDER) + T(x + 18, y + 32, VAL, 17, null, title)
         + T(x + 18, y + h / 2 + 10, LBL, 14, null, '… folgt');
@@ -174,11 +293,11 @@ function renderMainV2() {
     var bx = kx + 14, bw = kw - 28, bh = 78, gap = ROW_GAP, by = ky + 46;
     ROWS.forEach(function (r, i) { p.push(bubble(bx, by, bw, bh, r[0], r[1], i === 0)); by += bh + gap; });
 
-    // ===== placeholders (built next, keep-all) =====
-    p.push(ph(396, 192, 386, 224, 'Heute'));
-    p.push(ph(788, 192, 386, 224, 'Energie'));
+    // ===== zones: Heute (calendar) · Energie (hub, Bubble style) · Tanken · Steuerung (TODO) =====
+    p.push(renderHeute(396, 192, 386, 224));
+    p.push(renderEnergie(788, 192, 386, 224));
     p.push(renderTanken(396, 422, 386, 232));
-    p.push(ph(788, 422, 386, 232, 'Steuerung'));
+    p.push(ph(788, 422, 386, 232, 'Steuerung'));   // interactive → native widgets, pending scope
 
     p.push('</svg>');
     return p.join('');
@@ -199,4 +318,9 @@ on({ id: FCMIN, change: 'ne' }, publish);
 on({ id: FCMAX, change: 'ne' }, publish);
 on({ id: 'tankerkoenig.0.stations.1.diesel.feed', change: 'ne' }, publish);
 on({ id: 'tankerkoenig.0.stations.1.e5.feed', change: 'ne' }, publish);
+['power_production', 'power_maxxisun', 'power_feedin', 'power_purchased', 'power_consumption', 'rate_autarky', 'power_data_stale'].forEach(function (s) {
+    on({ id: EN_NS + s, change: 'ne' }, publish);
+});
+on({ id: EN_NS + 'tibber_states.energy_price_euro', change: 'ne' }, publish);
+on({ id: 'ical.0.data.table', change: 'ne' }, publish);
 schedule('*/20 * * * * *', publish);
