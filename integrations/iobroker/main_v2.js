@@ -142,6 +142,7 @@ var CSS = `
 .mv2 .tile .st{font-size:var(--t-cap); color:var(--mute)}
 .mv2 .tile.on{border-color:rgba(241,190,61,.55)} .mv2 .tile.on .cap{color:var(--text)} .mv2 .tile.on .st{color:var(--amber)}
 .mv2 .tile.scene{border-color:rgba(80,128,172,.45)} .mv2 .tile.scene .st{color:var(--blue)}
+.mv2 .tile.arm{border-color:rgba(216,83,111,.6)} .mv2 .tile.arm .cap{color:var(--text)} .mv2 .tile.arm .st{color:#d8536f}
 `;
 
 // ===== colour tokens (data-driven colour = scoped CSS var names) =====
@@ -485,20 +486,22 @@ function buildSteuerung() {
     var co = sBool('hm-rpc.1.0001DD89A46CAD.3.STATE');   // Couchlampe plug
     var vi = sBool('hm-rpc.1.0001DD89AADDE7.3.STATE');   // Vitrine plug
     var am = sBool('hue.0.TV-Bereich.on');               // Ambiente light (not a scene)
-    var ON = '#F1BE3D', OFF = '#8A8A8A';
+    var ta = sBool('javascript.0.tuer_arm');             // Tür confirm armed? (drives the red "bestätigen" look)
+    var ON = '#F1BE3D', OFF = '#8A8A8A', ALERT = '#d8536f';
     var icTV = '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="#5080AC" stroke-width="1.6"/><line x1="8" y1="20" x2="16" y2="20" stroke="#5080AC" stroke-width="1.6" stroke-linecap="round"/></svg>';
     var icAmb = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (am ? ON : OFF) + '" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M12 3 v2 M12 19 v2 M3 12 h2 M19 12 h2 M5.6 5.6 l1.4 1.4 M17 17 l1.4 1.4 M18.4 5.6 l-1.4 1.4 M7 17 l-1.4 1.4"/><circle cx="12" cy="12" r="3.4" fill="' + (am ? ON : OFF) + '" stroke="none"/></g></svg>';
     var icDruck = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (dr ? ON : OFF) + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="6" rx="1"/><path d="M4 9 h16 v7 h-4 v5 H8 v-5 H4 Z"/><line x1="8" y1="13" x2="16" y2="13"/></g></svg>';
     var icCouch = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (co ? ON : OFF) + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13 v-2 a3 3 0 0 1 3 -3 h8 a3 3 0 0 1 3 3 v2"/><rect x="3" y="13" width="18" height="5" rx="1.5"/><line x1="6" y1="18" x2="6" y2="20"/><line x1="18" y1="18" x2="18" y2="20"/></g></svg>';
     var icVit = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (vi ? ON : OFF) + '" stroke-width="1.6" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="15" x2="18" y2="15"/></g></svg>';
-    var icTuer = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="#8A8A8A" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21 V4 a1 1 0 0 1 1 -1 h8 a1 1 0 0 1 1 1 v17"/><path d="M4 21 h14"/><circle cx="13" cy="12" r="1" fill="#8A8A8A" stroke="none"/></g></svg>';
+    var tc = ta ? ALERT : OFF;  // door icon grey → red when armed (mirrors the other tiles' grey→amber)
+    var icTuer = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + tc + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21 V4 a1 1 0 0 1 1 -1 h8 a1 1 0 0 1 1 1 v17"/><path d="M4 21 h14"/><circle cx="13" cy="12" r="1" fill="' + tc + '" stroke="none"/></g></svg>';
     var h = '<div class="card steuerung"><div class="eyebrow">Steuerung<span class="status" style="color:' + MUTE + '">Mehr …</span></div><div class="card-body"><div class="controls">';
     h += tile('tv', 'scene', 'TV', 'Szene', icTV);
     h += tile('ambiente', am ? 'on' : '', 'Ambiente', am ? 'an' : 'aus', icAmb);
     h += tile('drucker', dr ? 'on' : '', 'Drucker', dr ? 'an' : 'aus', icDruck);
     h += tile('couch', co ? 'on' : '', 'Couch', co ? 'an' : 'aus', icCouch);
     h += tile('vitrine', vi ? 'on' : '', 'Vitrine', vi ? 'an' : 'aus', icVit);
-    h += tile('tuer', '', 'Tür', 'öffnen', icTuer);
+    h += tile('tuer', ta ? 'arm' : '', 'Tür', ta ? 'öffnen bestätigen' : 'öffnen', icTuer);
     return h + '</div></div></div>';
 }
 
@@ -591,5 +594,7 @@ ROOMS.forEach(function (r) {
 STEUER_OIDS.forEach(function (id) { on({ id: id, change: 'ne' }, publish); });
 // weather symbol updates with the forecast
 on({ id: 'daswetter.0.NextDays.Location_1.Day_1.Wetter_Symbol_id', change: 'ne' }, publish);
+// Tür tile flips to the red "öffnen bestätigen" look while the guard is armed
+on({ id: 'javascript.0.tuer_arm', change: 'ne' }, publish);
 RIBBON_OIDS.forEach(function (id) { on({ id: id, change: 'ne' }, publishRibbon); });
 schedule('*/20 * * * * *', function () { publish(); publishRibbon(); });
