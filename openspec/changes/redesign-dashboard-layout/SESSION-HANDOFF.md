@@ -1,5 +1,86 @@
 # Session Handoff — Dashboard work (as of 2026-06-19 evening)
 
+> 🚢 **DELIVERED 2026-06-23 (this session) — deployed live, ready to commit.**
+> • **Weather symbol** = native daswetter art now **inline** in the hero (`wxImg()` → `<img
+>   src=/daswetter.admin/icons/tiempo-weather/galeria1/{Wetter_Symbol_id}.png>`) beside the big temp;
+>   humidity label trimmed to make room. Replaces the old `w001004` overlay widget idea (inline
+>   auto-aligns + scales + survives Neu→Main). Render-verified.
+> • **Steuerung = the agreed 6 tiles + symbols** (TV · Ambiente · Drucker · Couch · Vitrine · Tür) —
+>   NOT the lights/Maxxisun set the older notes below describe (that was a wrong turn, reverted).
+>   Tiles are state-reactive: Drucker/Couch/Vitrine/Ambiente show real on/off (amber-on / grey-off
+>   icons, same symbols); TV = scene. Interactivity = native **transparent** `i-vis-universal` Switch
+>   overlays (`wov_*`, z2) over each HTML tile (the card is a read-only HTML string, so taps must come
+>   from native widgets). Tür = HmIP-DLD smart-lock `LOCK_TARGET_LEVEL='OPEN'` (string enum, the same
+>   write as the old `w000526` button) behind a **2-step guard**: `tuer_arm` helper in `steuerung.js`
+>   + transparent arm (z2) and a visible red "Tür öffnen bestätigen" confirm (z3,
+>   `visibility-oid=tuer_arm`). Owner tap-verified the 5 toggles + the Tür opener on the wall.
+> • Overlay boxes were measured from the rendered tiles (3-col×2-row, 107×88; vis-px = tile + 4).
+>   Reproducible generator + measure scripts in the session scratchpad.
+> • **Open question**: the SVG-era Maxxisun guard widgets (`wstMXA/wstMXC`) are gone (Maxxisun isn't
+>   in the agreed 6 tiles), so the `mx_arm` half of `steuerung.js` is now **orphaned/dead** (harmless).
+>   Maxxisun is still switchable only from the old Main view's unguarded `w000411`. Decide on
+>   Neu→Main promotion: keep dead guard, remove it, or re-add Maxxisun control. See [[maxxisun-ccu2-integration-blocked]].
+> • Code-review gate (2026-06-23): **clean, no correctness bugs.**
+>
+> ✅ **HTML/CSS REBUILD LIVE + VERIFIED ON THE PI (2026-06-22, Main2/Neu).** `main_v2.js` = HTML/CSS
+> builders in an `<svg><foreignObject>` (scales-to-fill the 1170×676 widget); foreignObject renders
+> fine in the Pi Chromium. All display zones live + match `scratchpad/mockup.html`. Token system in
+> `scratchpad/TOKENS-audit.md`. Type = Archivo/Archivo Expanded. **DEPLOYED but UNCOMMITTED in git**
+> (old SVG `main_v2.js` recoverable from git HEAD). Deploy recipe: `scp main_v2.js` → `iobroker object
+> set script.js.common.main_v2 common.source="$(cat /tmp/main_v2.js)"` (cmd-subst is shell-safe incl.
+> backticks) → toggle `common.enabled` false/true; vis view: `scp vis.json` → `iobroker file write
+> /tmp/vis.json vis-2.0/main/vis-views.json`. Screenshot: tunnel `ssh -fN -L 18082:localhost:8082` +
+> `node /tmp/dashshot/shot_main2.js` → /tmp/dash_main2.png. Pi host `pi@raspberrypi` (authorized).
+>
+> **FIXED this round (all live):** (1) **CSS class collisions** — generic class names collided with
+> vis-2 widget CSS: `.day`←yahoo.css, `.clock`/`.date`←simpleclock.css (forced grey/shadow/squish),
+> `.card`/`.card--accent`←vis-user.css (harmless, overridden). Renamed `day→drow`, `clock→m2clk`,
+> `date→m2date` (scan-verified: was the root of "so many things wrong"). (2) **HAUS ribbon** built +
+> live (`main_v2_ribbon` state + widget `w001005` @ left404 top688 766×87): contacts `value.window`
+> {0 CLOSED,1 OPEN} — Terrasse `hm-rpc.1.0007DD8996AFD3.1.STATE`, Schuppen `…00155D89A38D55.1.STATE`,
+> Haustür `…0023DD89A5152D.1.STATE`, Bad `…0007DD89B41FD4.1.STATE`; lock LOCK_STATE {1 LOCKED,2
+> UNLOCKED} `…002A226996B89C.1.LOCK_STATE` (green=secure/red=offen|entriegelt). (3) **Calendar
+> symbols+dedup** — `calSym()` replicates the old `ical_events.js`: `[Geburtstag]`→🎁 `[Hochzeitstag]`→💍
+> `[Müllabfuhr]`/`Abholung`→👷 `[Carlotta]`→🩵 `[Clara]`→💜 `[Clea]`→🧡; dedup repeated events.
+> (4) **Icons** moon/humidity/pressure/sun redrawn bigger+cleaner.
+>
+> **REMAINING BUILD — decisions made (2026-06-22):**
+> • **Weather symbol** = **native daswetter art near the temp** (owner pick): re-add overlay `w001004`
+>   (`tplStatefulImage8`, oid `daswetter.0.NextDays.Location_1.Day_1.Wetter_Symbol_id` → galeria1 imgs)
+>   into the hero beside the big temp; shrink the humidity/pressure block to make room; verify
+>   alignment on the Pi. (Hero is currently full.)
+> • **Steuerung interactive restore** = the OLD control set as native `i-vis-universal` tap widgets
+>   overlaid on the HTML Steuerung tiles (z≥2, vis-px≈design+4; §4b recipe), restyled. `main_v2.js`
+>   already has `LIGHTS`/`GARD`/`VALVES` arrays; buildSteuerung still renders the mockup's 6 tiles —
+>   rework it to the old set as state-reactive tiles, then overlay the natives. Targets:
+>   – Lights (Switch, .on/.STATE bool): Küche `hue.0.Küche.on`, Esstisch `hue.0.Esszimmer.on`, Wohnen
+>     `hue.0.Wohnzimmertischlampe.on`, Flur `hue.0.Flur.on`, Büro `hue.0.Arbeitszimmerlicht.on`.
+>   – Maxxisun: 2-step guard (`javascript.0.mx_arm` + `hm-rpc.1.0001DD89A46CA5.3.STATE`) via the
+>     existing `steuerung.js` (arm reveals the real switch 5 s, 2nd tap fires).
+>   – TV = `scene.0.Fernsehabend` (Switch). Ambiente = `hue.0.TV-Bereich.on` (Switch).
+>   – Garten (i-vis-universal `State`, write seconds to `…duration_value`): `GARD = smartgarden.0.
+>     LOCATION_28b39c94-…DEVICE_b193e1f6-…SERVICE_VALVE_b193e1f6-…` + `-3A{1..6}.duration_value`
+>     (Rand/Vor/Trauf/Dach/Gart/Hoch); stop = `…SERVICE_VALVE_SET_b193e1f6-…stop_all_valves_i`.
+>     **Decision: ADD the valves but DO NOT auto-test (real watering)** — test only lights/Maxxisun/scenes.
+> • Then **commit** (ask first) + promote Neu→Main.
+>
+> **Layout (converged):** hero = clock (left) · sun/moon almanac (centre) · humidity+pressure aligned
+> to auf/unter + big outside temp top-aligned with the clock + big stacked min/max (`value + °C/min`).
+> 3 zone columns: **Klima** (4 rooms, 3-tier: name / `vor Xmin`+battery / humidity+CO₂; temp big,
+> "warm" bottom-aligned to env line) · **Woche** (all events/day, time-sorted, trims trailing days,
+> Sa+So+today row-tinted) + **Tanken** (Diesel/E5 spectrum bars, fixed price col so both align) ·
+> **Energie** (status + Strompreis spectrum bar + 4 flow magnitude rows + inline Autarkie/Eigenverbrauch
+> stats) + **Steuerung** (mockup's 6 tiles — being reworked to the old control set, see above). Bottom
+> strip = nav bar (left) + **HAUS ribbon** (read-only door/window/lock dots) — built + live (`w001005`).
+>
+> **NEXT:** (1) deploy + screenshot-verify on the Pi when authorized (`pi@raspberrypi` /
+> `raspberrypi.fritz.box` / 192.168.178.47); fall back from `foreignObject` if it doesn't render.
+> (2) **Steuerung interactive** controls + the **HAUS ribbon** need a real state-ID inventory on the
+> Pi — only Hue/Couch/Maxxisun/Gardena verified; **TV-scene, Ambiente-scene, Türöffner, Vitrine,
+> Drucker, and the door/window/lock sensors are UNVERIFIED**. (3) Weather symbol is a drawn glyph
+> placeholder — decide: keep, or restore the native daswetter art overlay (DESIGN_SYSTEM exception).
+> (4) Ask before committing the new `main_v2.js`. Path note: home is `/Users/christoph`.
+
 Pick-up note for the next session. The ioBroker vis-2 wall dashboard (Pi @ `pi@raspberrypi`
 = 192.168.178.47 / raspberrypi.fritz.box; InfluxDB 1.8). Hostname can transiently fail to
 resolve — that's a local network blip, retry.
