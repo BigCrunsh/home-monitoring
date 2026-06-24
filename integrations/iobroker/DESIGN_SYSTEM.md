@@ -1,8 +1,11 @@
 # Dashboard "Neu" — Design System
 
-Reference for `main_v2.js` (the redesigned Main / "Neu" vis-2 tab). The card is built as scoped
-HTML/CSS (everything under `.mv2`) wrapped in an `<svg><foreignObject>` so it scales-to-fill the
-1170×676 widget. **Compose the dashboard from the components below — don't hand-place pixels.** When a
+Reference for `main_v2.js` (the redesigned Main / "Neu" vis-2 tab). The dashboard is built as scoped
+HTML/CSS (everything under `.mv2`), split across **four independent widgets** — a full-width hero +
+three columns (Klima / Kalender+Tanken / Energie+Steuerung) — each wrapped in its own
+`<svg><foreignObject>` that scales-to-fill its vis box and carries the shared `CSS_BASE`. (Splitting
+lets the middle + right columns run taller than the nav; see Geometry below.) **Compose the dashboard
+from the components below — don't hand-place pixels.** When a
 change is needed it should be "use component X", "bump a token", or "it's on the baseline" — not a
 one-off nudge. (This file is the durable version of the design-system proposal agreed with the owner.)
 
@@ -78,7 +81,19 @@ break-even · amber normal cost · red when cost >0,05 **and** price ≥ p80.
 
 ## Geometry & deploy
 
-Card widget at vis `(4,4)` 1170×676; nav at `(4,688)`; HAUS ribbon at `(404,688)`. Hero content +
-zone cards share the inset so they line up with the nav (left) and the ribbon (right). Deploy +
+**Consistent grid: 4 px outer margin, 12 px gutter between columns** (the hero→columns gap is a tighter
+7 px per owner). The four content widgets share the hero's left/right edges (x 4..1174):
+- HERO `w001001` (4,4) 1170×178 → `main_v2_hero`
+- LEFT / Klima `w001006` (4,189) 392×487 → `main_v2_left` — matches the nav width (4..396), so column
+  and nav share both edges
+- MID / Kalender+Tanken `w001007` (408,189) 377×534 → `main_v2_mid`
+- RIGHT / Energie+Steuerung `w001008` (797,189) 377×534 → `main_v2_right`
+
+The nav `w001002` (4,688) 392×87 is **fixed** (never moves). The slim HAUS ribbon `w001005` (408,735)
+766×40 → `main_v2_ribbon` sits beside it, to the right of the continuous x≈396..408 gutter. MID + RIGHT
+run taller than LEFT so the calendar + Energie extend down past the nav level. **Main2 view bg
+`#0d0e12`** so the 12 px inter-widget gaps read like the old within-card gaps. The Steuerung tap-overlays
+(`wov_*`, native `i-vis-universal`, z≥2) overlay the RIGHT widget's tile boxes — re-measure them
+(scratchpad `render_states.js` + `shot.js`) whenever the right column moves or resizes. Deploy +
 screenshot-verify recipe and state-ID inventory: see
 `openspec/changes/redesign-dashboard-layout/SESSION-HANDOFF.md`.

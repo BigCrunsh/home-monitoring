@@ -1,5 +1,49 @@
 # Session Handoff — Dashboard work (as of 2026-06-19 evening)
 
+> ✅ **DELIVERED 2026-06-24 — COLUMN-SPLIT refactor of the Neu card; deployed live, ready to commit.**
+> The single full-width `main_v2_card` is split into **four independent widgets** so the calendar
+> (middle) + Energie (right) gain height: only the LEFT column sits above the nav; MIDDLE+RIGHT extend
+> down past the nav level (to the right of it). **Consistent grid (owner feedback): 4 px outer margin,
+> 12 px gutter everywhere; LEFT = nav width so the Klima column and the nav share both edges; all panels
+> end at the hero's right edge (1174).** Final vis geometry (nav unchanged at (4,688) 392×87): HERO
+> `w001001` (4,4) 1170×178 → `main_v2_hero` · LEFT/Klima `w001006` (4,189) 392×487 → `main_v2_left` ·
+> MIDDLE/cal+Tanken `w001007` (408,189) 377×534 → `main_v2_mid` · RIGHT/Energie+Steuerung `w001008`
+> (797,189) 377×534 → `main_v2_right` · HAUS ribbon `w001005` (408,735) 766×40 → `main_v2_ribbon`.
+> (Columns start at y189 = 7 px below the hero, per owner; inter-column gutters stay 12 px.)
+> **Main2 view bg set to `#0d0e12`** so the 12 px inter-widget gaps read like the old within-card gaps.
+> **Owner-feedback round 1 (2026-06-24, deployed):** (a) consistent margin grid above; (b) Tanken cells
+> stretch to fill — price pushed to the bottom, bars taller; (c) ribbon battery restored on EVERY
+> indicator + enlarged to ~22 px (was hidden-when-ok + squashed) — dot colour now carries the
+> secure/alarm verdict so no status word is needed at 40 px.
+> **Owner-feedback round 2 (2026-06-24, deployed):** (a) Tanken bars+labels 3 px right (vbarzone
+> margin-right 8→5); (b) Benzin panel shorter (mid 4.5fr→5.5fr) to tighten the name→price gap, PX_BUDGET
+> 398→416; (c) Energie panel shorter + Steuerung tiles taller (right 1.5fr→1.3fr); (d) columns moved up
+> 5 px (y194→189, +5 px height); (e) hero almanac rise/set rows now align (the `.alm .body` got a fixed
+> 20 px width — the sun icon is 18 px, moon 15 px, which was shifting the rows); (f) tried a chevron for
+> the auf/unter symbol but the owner kept the original arrow-over-horizon glyph.
+> **Bug fix (2026-06-24, deployed):** the HAUS ribbon read only STATE/LOW_BAT, so a sensor with a dead
+> battery (offline) showed a *stale* "closed/green" + "full battery" — the owner's Bad window was open
+> but read secure. Now reads HmIP **UNREACH** (derived from the LOW_BAT oid → `.0.UNREACH`): an
+> unreachable contact renders **grey/unknown (never a stale green)** and its battery shows empty. As of
+> deploy, 4 of 5 contacts are genuinely UNREACH=true (offline, batteries flat) — the dashboard now
+> surfaces that instead of masking it. `maint()` helper + UNREACH oids added to RIBBON_OIDS subscriptions. **main_v2.js:** `renderMainV2()` → `renderHero/Left/Mid/Right` via one `widgetSvg()`
+> helper; one shared `CSS_BASE` (tokens + 4 `.mv2.{hw,lw,mw,rw}` size roots + component styles) prepended
+> to each foreignObject; calendar `PX_BUDGET` 372→408; right split 1.4fr→1.5fr; ribbon redesigned to a
+> single-row strip (dot · name · alarm-word-only-when-not-secure · low-batt-only-when-low), viewBox
+> 766×87→774×40. Five `createState`s with a readiness counter so the first publish waits until all states
+> exist; `publish()` republishes all four columns on any data change. **Steuerung tap-overlays `wov_*`
+> re-measured** from the live RIGHT-widget render (tiles at viewBox 17/134/251 × 320/424.5, 109×96.5
+> → vis = 797+x,189+y, set to 109×97) and re-pointed. **Verified:** all 5 states publish real content;
+> Main2 has all 13 widgets at the right boxes; a real-data local render of the live state strings confirms
+> content + the column layout (mid/right extend past nav, calendar fills, ribbon slim beside nav). Local
+> render+measure harness in the session scratchpad (`render_states.js`, `shot.js`, `edit_vis.py`).
+> **OPEN:** (1) owner tap-verify the 6 Steuerung overlays on the wall (positions are arithmetically exact
+> but native taps can't be checked headlessly — same as the pre-split verification). (2) Ribbon: when the
+> lock is *entriegelt* the longest row truncates to "Türsc… entriegelt" (5-across at 40 px) — communicates
+> via red dot + word, but a name-shortening is a possible polish. (3) Old `main_v2_card` state is now
+> orphaned/dead (no widget binds it, script no longer writes it) — harmless; delete later if desired.
+> Pre-split restore point committed at **f3c60ab**.
+>
 > 🚢 **DELIVERED 2026-06-23 (this session) — deployed live, ready to commit.**
 > • **Weather symbol** = native daswetter art now **inline** in the hero (`wxImg()` → `<img
 >   src=/daswetter.admin/icons/tiempo-weather/galeria1/{Wetter_Symbol_id}.png>`) beside the big temp;

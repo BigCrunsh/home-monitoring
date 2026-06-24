@@ -9,7 +9,10 @@
 // are drawn for layout. Pi OS TZ is Europe/London → wall-clock values rendered in Europe/Berlin.
 
 // ===== scoped CSS (everything under .mv2 so it never clashes with vis-user.css / other widgets) =====
-var CSS = `
+// COLUMN-SPLIT: this one CSS_BASE (tokens + per-widget roots + shared component styles) is prepended
+// to EVERY widget's foreignObject (each is an independent <style> scope). The four .mv2.{hw,lw,mw,rw}
+// root rules size each widget to its own vis box; everything below is shared verbatim.
+var CSS_BASE = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
 .mv2{
   --bg:#0d0e12; --surface:#15161c; --inset:#1c1f28; --border:#262a33;
@@ -21,18 +24,26 @@ var CSS = `
   --t-hero:98px; --t-clock:126px; --t-metric:27px; --t-sub:18px; --t-date:23px; --t-label:14px; --t-cap:12px;
   --sym-wx:108px; --sym-moon:88px;     /* hero display symbols */
   --inset-x:22px;                       /* shared left/right page inset */
-  width:1170px; height:676px; box-sizing:border-box; background:var(--bg);
-  padding:0 var(--s1) var(--s2) 0; display:grid; grid-template-rows:166px 1fr; gap:var(--s3);
+  box-sizing:border-box; background:var(--bg);
   font-family:'Figtree',system-ui,sans-serif; color:var(--text);
   -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
 }
+/* per-widget roots — each its own SVG/foreignObject sized to its vis box (mid+right run taller than
+   the left/nav, extending down past the nav level for ~50px more calendar/Energie height). */
+/* Consistent grid: 4 px outer margin, 12 px gutter everywhere. LEFT matches the nav width exactly
+   (4..396) so the Klima column and the nav share both edges; MID/RIGHT (377 each) + ribbon sit across
+   the continuous 12 px gutter at x≈396..408. All panels end at the same right edge as the hero. */
+.mv2.hw{width:1170px; height:178px; display:grid; grid-template-rows:1fr}
+.mv2.lw{width:392px;  height:487px; display:grid; grid-template-rows:1fr}
+.mv2.mw{width:377px;  height:534px; display:grid; grid-template-rows:5.5fr 1fr; gap:var(--s3)}
+.mv2.rw{width:377px;  height:534px; display:grid; grid-template-rows:1.3fr 1fr; gap:var(--s3)}
 .mv2 *{margin:0; padding:0; box-sizing:border-box}
 .mv2 .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
 .mv2 .u{font-size:max(12px,.42em); color:var(--muted); font-weight:500; letter-spacing:0; margin-left:.06em}
 
 /* HERO — two tiers: display glyphs (top) + one metadata baseline (bottom). Each cluster is a
    full-height column (glyph top / metadata bottom), so all the small data lands on one baseline. */
-.mv2 .hero{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:var(--s3) var(--inset-x); border-bottom:1px solid var(--border); overflow:hidden}
+.mv2 .hero{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:var(--s3) var(--inset-x); overflow:hidden}
 .mv2 .h-clim{justify-self:start; display:flex; align-items:center; gap:var(--s6)}
 .mv2 .h-clock{justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px}
 .mv2 .h-moon{justify-self:end; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:var(--s2)}
@@ -67,16 +78,12 @@ var CSS = `
 .mv2 .moon{font-size:var(--sym-moon); line-height:.82; display:block}
 .mv2 .alm-col{display:flex; flex-direction:column; gap:var(--s1)}
 .mv2 .alm{display:flex; align-items:center; gap:var(--s3)}
-.mv2 .alm .body{display:flex; align-items:center}
+.mv2 .alm .body{display:flex; align-items:center; justify-content:center; width:20px; flex:none}
 .mv2 .alm .rs{display:flex; align-items:center; gap:4px}
 .mv2 .alm .rs svg{flex:none}
 .mv2 .alm .v{font-size:var(--t-sub); font-weight:600}
 
-/* ZONES */
-.mv2 .zones{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--s3); min-height:0}
-.mv2 .col{display:grid; gap:var(--s3); min-height:0}
-.mv2 .col.mid{grid-template-rows:4.5fr 1fr}
-.mv2 .col.right{grid-template-rows:1.4fr 1fr}
+/* ZONES — column layout now lives in the .mv2.{lw,mw,rw} widget roots above (one card per grid row). */
 .mv2 .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r2); padding:var(--s3) var(--s4); display:flex; flex-direction:column; gap:var(--s2); min-height:0; overflow:hidden}
 .mv2 .card-body{flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--s2)}
 
@@ -122,10 +129,10 @@ var CSS = `
 /* TANKEN — Diesel & E5 side by side (split by a vertical divider); per fuel: name+price (left) beside the
    vertical price bar (right, max label top / min bottom) so a taller bar fits a shorter box. */
 .mv2 .tanken{padding-top:var(--s2); padding-bottom:var(--s2)}
-.mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s3); align-items:start}
-.mv2 .fuel{display:flex; align-items:flex-start; justify-content:space-between; gap:var(--s2)}
+.mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s3); align-items:stretch}
+.mv2 .fuel{display:flex; align-items:stretch; justify-content:space-between; gap:var(--s2)}
 .mv2 .fuel + .fuel{border-left:1px solid var(--border); padding-left:var(--s3)}
-.mv2 .fuel .finfo{display:flex; flex-direction:column; gap:var(--s2); min-width:0}
+.mv2 .fuel .finfo{display:flex; flex-direction:column; justify-content:space-between; gap:var(--s2); min-width:0}
 .mv2 .fuel .fname{font-size:18px; font-weight:600; white-space:nowrap}
 .mv2 .fuel .price{display:flex; align-items:flex-start; line-height:1; white-space:nowrap}
 .mv2 .fuel .pnum{font-size:40px; font-weight:600; line-height:.85}
@@ -133,10 +140,10 @@ var CSS = `
 .mv2 .fuel .p3{font-size:18px; font-weight:600; line-height:1}
 .mv2 .fuel .punit{font-size:12px; color:var(--muted); font-weight:500; margin-top:2px}
 /* bar near the right with a clear margin to the cell boundary; min/max labels beside it (top/bottom) */
-.mv2 .fuel .vbarzone{display:flex; align-items:stretch; gap:4px; flex:none; margin-right:var(--s2)}
+.mv2 .fuel .vbarzone{display:flex; align-items:stretch; gap:4px; flex:none; margin-right:5px}
 .mv2 .fuel .vlabels{display:flex; flex-direction:column; justify-content:space-between; text-align:right}
 .mv2 .fuel .vlbl{font-size:11px; color:var(--muted); line-height:1}
-.mv2 .fuel .vbar{width:12px; height:66px; border-radius:6px; position:relative; background:linear-gradient(0deg,var(--green),var(--amber),var(--red)); opacity:.85}
+.mv2 .fuel .vbar{width:12px; align-self:stretch; min-height:54px; border-radius:6px; position:relative; background:linear-gradient(0deg,var(--green),var(--amber),var(--red)); opacity:.85}
 .mv2 .fuel .vknob{position:absolute; left:50%; width:15px; height:15px; border-radius:50%; background:var(--text); border:2px solid var(--surface); transform:translate(-50%,50%)}
 
 /* ENERGIE */
@@ -386,7 +393,9 @@ function buildWoche() {
     // Px-budget fit guard (the card height isn't measurable server-side): estimate each day's height
     // and fill the LAST day partially, so the list fills the card without clipping and with no "+N"
     // clutter. PX_BUDGET ≈ the calendar card body; DAY_PAD = row padding, ROW_PX ≈ one event line.
-    var PX_BUDGET = 372, DAY_PAD = 16, ROW_PX = 26, MIN_DAY = 34, DAY_CAP = 4, used = 0, rows = '';
+    // COLUMN-SPLIT: PX_BUDGET is hand-synced to the mid widget's Woche row (mw 534 px, 5.5fr of
+    // 5.5fr+1fr). Re-tune if the .mv2.mw height or that ratio changes (server-side height isn't measurable).
+    var PX_BUDGET = 416, DAY_PAD = 16, ROW_PX = 26, MIN_DAY = 34, DAY_CAP = 4, used = 0, rows = '';
     for (var i = 0; i < 7; i++) {
         var dd = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i);
         var dow = dd.getDay(), weekend = (dow === 0 || dow === 6), today = (i === 0);
@@ -555,37 +564,50 @@ function buildSteuerung() {
 // ===== HAUS status ribbon (separate widget in the bottom strip, right of the nav) =====
 // Read-only door/window contacts (value.window {0:CLOSED,1:OPEN}) + the HmIP-DLD lock
 // (LOCK_STATE {0:UNKNOWN,1:LOCKED,2:UNLOCKED}). Green = secure, red = open/unlocked (alarm).
+// COLUMN-SPLIT: now the slim bottom-right strip (774×40) beside the nav, so each indicator is one
+// horizontal row (dot · name · optional alarm word · battery) — a 2-line pill can't fit 40 px.
 var RIBBON_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap');
 .mv2r{--bg:#0d0e12;--surface:#15161c;--border:#262a33;--text:#CCCCCC;--muted:#8A8A8A;--green:#b5fb5b;--red-ind:#d8536f;
-  width:766px;height:87px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:16px;
-  padding:12px 16px;display:flex;align-items:center;font-family:'Figtree',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+  width:766px;height:40px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:5px 10px;display:flex;align-items:center;font-family:'Figtree',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
 .mv2r *{margin:0;padding:0;box-sizing:border-box}
-.mv2r .inds{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.mv2r .rind{background:var(--bg);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px}
-.mv2r .dot{width:9px;height:9px;border-radius:50%;flex:none}
-.mv2r .tx{display:flex;flex-direction:column;line-height:1.15;min-width:0}
-.mv2r .nm{font-size:14px;font-weight:600;white-space:nowrap}
-.mv2r .stt{font-size:12px;color:var(--muted)}
-.mv2r .bat{margin-left:auto;align-self:flex-start;margin-top:3px;display:flex;flex:none;padding-left:6px}
+.mv2r .inds{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.mv2r .rind{background:var(--bg);border-radius:8px;padding:0 9px;height:28px;display:flex;align-items:center;gap:8px;overflow:hidden}
+.mv2r .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.mv2r .nm{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
+.mv2r .bat{margin-left:auto;align-self:center;display:flex;flex:none;padding-left:6px}
+.mv2r .bat svg{width:22px;height:auto;display:block}
 `;
-// battery symbol from the device's maintenance LOW_BAT flag (HmIP voltages aren't comparable across
-// device types, so LOW_BAT is the canonical "replace battery" signal). Muted when ok, red + near-empty when low.
-function lowbatIco(batOid) {
+// HmIP maintenance read. An unreachable battery sensor has stopped communicating, so its STATE and
+// LOW_BAT freeze at their last values — a dead-battery contact then reads a stale "closed" (false green)
+// and a stale LOW_BAT=false (false "full battery"). So derive UNREACH (same channel-0 group as LOW_BAT)
+// and treat it as BOTH "status unknown" and "battery flat" (HmIP voltages aren't comparable across
+// device types, but a battery device that has gone offline is almost always dead).
+function maint(batOid) {
     var lb = getState(batOid);
-    var low = !!(lb && lb.val === true);
-    var col = low ? 'var(--red-ind)' : 'var(--muted)';
-    return '<span class="bat">' + icoBatt(low ? 12 : 100, col) + '</span>';
+    var ur = batOid ? getState(batOid.replace('.LOW_BAT', '.UNREACH')) : null;
+    var unreach = !!(ur && ur.val === true);
+    return { unreach: unreach, low: unreach || !!(lb && lb.val === true) };
 }
-function indDot(name, col, word, wordCol, batOid) {
-    return '<div class="rind"><span class="dot" style="background:' + col + '"></span><span class="tx"><span class="nm">' + esc(name)
-        + '</span><span class="stt"' + (wordCol ? ' style="color:' + wordCol + '"' : '') + '>' + word + '</span></span>'
+// battery symbol on EVERY indicator: a muted full battery when ok, a red near-empty one when low or
+// offline — so a dying/dead door/window/lock sensor is visible at a glance. Sized readably via
+// `.mv2r .bat svg` (22 px) so it isn't squashed in the 40 px row.
+function lowbatIco(batOid) {
+    var low = maint(batOid).low;
+    return '<span class="bat">' + icoBatt(low ? 12 : 100, low ? 'var(--red-ind)' : 'var(--muted)') + '</span>';
+}
+// At 40 px × 5-across the dot colour alone carries the verdict (green=secure / red=alarm / grey=unknown),
+// so each row is just dot + name + battery — no status word, which kept truncating long names.
+function indDot(name, col, batOid) {
+    return '<div class="rind"><span class="dot" style="background:' + col + '"></span><span class="nm">' + esc(name) + '</span>'
         + (batOid ? lowbatIco(batOid) : '') + '</div>';
 }
 function contactInd(name, oid, batOid) {
+    if (maint(batOid).unreach) return indDot(name, 'var(--muted)', batOid);  // offline → unknown, never a stale green
     var v = sNum(oid);
-    if (v == null) return indDot(name, 'var(--muted)', 'unbekannt', null, batOid);
-    return v === 1 ? indDot(name, 'var(--red-ind)', 'offen', 'var(--red-ind)', batOid) : indDot(name, 'var(--green)', 'geschlossen', null, batOid);
+    var col = v == null ? 'var(--muted)' : (v === 1 ? 'var(--red-ind)' : 'var(--green)');
+    return indDot(name, col, batOid);
 }
 function buildRibbon() {
     var lockBat = 'hm-rpc.1.002A226996B89C.0.LOW_BAT';
@@ -594,37 +616,52 @@ function buildRibbon() {
         + contactInd('Schuppen', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT')
         + contactInd('Haustür', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT');
     var lock = sNum('hm-rpc.1.002A226996B89C.1.LOCK_STATE');  // 0 UNKNOWN, 1 LOCKED, 2 UNLOCKED
-    inds += (lock === 1) ? indDot('Türschloss', 'var(--green)', 'verriegelt', null, lockBat)
-        : (lock === 2) ? indDot('Türschloss', 'var(--red-ind)', 'entriegelt', 'var(--red-ind)', lockBat)
-        : indDot('Türschloss', 'var(--muted)', 'unbekannt', null, lockBat);
+    inds += maint(lockBat).unreach ? indDot('Türschloss', 'var(--muted)', lockBat)
+        : (lock === 1) ? indDot('Türschloss', 'var(--green)', lockBat)
+        : (lock === 2) ? indDot('Türschloss', 'var(--red-ind)', lockBat)
+        : indDot('Türschloss', 'var(--muted)', lockBat);
     inds += contactInd('Bad', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT');
     var inner = '<div class="mv2r"><style>' + RIBBON_CSS + '</style><div class="inds">' + inds + '</div></div>';
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 87" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
-        + '<foreignObject x="0" y="0" width="766" height="87"><div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 40" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
+        + '<foreignObject x="0" y="0" width="766" height="40"><div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
 }
 var RIBBON_OIDS = ['hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE',
-    'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT', 'hm-rpc.1.002A226996B89C.0.LOW_BAT'];
+    'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT', 'hm-rpc.1.002A226996B89C.0.LOW_BAT',
+    'hm-rpc.1.0007DD8996AFD3.0.UNREACH', 'hm-rpc.1.00155D89A38D55.0.UNREACH', 'hm-rpc.1.0023DD89A5152D.0.UNREACH', 'hm-rpc.1.0007DD89B41FD4.0.UNREACH', 'hm-rpc.1.002A226996B89C.0.UNREACH'];
 
-// ===== assemble =====
-function renderMainV2() {
-    var inner = '<div class="mv2"><style>' + CSS + '</style>'
-        + buildHero()
-        + '<div class="zones">'
-        + '<div class="col">' + buildKlima() + '</div>'
-        + '<div class="col mid">' + buildWoche() + buildTanken() + '</div>'
-        + '<div class="col right">' + buildEnergie() + buildSteuerung() + '</div>'
-        + '</div></div>';
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1170 676" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
-        + '<foreignObject x="0" y="0" width="1170" height="676">'
-        + '<div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div>'
-        + '</foreignObject></svg>';
+// ===== assemble — COLUMN-SPLIT: four independent widgets (hero + 3 columns), each its own
+// <svg><foreignObject> sized to its vis box and carrying the shared CSS_BASE. The mid/right
+// widgets run taller than the left/nav so the calendar + Energie gain height beside the nav. =====
+function widgetSvg(rootCls, w, h, body) {
+    var inner = '<div class="mv2 ' + rootCls + '"><style>' + CSS_BASE + '</style>' + body + '</div>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
+        + '<foreignObject x="0" y="0" width="' + w + '" height="' + h + '">'
+        + '<div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
 }
+function renderHero()  { return widgetSvg('hw', 1170, 178, buildHero()); }
+function renderLeft()  { return widgetSvg('lw', 392, 487, buildKlima()); }
+function renderMid()   { return widgetSvg('mw', 377, 534, buildWoche() + buildTanken()); }
+function renderRight() { return widgetSvg('rw', 377, 534, buildEnergie() + buildSteuerung()); }
 
-function publish() { setState('main_v2_card', renderMainV2()); }
+// Re-point (simplest): any data change republishes all four columns — cheap for a 20 s wall and
+// four small HTML strings, and keeps the subscription list below untouched.
+function publish() {
+    setState('main_v2_hero', renderHero());
+    setState('main_v2_left', renderLeft());
+    setState('main_v2_mid', renderMid());
+    setState('main_v2_right', renderRight());
+}
 function publishRibbon() { setState('main_v2_ribbon', buildRibbon()); }
 
-createState('main_v2_card', '', { desc: 'Main-Redesign Prototyp (HTML)', type: 'string', role: 'html' }, function () { publish(); });
-createState('main_v2_ribbon', '', { desc: 'Neu HAUS-Statusleiste (HTML)', type: 'string', role: 'html' }, function () { publishRibbon(); });
+// Create all five states first; only render once every state object exists (publish() writes all
+// four columns, so firing it from an early per-state callback would setState a not-yet-created id).
+var _statesReady = 0;
+function _onStateReady() { if (++_statesReady >= 5) { publish(); publishRibbon(); } }
+createState('main_v2_hero',   '', { desc: 'Neu Glance-Band (HTML)',         type: 'string', role: 'html' }, _onStateReady);
+createState('main_v2_left',   '', { desc: 'Neu Klima-Spalte (HTML)',        type: 'string', role: 'html' }, _onStateReady);
+createState('main_v2_mid',    '', { desc: 'Neu Kalender + Tanken (HTML)',   type: 'string', role: 'html' }, _onStateReady);
+createState('main_v2_right',  '', { desc: 'Neu Energie + Steuerung (HTML)', type: 'string', role: 'html' }, _onStateReady);
+createState('main_v2_ribbon', '', { desc: 'Neu HAUS-Statusleiste (HTML)',   type: 'string', role: 'html' }, _onStateReady);
 
 // ===== subscriptions =====
 ROOMS.forEach(function (r) {
