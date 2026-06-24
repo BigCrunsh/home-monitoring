@@ -19,10 +19,10 @@ var CSS = `
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px;
   --r2:14px; --r3:10px;
   --t-hero:98px; --t-clock:126px; --t-metric:27px; --t-sub:18px; --t-date:23px; --t-label:14px; --t-cap:12px;
-  --sym-wx:116px; --sym-moon:92px;     /* hero display symbols */
+  --sym-wx:108px; --sym-moon:88px;     /* hero display symbols */
   --inset-x:22px;                       /* shared left/right page inset */
   width:1170px; height:676px; box-sizing:border-box; background:var(--bg);
-  padding:0 var(--s1) var(--s2) 0; display:grid; grid-template-rows:178px 1fr; gap:var(--s3);
+  padding:0 var(--s1) var(--s2) 0; display:grid; grid-template-rows:166px 1fr; gap:var(--s3);
   font-family:'Figtree',system-ui,sans-serif; color:var(--text);
   -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
 }
@@ -32,10 +32,10 @@ var CSS = `
 
 /* HERO — two tiers: display glyphs (top) + one metadata baseline (bottom). Each cluster is a
    full-height column (glyph top / metadata bottom), so all the small data lands on one baseline. */
-.mv2 .hero{display:grid; grid-template-columns:1fr auto 1fr; align-items:stretch; padding:var(--s3) var(--inset-x); border-bottom:1px solid var(--border); overflow:hidden}
-.mv2 .h-clim{justify-self:start; display:flex; align-items:stretch; gap:var(--s6)}
-.mv2 .h-clock{justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:space-between}
-.mv2 .h-moon{justify-self:end; display:flex; flex-direction:column; align-items:flex-end; justify-content:space-between}
+.mv2 .hero{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:var(--s3) var(--inset-x); border-bottom:1px solid var(--border); overflow:hidden}
+.mv2 .h-clim{justify-self:start; display:flex; align-items:center; gap:var(--s6)}
+.mv2 .h-clock{justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px}
+.mv2 .h-moon{justify-self:end; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:var(--s2)}
 
 /* the Metric component — value + top-aligned unit (uu) + optional bottom-aligned label (ll) */
 .mv2 .metric{display:inline-flex; align-items:stretch; gap:3px; white-space:nowrap}
@@ -44,14 +44,14 @@ var CSS = `
 
 /* left: temp column + weather column, each glyph-top / metadata-baseline-bottom.
    align-items:stretch + .mm space-between makes min/max span the temp's width → left+right aligned. */
-.mv2 .h-tempcol{display:flex; flex-direction:column; align-items:stretch; justify-content:space-between}
+.mv2 .h-tempcol{display:flex; flex-direction:column; align-items:stretch; justify-content:center; gap:var(--s1)}
 .mv2 .otemp{align-self:flex-start}
 .mv2 .otemp .mval{font-size:var(--t-hero); letter-spacing:-.03em}
 .mv2 .otemp .mu{font-size:26px; padding-top:.16em}
 .mv2 .mm{display:flex; justify-content:space-between; align-items:flex-end}
 .mv2 .mm .metric .mval{font-size:50px}
 .mv2 .mm .metric .mu{font-size:15px}
-.mv2 .h-wxcol{display:flex; flex-direction:column; align-items:center; justify-content:space-between}
+.mv2 .h-wxcol{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s1)}
 .mv2 .h-wx{display:flex; align-items:center; justify-content:center; min-height:var(--sym-wx)}
 .mv2 .h-wx img{height:var(--sym-wx); width:auto; display:block}
 .mv2 .h-metrics{display:flex; flex-direction:row; align-items:center; gap:var(--s4)}
@@ -65,7 +65,7 @@ var CSS = `
 
 /* right: moon glyph (top) + sun/moon rise(↑)/set(↓) (baseline) */
 .mv2 .moon{font-size:var(--sym-moon); line-height:.82; display:block}
-.mv2 .alm-col{display:flex; flex-direction:column; gap:var(--s2)}
+.mv2 .alm-col{display:flex; flex-direction:column; gap:var(--s1)}
 .mv2 .alm{display:flex; align-items:center; gap:var(--s3)}
 .mv2 .alm .body{display:flex; align-items:center}
 .mv2 .alm .rs{display:flex; align-items:center; gap:4px}
@@ -75,8 +75,8 @@ var CSS = `
 /* ZONES */
 .mv2 .zones{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--s3); min-height:0}
 .mv2 .col{display:grid; gap:var(--s3); min-height:0}
-.mv2 .col.mid{grid-template-rows:3fr 1fr}
-.mv2 .col.right{grid-template-rows:1.15fr 1fr}
+.mv2 .col.mid{grid-template-rows:4.5fr 1fr}
+.mv2 .col.right{grid-template-rows:1.4fr 1fr}
 .mv2 .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r2); padding:var(--s3) var(--s4); display:flex; flex-direction:column; gap:var(--s2); min-height:0; overflow:hidden}
 .mv2 .card-body{flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--s2)}
 
@@ -119,18 +119,25 @@ var CSS = `
 .mv2 .spectrum .mmrow{display:flex; justify-content:space-between; font-size:var(--t-cap)}
 .mv2 .spectrum .mmrow .lo{color:var(--green)} .mv2 .spectrum .mmrow .hi{color:var(--red)}
 
-/* TANKEN — Diesel & E5 side by side; vertical price-position bar with max(top)/min(bottom) labels */
-.mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s4)}
-.mv2 .fuel{display:grid; grid-template-columns:1fr auto; grid-template-rows:auto 1fr; column-gap:var(--s3); align-items:center}
-.mv2 .fuel .fhead{grid-column:1 / 3; grid-row:1; display:flex; align-items:baseline; gap:var(--s2)}
-.mv2 .fuel .fname{font-size:var(--t-label); font-weight:600}
-.mv2 .fuel .fago{font-size:var(--t-cap); color:var(--muted)}
-.mv2 .fuel .price{grid-column:1; grid-row:2; font-size:var(--t-metric); font-weight:600; line-height:1; white-space:nowrap}
-.mv2 .fuel .price .sup{font-size:.52em; vertical-align:super; margin-left:1px}
-.mv2 .fuel .vbarwrap{grid-column:2; grid-row:2; display:flex; flex-direction:column; align-items:center; gap:3px}
-.mv2 .fuel .vlbl{font-size:var(--t-cap); color:var(--muted)}
-.mv2 .fuel .vbar{width:7px; height:46px; border-radius:4px; position:relative; background:linear-gradient(0deg,var(--green),var(--amber),var(--red)); opacity:.85}
-.mv2 .fuel .vknob{position:absolute; left:50%; width:11px; height:11px; border-radius:50%; background:var(--text); border:2px solid var(--surface); transform:translate(-50%,50%)}
+/* TANKEN — Diesel & E5 side by side (split by a vertical divider); per fuel: name+price (left) beside the
+   vertical price bar (right, max label top / min bottom) so a taller bar fits a shorter box. */
+.mv2 .tanken{padding-top:var(--s2); padding-bottom:var(--s2)}
+.mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s3); align-items:start}
+.mv2 .fuel{display:flex; align-items:flex-start; justify-content:space-between; gap:var(--s2)}
+.mv2 .fuel + .fuel{border-left:1px solid var(--border); padding-left:var(--s3)}
+.mv2 .fuel .finfo{display:flex; flex-direction:column; gap:var(--s2); min-width:0}
+.mv2 .fuel .fname{font-size:18px; font-weight:600; white-space:nowrap}
+.mv2 .fuel .price{display:flex; align-items:flex-start; line-height:1; white-space:nowrap}
+.mv2 .fuel .pnum{font-size:40px; font-weight:600; line-height:.85}
+.mv2 .fuel .psup{display:flex; flex-direction:column; align-items:flex-start; margin-left:2px}
+.mv2 .fuel .p3{font-size:18px; font-weight:600; line-height:1}
+.mv2 .fuel .punit{font-size:12px; color:var(--muted); font-weight:500; margin-top:2px}
+/* bar near the right with a clear margin to the cell boundary; min/max labels beside it (top/bottom) */
+.mv2 .fuel .vbarzone{display:flex; align-items:stretch; gap:4px; flex:none; margin-right:var(--s2)}
+.mv2 .fuel .vlabels{display:flex; flex-direction:column; justify-content:space-between; text-align:right}
+.mv2 .fuel .vlbl{font-size:11px; color:var(--muted); line-height:1}
+.mv2 .fuel .vbar{width:12px; height:66px; border-radius:6px; position:relative; background:linear-gradient(0deg,var(--green),var(--amber),var(--red)); opacity:.85}
+.mv2 .fuel .vknob{position:absolute; left:50%; width:15px; height:15px; border-radius:50%; background:var(--text); border:2px solid var(--surface); transform:translate(-50%,50%)}
 
 /* ENERGIE */
 .mv2 .energie .price-head{display:flex; align-items:baseline; gap:var(--s2); font-size:var(--t-cap)}
@@ -200,11 +207,13 @@ function calSym(s) {
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 function watts(v) { var a = Math.abs(v || 0); return a >= 1000 ? comma(a / 1000, 1) + '<span class="u">kW</span>' : Math.round(a) + '<span class="u">W</span>'; }
 
-// price 1,659 with the third decimal raised
+// fuel price 1,65 with the raised 3rd decimal (⁹) and the €/l unit stacked beneath it, left-aligned —
+// keeps the price compact so the bar gets a clear margin to the card boundary.
 function priceSuper(v) {
-    if (v == null) return '–';
+    if (v == null) return '<span class="pnum num">–</span>';
     var s = v.toFixed(3);
-    return s.slice(0, 4).replace('.', ',') + '<span class="sup num">' + s.slice(4) + '</span>';
+    return '<span class="pnum num">' + s.slice(0, 4).replace('.', ',') + '</span>'
+        + '<span class="psup"><span class="p3 num">' + s.slice(4) + '</span><span class="punit">€/l</span></span>';
 }
 
 // ===== state IDs =====
@@ -374,10 +383,10 @@ function buildWoche() {
         (byDay[k] = byDay[k] || []).push({ dt: dt, allDay: e._allDay === true, title: e.event || '' });
     });
     var b = berlinNow();
-    // Fit guard (the card can't measure its own height server-side): a sparse day ≈ 2 height-units
-    // (the date marker), each shown event ≈ 1 unit. Cap a single day to DAY_CAP events (+"weitere"),
-    // and drop whole trailing days once the budget is spent — so a crammed day can never overflow/clip.
-    var UNIT_BUDGET = 12, DAY_CAP = 4, used = 0, rows = '', dropped = 0;
+    // Px-budget fit guard (the card height isn't measurable server-side): estimate each day's height
+    // and fill the LAST day partially, so the list fills the card without clipping and with no "+N"
+    // clutter. PX_BUDGET ≈ the calendar card body; DAY_PAD = row padding, ROW_PX ≈ one event line.
+    var PX_BUDGET = 372, DAY_PAD = 16, ROW_PX = 26, MIN_DAY = 34, DAY_CAP = 4, used = 0, rows = '';
     for (var i = 0; i < 7; i++) {
         var dd = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i);
         var dow = dd.getDay(), weekend = (dow === 0 || dow === 6), today = (i === 0);
@@ -386,10 +395,11 @@ function buildWoche() {
         var seen = {}, ded = [];
         evs.forEach(function (ev) { var k = (ev.allDay ? 'gz' : hhmmBerlin(ev.dt)) + '|' + ev.title; if (!seen[k]) { seen[k] = 1; ded.push(ev); } });
         evs = ded;
-        var shown = evs.slice(0, DAY_CAP), moreInDay = evs.length - shown.length;
-        var units = Math.max(2, shown.length + (moreInDay > 0 ? 1 : 0));
-        if (i > 0 && used + units > UNIT_BUDGET) { dropped = 7 - i; break; }
-        used += units;
+        var avail = PX_BUDGET - used - DAY_PAD;
+        if (i > 0 && avail < MIN_DAY) break;  // no room for a further day
+        var cap = Math.min(DAY_CAP, Math.max(1, Math.floor(avail / ROW_PX)));  // events that still fit
+        var shown = evs.slice(0, cap);
+        used += DAY_PAD + Math.max(MIN_DAY, (shown.length || 1) * ROW_PX);
         var cls = today ? ' today' : (weekend ? ' we' : '');
         rows += '<div class="drow' + cls + '"><div class="dcell"><span class="dow">' + DAYS_SHORT[dow] + '</span><span class="dnum">' + dd.getDate() + '.</span></div><div class="ev">';
         if (!evs.length) { rows += '<div class="none">—</div>'; }
@@ -399,11 +409,9 @@ function buildWoche() {
                 if (ev.allDay) { rows += '<div class="e">' + clip(calSym(ev.title), 30) + '</div>'; }
                 else { rows += '<div class="e"><span class="t num">' + esc(hhmmBerlin(ev.dt)) + '</span>' + clip(calSym(ev.title), 26) + '</div>'; }
             });
-            if (moreInDay > 0) rows += '<div class="e none">+ ' + moreInDay + ' weitere</div>';
         }
         rows += '</div></div>';
     }
-    if (dropped > 0) rows += '<div class="drow"><div class="dcell"></div><div class="ev"><div class="none">+ ' + dropped + ' weitere Tage</div></div></div>';
     return '<div class="card woche"><div class="card-body"><div class="days">' + rows + '</div></div></div>';
 }
 
@@ -411,16 +419,15 @@ function buildWoche() {
 function buildFuel(name, feedOid, base) {
     var price = sNum(feedOid), p20 = sNum(base + '_p20'), p80 = sNum(base + '_p80'),
         mn = sNum(base + '_min'), mx = sNum(base + '_max');
-    var lu = getState(feedOid), ago = lu ? agoStr(lu.lc || lu.ts) : null;
     var pb = priceBand(price, p20, p80), col = pb.col;
     // knob position from the bottom (low price = bottom/green, high = top/red). The colour carries the verdict (no "teuer" word).
     var pos = (mn != null && mx != null && mx > mn && price != null) ? clamp01((price - mn) / (mx - mn)) * 100 : 50;
     var h = '<div class="fuel">';
-    h += '<div class="fhead"><span class="fname">' + name + '</span><span class="fago">vor ' + (ago || '–') + '</span></div>';
-    h += '<div class="price" style="color:' + col + '">' + priceSuper(price) + '<span class="u">€/l</span></div>';
-    h += '<div class="vbarwrap"><span class="vlbl num">' + comma(mx, 3) + '</span>'
-        + '<div class="vbar"><div class="vknob" style="bottom:' + pos.toFixed(0) + '%"></div></div>'
-        + '<span class="vlbl num">' + comma(mn, 3) + '</span></div>';
+    // name + big price stacked (no "vor X" — the cell is too narrow alongside the bar; price freshness dropped here)
+    h += '<div class="finfo"><span class="fname">' + name + '</span>'
+        + '<div class="price" style="color:' + col + '">' + priceSuper(price) + '</div></div>';
+    h += '<div class="vbarzone"><div class="vlabels"><span class="vlbl num">' + comma(mx, 2) + '</span><span class="vlbl num">' + comma(mn, 2) + '</span></div>'
+        + '<div class="vbar"><div class="vknob" style="bottom:' + pos.toFixed(0) + '%"></div></div></div>';
     return h + '</div>';
 }
 function buildTanken() {
