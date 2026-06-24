@@ -10,7 +10,7 @@
 
 // ===== scoped CSS (everything under .mv2 so it never clashes with vis-user.css / other widgets) =====
 var CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Expanded:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
 .mv2{
   --bg:#0d0e12; --surface:#15161c; --inset:#1c1f28; --border:#262a33;
   --text:#CCCCCC; --muted:#8A8A8A; --mute:#7F8A99;
@@ -18,71 +18,86 @@ var CSS = `
   --green-16:rgba(181,251,91,.16); --amber-16:rgba(241,190,61,.16); --blue-16:rgba(80,128,172,.16); --red-16:rgba(160,6,41,.22); --muted-16:rgba(138,138,138,.16);
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px;
   --r2:14px; --r3:10px;
-  --t-hero:84px; --t-metric:27px; --t-sub:18px; --t-label:14px; --t-cap:12px;
+  --t-hero:98px; --t-clock:126px; --t-metric:27px; --t-sub:18px; --t-date:23px; --t-label:14px; --t-cap:12px;
+  --sym-wx:116px; --sym-moon:92px;     /* hero display symbols */
+  --inset-x:22px;                       /* shared left/right page inset */
   width:1170px; height:676px; box-sizing:border-box; background:var(--bg);
-  padding:var(--s4); display:grid; grid-template-rows:118px 1fr; gap:var(--s3);
-  font-family:'Archivo',system-ui,sans-serif; color:var(--text);
+  padding:0 var(--s1) var(--s2) 0; display:grid; grid-template-rows:178px 1fr; gap:var(--s3);
+  font-family:'Figtree',system-ui,sans-serif; color:var(--text);
   -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums;
 }
 .mv2 *{margin:0; padding:0; box-sizing:border-box}
 .mv2 .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
-.mv2 .exp{font-family:'Archivo Expanded','Archivo',sans-serif}
-.mv2 .u{font-size:max(12px,.42em); color:var(--muted); font-weight:500; letter-spacing:0}
-.mv2 .eyebrow{font-size:var(--t-cap); letter-spacing:.16em; text-transform:uppercase; color:var(--muted); font-weight:600; display:flex; align-items:center; gap:var(--s2)}
-.mv2 .eyebrow .status{margin-left:auto; letter-spacing:.01em; text-transform:none; font-size:var(--t-label); font-weight:600}
+.mv2 .u{font-size:max(12px,.42em); color:var(--muted); font-weight:500; letter-spacing:0; margin-left:.06em}
 
-/* HERO */
-.mv2 .hero{display:flex; justify-content:space-between; align-items:stretch; padding:var(--s1) var(--s1) 0; border-bottom:1px solid var(--border)}
-.mv2 .h-left{display:flex; flex-direction:column; justify-content:flex-start}
-.mv2 .m2clk{font-size:var(--t-hero); font-weight:700; line-height:.84; letter-spacing:-.02em}
-.mv2 .m2clk .sep{opacity:.35; font-weight:600}
-.mv2 .m2date{margin-top:var(--s3); font-size:var(--t-sub); color:var(--muted); font-weight:500}
-.mv2 .h-center{display:flex; gap:var(--s6); align-items:center; justify-content:center}
-.mv2 .alm-col{display:flex; flex-direction:column; gap:var(--s3)}
-.mv2 .alm{display:flex; align-items:center; gap:var(--s2); height:21px}
-.mv2 .alm .v{font-size:var(--t-sub); font-weight:600}
-.mv2 .alm .k{font-size:var(--t-cap); color:var(--muted); letter-spacing:.04em; margin-left:1px}
-.mv2 .moonwrap{display:flex; flex-direction:column; align-items:center; gap:var(--s1)}
-.mv2 .moonlabel{font-size:var(--t-cap); color:var(--muted); letter-spacing:.05em}
-.mv2 .h-right{display:flex; align-items:stretch; gap:var(--s4)}
-.mv2 .h-metrics{display:flex; flex-direction:column; justify-content:center; gap:var(--s3)}
-.mv2 .h-metrics .line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted); height:21px}
+/* HERO — two tiers: display glyphs (top) + one metadata baseline (bottom). Each cluster is a
+   full-height column (glyph top / metadata bottom), so all the small data lands on one baseline. */
+.mv2 .hero{display:grid; grid-template-columns:1fr auto 1fr; align-items:stretch; padding:var(--s3) var(--inset-x); border-bottom:1px solid var(--border); overflow:hidden}
+.mv2 .h-clim{justify-self:start; display:flex; align-items:stretch; gap:var(--s6)}
+.mv2 .h-clock{justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:space-between}
+.mv2 .h-moon{justify-self:end; display:flex; flex-direction:column; align-items:flex-end; justify-content:space-between}
+
+/* the Metric component — value + top-aligned unit (uu) + optional bottom-aligned label (ll) */
+.mv2 .metric{display:inline-flex; align-items:stretch; gap:3px; white-space:nowrap}
+.mv2 .metric .mval{font-weight:600; line-height:.82}
+.mv2 .metric .mu{display:flex; flex-direction:column; justify-content:space-between; padding:.1em 0 .02em; color:var(--muted); font-weight:500; line-height:1; font-size:13px}
+
+/* left: temp column + weather column, each glyph-top / metadata-baseline-bottom.
+   align-items:stretch + .mm space-between makes min/max span the temp's width → left+right aligned. */
+.mv2 .h-tempcol{display:flex; flex-direction:column; align-items:stretch; justify-content:space-between}
+.mv2 .otemp{align-self:flex-start}
+.mv2 .otemp .mval{font-size:var(--t-hero); letter-spacing:-.03em}
+.mv2 .otemp .mu{font-size:26px; padding-top:.16em}
+.mv2 .mm{display:flex; justify-content:space-between; align-items:flex-end}
+.mv2 .mm .metric .mval{font-size:50px}
+.mv2 .mm .metric .mu{font-size:15px}
+.mv2 .h-wxcol{display:flex; flex-direction:column; align-items:center; justify-content:space-between}
+.mv2 .h-wx{display:flex; align-items:center; justify-content:center; min-height:var(--sym-wx)}
+.mv2 .h-wx img{height:var(--sym-wx); width:auto; display:block}
+.mv2 .h-metrics{display:flex; flex-direction:row; align-items:center; gap:var(--s4)}
+.mv2 .h-metrics .line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted)}
 .mv2 .h-metrics .line b{color:var(--text); font-weight:600; font-size:var(--t-sub)}
-.mv2 .h-wx{display:flex; align-items:center; justify-content:center; align-self:center}
-.mv2 .h-wx img{height:92px; width:auto; display:block}
-.mv2 .h-temp{display:flex; flex-direction:column; justify-content:flex-start; align-items:flex-end}
-.mv2 .otemp{font-size:var(--t-hero); font-weight:700; line-height:.84; letter-spacing:-.03em; white-space:nowrap}
-.mv2 .mm{display:flex; gap:var(--s5); margin-top:var(--s2); align-items:flex-start}
-.mv2 .mm .pair{display:flex; align-items:stretch; gap:var(--s1)}
-.mv2 .mm .pair .n{font-size:42px; font-weight:700; line-height:.78}
-.mv2 .mm .pair .ux{display:flex; flex-direction:column; justify-content:space-between; line-height:1; padding:2px 0; color:var(--muted); font-weight:500; font-size:13px}
+
+/* centre: clock (top) + date (baseline) */
+.mv2 .m2clk{font-size:var(--t-clock); font-weight:600; line-height:.82; letter-spacing:-.02em}
+.mv2 .m2clk .sep{opacity:.35}
+.mv2 .m2date{font-size:var(--t-date); color:var(--muted); font-weight:500}
+
+/* right: moon glyph (top) + sun/moon rise(↑)/set(↓) (baseline) */
+.mv2 .moon{font-size:var(--sym-moon); line-height:.82; display:block}
+.mv2 .alm-col{display:flex; flex-direction:column; gap:var(--s2)}
+.mv2 .alm{display:flex; align-items:center; gap:var(--s3)}
+.mv2 .alm .body{display:flex; align-items:center}
+.mv2 .alm .rs{display:flex; align-items:center; gap:4px}
+.mv2 .alm .rs svg{flex:none}
+.mv2 .alm .v{font-size:var(--t-sub); font-weight:600}
 
 /* ZONES */
 .mv2 .zones{display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--s3); min-height:0}
 .mv2 .col{display:grid; gap:var(--s3); min-height:0}
-.mv2 .col.mid{grid-template-rows:2.2fr 1fr}
+.mv2 .col.mid{grid-template-rows:3fr 1fr}
 .mv2 .col.right{grid-template-rows:1.15fr 1fr}
 .mv2 .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r2); padding:var(--s3) var(--s4); display:flex; flex-direction:column; gap:var(--s2); min-height:0; overflow:hidden}
-.mv2 .card--accent{border-color:rgba(181,251,91,.55); box-shadow:0 0 0 1px rgba(181,251,91,.12)}
 .mv2 .card-body{flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--s2)}
 
 /* KLIMA */
 .mv2 .klima .rooms{flex:1; display:grid; grid-template-rows:repeat(4,1fr); gap:var(--s2)}
-.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto; column-gap:var(--s3); row-gap:var(--s1); align-items:center; background:var(--bg); border-radius:var(--r3); padding:var(--s2) var(--s4) var(--s2) var(--s3)}
-.mv2 .thermo{grid-column:1; grid-row:1 / 4; align-self:center; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center}
-.mv2 .room .name{grid-column:2; grid-row:1; font-size:var(--t-label); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .room .op{grid-column:2; grid-row:2; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted)}
+/* the Room component: name (primary) → operational (last-update + battery) → environmental
+   (humidity / CO₂ stacked) on the left; big temperature on the right. */
+.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto; column-gap:var(--s3); row-gap:2px; align-items:center; background:var(--bg); border-radius:var(--r3); padding:var(--s2) var(--s4)}
+.mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center}
+.mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:26px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mv2 .room .op{grid-column:2; grid-row:2; margin-top:-5px; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted); white-space:nowrap}
 .mv2 .room .op .batt{display:flex; align-items:center; gap:3px}
-.mv2 .room .sub{grid-column:2; grid-row:3; display:flex; align-items:center; gap:var(--s3); font-size:var(--t-cap)}
-.mv2 .room .sub .metric{display:flex; align-items:center; gap:var(--s1)}
-.mv2 .room .sub .metric svg{flex:none}
-.mv2 .room .sub .metric .un{color:var(--muted); font-weight:500}
-.mv2 .room .temp{grid-column:3; grid-row:1 / 3; align-self:center; justify-self:end; font-size:34px; font-weight:700; line-height:1; white-space:nowrap}
-.mv2 .room .word{grid-column:3; grid-row:3; justify-self:end; align-self:center; font-size:var(--t-cap); color:var(--muted)}
+.mv2 .room .env{grid-column:2; display:flex; align-items:center; gap:var(--s1); font-size:var(--t-label); white-space:nowrap}
+.mv2 .room .env.hum{grid-row:3} .mv2 .room .env.co2{grid-row:4}
+.mv2 .room .env svg{flex:none}
+.mv2 .room .env .un{color:var(--muted); font-weight:500}
+.mv2 .room .temp{grid-column:3; grid-row:2 / 5; align-self:center; justify-self:end; font-size:54px; font-weight:600; line-height:.9; white-space:nowrap}
 
 /* WOCHE */
 .mv2 .woche .days{flex:1; display:flex; flex-direction:column; min-height:0}
-.mv2 .drow{display:grid; grid-template-columns:40px 1fr; gap:var(--s3); align-items:start; border-top:1px solid var(--border); padding:var(--s1) 2px}
+.mv2 .drow{display:grid; grid-template-columns:46px 1fr; gap:var(--s3); align-items:start; border-top:1px solid var(--border); padding:var(--s2) 2px}
 .mv2 .drow:first-child{border-top:none}
 .mv2 .drow.today,.mv2 .drow.we{margin:0 calc(-1 * var(--s2)); padding-left:calc(var(--s2) + 2px); padding-right:calc(var(--s2) + 2px); border-radius:var(--r3); border-top-color:transparent}
 .mv2 .drow.today{background:rgba(241,190,61,.09)}
@@ -90,12 +105,12 @@ var CSS = `
 .mv2 .drow.today .dow,.mv2 .drow.today .dnum{color:var(--amber)}
 .mv2 .drow.we .dow,.mv2 .drow.we .dnum{color:var(--blue)}
 .mv2 .drow .dcell{display:flex; flex-direction:column; line-height:1.05}
-.mv2 .drow .dow{font-size:var(--t-label); font-weight:700}
-.mv2 .drow .dnum{font-size:var(--t-cap); color:var(--muted)}
-.mv2 .drow .ev{display:flex; flex-direction:column; gap:2px; min-width:0}
-.mv2 .drow .e{font-size:var(--t-label); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.25}
+.mv2 .drow .dow{font-size:17px; font-weight:600}
+.mv2 .drow .dnum{font-size:13px; color:var(--muted)}
+.mv2 .drow .ev{display:flex; flex-direction:column; gap:3px; min-width:0}
+.mv2 .drow .e{font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.22}
 .mv2 .drow .e .t{color:var(--muted); font-weight:600; margin-right:var(--s2)}
-.mv2 .drow .none{font-size:var(--t-label); color:var(--mute)}
+.mv2 .drow .none{font-size:17px; color:var(--mute)}
 
 /* shared SPECTRUM bar (price position: Tanken + Strompreis) */
 .mv2 .spectrum{display:flex; flex-direction:column; gap:var(--s1)}
@@ -104,33 +119,34 @@ var CSS = `
 .mv2 .spectrum .mmrow{display:flex; justify-content:space-between; font-size:var(--t-cap)}
 .mv2 .spectrum .mmrow .lo{color:var(--green)} .mv2 .spectrum .mmrow .hi{color:var(--red)}
 
-/* TANKEN */
-.mv2 .tanken .fuels{flex:1; display:grid; grid-template-rows:1fr 1fr; gap:var(--s2)}
-.mv2 .fuel{display:grid; grid-template-columns:124px 1fr; grid-template-rows:auto auto; column-gap:var(--s4); row-gap:var(--s2); align-items:center}
-.mv2 .fuel .fhead{grid-column:1; grid-row:1; display:flex; align-items:baseline; gap:var(--s2)}
+/* TANKEN — Diesel & E5 side by side; vertical price-position bar with max(top)/min(bottom) labels */
+.mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s4)}
+.mv2 .fuel{display:grid; grid-template-columns:1fr auto; grid-template-rows:auto 1fr; column-gap:var(--s3); align-items:center}
+.mv2 .fuel .fhead{grid-column:1 / 3; grid-row:1; display:flex; align-items:baseline; gap:var(--s2)}
 .mv2 .fuel .fname{font-size:var(--t-label); font-weight:600}
 .mv2 .fuel .fago{font-size:var(--t-cap); color:var(--muted)}
-.mv2 .fuel .price{grid-column:1; grid-row:2; font-size:var(--t-metric); font-weight:700; line-height:1; white-space:nowrap}
+.mv2 .fuel .price{grid-column:1; grid-row:2; font-size:var(--t-metric); font-weight:600; line-height:1; white-space:nowrap}
 .mv2 .fuel .price .sup{font-size:.52em; vertical-align:super; margin-left:1px}
-.mv2 .fuel .verdict{grid-column:2; grid-row:1; justify-self:end; font-size:var(--t-label); font-weight:600}
-.mv2 .fuel .barwrap{grid-column:2; grid-row:2}
+.mv2 .fuel .vbarwrap{grid-column:2; grid-row:2; display:flex; flex-direction:column; align-items:center; gap:3px}
+.mv2 .fuel .vlbl{font-size:var(--t-cap); color:var(--muted)}
+.mv2 .fuel .vbar{width:7px; height:46px; border-radius:4px; position:relative; background:linear-gradient(0deg,var(--green),var(--amber),var(--red)); opacity:.85}
+.mv2 .fuel .vknob{position:absolute; left:50%; width:11px; height:11px; border-radius:50%; background:var(--text); border:2px solid var(--surface); transform:translate(-50%,50%)}
 
 /* ENERGIE */
 .mv2 .energie .price-head{display:flex; align-items:baseline; gap:var(--s2); font-size:var(--t-cap)}
 .mv2 .energie .price-head .lbl{color:var(--muted)}
-.mv2 .energie .price-head .val{font-size:var(--t-sub); font-weight:700}
-.mv2 .energie .price-head .verdict{font-weight:600; font-size:var(--t-label)}
+.mv2 .energie .price-head .val{font-size:var(--t-sub); font-weight:600}
 .mv2 .energie .price-head .net{margin-left:auto; font-weight:600; font-size:var(--t-label)}
 .mv2 .energie .flows{flex:1; display:grid; grid-template-rows:repeat(4,1fr)}
 .mv2 .flow{display:grid; grid-template-columns:24px 84px 1fr 70px; align-items:center; gap:var(--s2)}
 .mv2 .flow .fi{display:flex; align-items:center; justify-content:center}
 .mv2 .flow .fl{font-size:var(--t-label); color:var(--muted)}
-.mv2 .flow .track{height:6px; border-radius:3px; background:var(--inset)}
-.mv2 .flow .fill{height:6px; border-radius:3px}
-.mv2 .flow .fv{text-align:right; font-size:var(--t-sub); font-weight:700; white-space:nowrap}
+.mv2 .flow .track{height:6px; border-radius:3px; background:var(--inset); overflow:hidden}
+.mv2 .flow .fill{display:block; height:6px; border-radius:3px; min-width:2px}
+.mv2 .flow .fv{text-align:right; font-size:var(--t-sub); font-weight:600; white-space:nowrap}
 .mv2 .estats{display:flex; gap:var(--s4); border-top:1px solid var(--border); padding-top:var(--s2); align-items:baseline}
 .mv2 .estat{flex:1; display:flex; align-items:baseline; gap:var(--s2)}
-.mv2 .estat .v{font-size:var(--t-metric); font-weight:700; line-height:1}
+.mv2 .estat .v{font-size:var(--t-metric); font-weight:600; line-height:1}
 .mv2 .estat .l{font-size:var(--t-cap); color:var(--muted); letter-spacing:.02em}
 .mv2 .estat+.estat{border-left:1px solid var(--border); padding-left:var(--s4)}
 
@@ -147,7 +163,7 @@ var CSS = `
 
 // ===== colour tokens (data-driven colour = scoped CSS var names) =====
 var GREEN = 'var(--green)', AMBER = 'var(--amber)', BLUE = 'var(--blue)', RED = 'var(--red)',
-    VAL = 'var(--text)', LBL = 'var(--muted)', MUTE = 'var(--mute)';
+    LBL = 'var(--muted)';
 
 // ===== data helpers =====
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
@@ -166,14 +182,17 @@ function agoStr(luVal) {
 }
 function comfortCol(t) { return t == null ? LBL : (t <= 3 ? LBL : (t < 12 ? BLUE : (t < 20 ? GREEN : (t < 27 ? AMBER : RED)))); }
 function comfortTint(t) { return t == null ? 'var(--muted-16)' : (t <= 3 ? 'var(--muted-16)' : (t < 12 ? 'var(--blue-16)' : (t < 20 ? 'var(--green-16)' : (t < 27 ? 'var(--amber-16)' : 'var(--red-16)')))); }
-function comfortWord(t) { return t == null ? '' : (t < 12 ? 'kalt' : (t < 20 ? 'kühl' : (t < 27 ? 'warm' : 'heiß'))); }
 function co2Col(c) { return c == null ? LBL : (c < 1000 ? GREEN : (c < 1400 ? AMBER : RED)); }
 function humCol(h) { return h == null ? LBL : (h < 40 ? AMBER : (h <= 60 ? GREEN : BLUE)); }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
-// calendar event symbols — verbatim from the old ical_events.js (gift/ring/worker + kids' hearts)
+// calendar event symbols — verbatim from the old ical_events.js (gift/ring/worker + kids' hearts).
+// First decode HTML entities the ical feed pre-encodes (e.g. "Ina &amp; Dirk"), so the later esc()
+// in clip() re-encodes once instead of showing a literal "&amp;".
 function calSym(s) {
     return String(s == null ? '' : s)
+        .split('&amp;').join('&').split('&lt;').join('<').split('&gt;').join('>')
+        .split('&#039;').join("'").split('&#39;').join("'").split('&quot;').join('"')
         .split('[Geburtstag]').join('🎁').split('[Hochzeitstag]').join('💍')
         .split('[Müllabfuhr]').join('👷').split('Abholung').join('👷')
         .split('[Carlotta]').join('🩵').split('[Clara]').join('💜').split('[Clea]').join('🧡');
@@ -225,33 +244,23 @@ function icoBatt(pct, col) {
 }
 function icoGauge(sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><g fill="none" stroke="#8A8A8A" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="7.5" x2="12" y2="9.2"/><line x1="16.5" y1="12" x2="14.8" y2="12"/><line x1="7.5" y1="12" x2="9.2" y2="12"/><line x1="12" y1="12" x2="15.4" y2="9.2"/></g><circle cx="12" cy="12" r="1.6" fill="#8A8A8A"/></svg>'; }
 function icoSunSmall() { return '<svg width="18" height="18" viewBox="0 0 22 22"><g stroke="#F1BE3D" stroke-width="1.5" fill="none" stroke-linecap="round"><circle cx="11" cy="11" r="3.4" fill="#F1BE3D" stroke="none"/><line x1="11" y1="2.5" x2="11" y2="4.6"/><line x1="11" y1="17.4" x2="11" y2="19.5"/><line x1="2.5" y1="11" x2="4.6" y2="11"/><line x1="17.4" y1="11" x2="19.5" y2="11"/><line x1="5" y1="5" x2="6.5" y2="6.5"/><line x1="15.5" y1="15.5" x2="17" y2="17"/><line x1="17" y1="5" x2="15.5" y2="6.5"/><line x1="6.5" y1="15.5" x2="5" y2="17"/></g></svg>'; }
-function icoSunset() { return '<svg width="18" height="18" viewBox="0 0 22 22"><g stroke="#8A8A8A" stroke-width="1.5" fill="none" stroke-linecap="round"><circle cx="11" cy="13" r="3.4"/><line x1="11" y1="3" x2="11" y2="6"/><path d="M5 19 H17"/></g></svg>'; }
-// moon — light disc + a bg-coloured shadow ellipse offset by phase (0..7). Approximate but live.
-function moonSvg(phase) {
+// small crescent for the moon rise/set row (the big phase emoji is the hero symbol)
+function icoMoonMini(col) { return '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M12.2 2.6 A6.6 6.6 0 1 0 12.8 13.4 A5.2 5.2 0 0 1 12.2 2.6 Z" fill="' + col + '"/></svg>'; }
+// rise (auf) = arrow up over the horizon · set (unter) = arrow down to the horizon — replaces the "auf/unter" words
+function icoRise(col) { return '<svg width="15" height="15" viewBox="0 0 16 16"><g stroke="' + col + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.5 H13.5"/><path d="M8 10.5 V3.5"/><path d="M5 6.5 L8 3.5 L11 6.5"/></g></svg>'; }
+function icoSet(col) { return '<svg width="15" height="15" viewBox="0 0 16 16"><g stroke="' + col + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.5 H13.5"/><path d="M8 3 V10"/><path d="M5 7 L8 10 L11 7"/></g></svg>'; }
+// moon = the original dashboard's phase emoji (driven by moon_phase 0..7); New=0, Full=4 (N. hemisphere).
+// Sized to match the weather symbol (see .moon CSS). Owner-agreed symbol set — not a drawn glyph.
+function moonEmoji(phase) {
     if (phase == null || isNaN(phase)) phase = 6;
     phase = ((Math.round(phase) % 8) + 8) % 8;
-    var R = 16, lit = '#e9ebef', dark = '#15161c';
-    var s = '<svg width="44" height="44" viewBox="0 0 44 44"><defs><clipPath id="mvmc"><circle cx="22" cy="22" r="' + R + '"/></clipPath></defs>';
-    s += '<circle cx="22" cy="22" r="' + R + '" fill="' + dark + '"/><g clip-path="url(#mvmc)"><circle cx="22" cy="22" r="' + R + '" fill="' + lit + '"/>';
-    if (phase === 0) { s += '<circle cx="22" cy="22" r="' + R + '" fill="' + dark + '"/>'; }
-    else if (phase !== 4) {
-        var waning = phase >= 5, crescent = (phase === 1 || phase === 3 || phase === 5 || phase === 7);
-        var rx = crescent ? R - 0.5 : R * 0.5;
-        var cx = waning ? 22 + (crescent ? R * 0.62 : R * 0.22) : 22 - (crescent ? R * 0.62 : R * 0.22);
-        s += '<ellipse cx="' + cx.toFixed(1) + '" cy="22" rx="' + rx.toFixed(1) + '" ry="' + R + '" fill="' + dark + '"/>';
-    }
-    return s + '</g></svg>';
-}
-function moonLabel(phase) {
-    if (phase == null || isNaN(phase)) return '';
-    phase = ((Math.round(phase) % 8) + 8) % 8;
-    return phase === 0 ? 'Neumond' : (phase === 4 ? 'Vollmond' : (phase < 4 ? 'zunehmend' : 'abnehmend'));
+    return ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘'][phase];
 }
 // Weather symbol = the native daswetter art (galeria1, ids 1..22), embedded inline as a same-origin
 // <img> beside the big temp (the foreignObject HTML rebuild makes the old native-overlay widget
 // unnecessary; this auto-aligns + scales + survives the Neu→Main move). Falls back to nothing if the id is out of range.
 function wxImg(id) {
-    if (id == null || isNaN(id) || id < 1 || id > 22) return '';
+    if (id == null || isNaN(id) || id < 1 || id > 22) return '<div class="h-wx"></div>';  // keep the slot so the column doesn't collapse
     return '<div class="h-wx"><img src="/daswetter.admin/icons/tiempo-weather/galeria1/' + Math.round(id) + '.png" alt=""/></div>';
 }
 function enIco(kind, col) {
@@ -281,39 +290,47 @@ function spectrum(knobPct, loStr, hiStr) {
 }
 
 // ===== HERO =====
+// the Metric component: value (comfort-coloured) + °C top-aligned + optional bottom-aligned label.
+// cls='otemp' selects the hero-temp size; min/max metrics live inside .mm.
+function tempMetric(val, dec, label, cls) {
+    return '<span class="metric ' + (cls || '') + '"><span class="mval num" style="color:' + comfortCol(val) + '">' + comma(val, dec)
+        + '</span><span class="mu"><span class="uu">°C</span>' + (label ? '<span class="ll">' + label + '</span>' : '') + '</span></span>';
+}
 function buildHero() {
     var b = berlinNow();
     var sr = sStr(EN + 'sunrise'), ss = sStr(EN + 'sunset');
     var mr = sStr(EN + 'moonrise'), ms = sStr(EN + 'moonset'), mph = sNum(EN + 'moon_phase');
     var ot = sNum(OUTDOOR + '.Temperature.Temperature'), mn = sNum(FCMIN), mx = sNum(FCMAX);
     var oh = sNum(OUTDOOR + '.Humidity.Humidity');
-    var pr = sNum(NB + '.Pressure.Pressure'), prt = getState(NB + '.Pressure.PressureTrend');
-    var trend = (prt && prt.val === 'up') ? '↑' : ((prt && prt.val === 'down') ? '↓' : '→');
+    var pr = sNum(NB + '.Pressure.Pressure');
     var wsym = sNum('daswetter.0.NextDays.Location_1.Day_1.Wetter_Symbol_id');
+    var RS = '#8A8A8A';
 
     var h = '<div class="hero">';
-    // left: clock + date
-    h += '<div class="h-left"><div class="m2clk num exp">' + pad2(b.getHours()) + '<span class="sep">:</span>' + pad2(b.getMinutes()) + '</div>'
+    // LEFT: temp column (temp top / min-max baseline) + weather column (symbol top / hum-pres baseline)
+    h += '<div class="h-clim">'
+        + '<div class="h-tempcol">'
+        +   tempMetric(ot, 1, null, 'otemp')
+        +   '<div class="mm">' + tempMetric(mn, 0, 'min') + tempMetric(mx, 0, 'max') + '</div>'
+        + '</div>'
+        + '<div class="h-wxcol">' + wxImg(wsym)
+        +   '<div class="h-metrics">'
+        +     '<div class="line">' + icoDrop('#5080AC', 18) + '<b class="num">' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
+        +     '<div class="line">' + icoGauge(18) + '<b class="num">' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar</span></div>'
+        +   '</div></div>'
+        + '</div>';
+    // CENTRE: clock (top) + date (baseline)
+    h += '<div class="h-clock"><div class="m2clk num">' + pad2(b.getHours()) + '<span class="sep">:</span>' + pad2(b.getMinutes()) + '</div>'
         + '<div class="m2date">' + DAYS_FULL[b.getDay()] + ', ' + b.getDate() + '. ' + MONTHS[b.getMonth()] + '</div></div>';
-    // centre: sun + moon almanac
-    h += '<div class="h-center">'
-        + '<div class="alm-col">'
-        + '<div class="alm">' + icoSunSmall() + '<span class="v num">' + esc(sr || '–') + '</span><span class="k">auf</span></div>'
-        + '<div class="alm">' + icoSunset() + '<span class="v num">' + esc(ss || '–') + '</span><span class="k">unter</span></div></div>'
-        + '<div class="moonwrap">' + moonSvg(mph) + '<span class="moonlabel">' + moonLabel(mph) + '</span></div>'
-        + '<div class="alm-col">'
-        + '<div class="alm"><span class="v num">' + esc(mr || '–') + '</span><span class="k">auf</span></div>'
-        + '<div class="alm"><span class="v num">' + esc(ms || '–') + '</span><span class="k">unter</span></div></div></div>';
-    // right: humidity/pressure (aligned with auf/unter) + big temp + min/max
-    h += '<div class="h-right"><div class="h-metrics">'
-        + '<div class="line">' + icoDrop('#5080AC', 18) + '<b class="num">' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
-        + '<div class="line">' + icoGauge(18) + '<b class="num">' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar ' + trend + '</span></div></div>'
-        + wxImg(wsym)
-        + '<div class="h-temp"><div class="otemp num" style="color:' + comfortCol(ot) + '">' + comma(ot, 1) + '<span class="u">°C</span></div>'
-        + '<div class="mm">'
-        + '<div class="pair"><span class="n num" style="color:' + comfortCol(mn) + '">' + comma(mn, 0) + '</span><span class="ux"><span>°C</span><span>min</span></span></div>'
-        + '<div class="pair"><span class="n num" style="color:' + comfortCol(mx) + '">' + comma(mx, 0) + '</span><span class="ux"><span>°C</span><span>max</span></span></div>'
-        + '</div></div></div>';
+    // RIGHT: moon glyph (top) + sun/moon rise(↑)/set(↓) on the baseline (icon = which body, arrow = auf/unter)
+    h += '<div class="h-moon"><span class="moon">' + moonEmoji(mph) + '</span><div class="alm-col">'
+        + '<div class="alm"><span class="body">' + icoSunSmall() + '</span>'
+        +   '<span class="rs">' + icoRise(RS) + '<span class="v num">' + esc(sr || '–') + '</span></span>'
+        +   '<span class="rs">' + icoSet(RS) + '<span class="v num">' + esc(ss || '–') + '</span></span></div>'
+        + '<div class="alm"><span class="body">' + icoMoonMini('#9aa3b2') + '</span>'
+        +   '<span class="rs">' + icoRise(RS) + '<span class="v num">' + esc(mr || '–') + '</span></span>'
+        +   '<span class="rs">' + icoSet(RS) + '<span class="v num">' + esc(ms || '–') + '</span></span></div>'
+        + '</div></div>';
     return h + '</div>';
 }
 
@@ -331,17 +348,16 @@ function buildRoom(name, module) {
     h += '<div class="op"><span' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–') + '</span>';
     if (bs != null) { var bcol = bs < 20 ? RED : (bs < 30 ? AMBER : LBL); h += '<span class="batt" style="color:' + bcol + '">' + icoBatt(bs, bcol) + Math.round(bs) + '%</span>'; }
     h += '</div>';
-    // environmental: humidity + CO2
-    h += '<div class="sub">'
-        + '<span class="metric">' + icoDrop('#5080AC', 13) + '<span style="color:' + humCol(hh) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span>';
-    if (c != null) { h += '<span class="metric"><span style="color:' + co2Col(c) + '">' + Math.round(c) + '</span><span class="un">ppm</span></span>'; }
-    h += '</div>';
+    // environmental: humidity + CO2, stacked on their own lines
+    h += '<div class="env hum">' + icoDrop('#5080AC', 14) + '<span style="color:' + humCol(hh) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></div>';
+    h += '<div class="env co2">' + (c != null
+        ? '<span style="color:' + co2Col(c) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
+        : '<span class="un">–</span>') + '</div>';
     h += '<div class="temp num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
-    h += '<div class="word">' + comfortWord(t) + '</div>';
     return h + '</div>';
 }
 function buildKlima() {
-    var h = '<div class="card klima"><div class="eyebrow">Klima<span class="status" style="color:' + LBL + '">' + ROOMS.length + ' Räume</span></div><div class="card-body"><div class="rooms">';
+    var h = '<div class="card klima"><div class="card-body"><div class="rooms">';
     ROOMS.forEach(function (r) { h += buildRoom(r[0], r[1]); });
     return h + '</div></div></div>';
 }
@@ -361,7 +377,7 @@ function buildWoche() {
     // Fit guard (the card can't measure its own height server-side): a sparse day ≈ 2 height-units
     // (the date marker), each shown event ≈ 1 unit. Cap a single day to DAY_CAP events (+"weitere"),
     // and drop whole trailing days once the budget is spent — so a crammed day can never overflow/clip.
-    var UNIT_BUDGET = 15, DAY_CAP = 4, used = 0, rows = '', dropped = 0;
+    var UNIT_BUDGET = 12, DAY_CAP = 4, used = 0, rows = '', dropped = 0;
     for (var i = 0; i < 7; i++) {
         var dd = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i);
         var dow = dd.getDay(), weekend = (dow === 0 || dow === 6), today = (i === 0);
@@ -379,15 +395,16 @@ function buildWoche() {
         if (!evs.length) { rows += '<div class="none">—</div>'; }
         else {
             shown.forEach(function (ev) {
-                var tm = ev.allDay ? 'ganztägig' : hhmmBerlin(ev.dt);
-                rows += '<div class="e"><span class="t' + (ev.allDay ? '' : ' num') + '">' + esc(tm) + '</span>' + clip(calSym(ev.title), 28) + '</div>';
+                // allDay events drop the "ganztägig" label entirely (owner request) — title only.
+                if (ev.allDay) { rows += '<div class="e">' + clip(calSym(ev.title), 30) + '</div>'; }
+                else { rows += '<div class="e"><span class="t num">' + esc(hhmmBerlin(ev.dt)) + '</span>' + clip(calSym(ev.title), 26) + '</div>'; }
             });
             if (moreInDay > 0) rows += '<div class="e none">+ ' + moreInDay + ' weitere</div>';
         }
         rows += '</div></div>';
     }
     if (dropped > 0) rows += '<div class="drow"><div class="dcell"></div><div class="ev"><div class="none">+ ' + dropped + ' weitere Tage</div></div></div>';
-    return '<div class="card woche"><div class="eyebrow">Woche</div><div class="card-body"><div class="days">' + rows + '</div></div></div>';
+    return '<div class="card woche"><div class="card-body"><div class="days">' + rows + '</div></div></div>';
 }
 
 // ===== TANKEN =====
@@ -395,17 +412,19 @@ function buildFuel(name, feedOid, base) {
     var price = sNum(feedOid), p20 = sNum(base + '_p20'), p80 = sNum(base + '_p80'),
         mn = sNum(base + '_min'), mx = sNum(base + '_max');
     var lu = getState(feedOid), ago = lu ? agoStr(lu.lc || lu.ts) : null;
-    var pb = priceBand(price, p20, p80), col = pb.col, word = pb.word;
+    var pb = priceBand(price, p20, p80), col = pb.col;
+    // knob position from the bottom (low price = bottom/green, high = top/red). The colour carries the verdict (no "teuer" word).
     var pos = (mn != null && mx != null && mx > mn && price != null) ? clamp01((price - mn) / (mx - mn)) * 100 : 50;
     var h = '<div class="fuel">';
     h += '<div class="fhead"><span class="fname">' + name + '</span><span class="fago">vor ' + (ago || '–') + '</span></div>';
-    h += '<div class="verdict" style="color:' + col + '">' + word + '</div>';
     h += '<div class="price" style="color:' + col + '">' + priceSuper(price) + '<span class="u">€/l</span></div>';
-    h += '<div class="barwrap">' + spectrum(pos, comma(mn, 3), comma(mx, 3)) + '</div>';
+    h += '<div class="vbarwrap"><span class="vlbl num">' + comma(mx, 3) + '</span>'
+        + '<div class="vbar"><div class="vknob" style="bottom:' + pos.toFixed(0) + '%"></div></div>'
+        + '<span class="vlbl num">' + comma(mn, 3) + '</span></div>';
     return h + '</div>';
 }
 function buildTanken() {
-    return '<div class="card tanken"><div class="eyebrow">Tanken</div><div class="card-body"><div class="fuels">'
+    return '<div class="card tanken"><div class="card-body"><div class="fuels">'
         + buildFuel('Diesel', 'tankerkoenig.0.stations.1.diesel.feed', 'javascript.0.tankerkoenig_quantiles.diesel')
         + buildFuel('E5', 'tankerkoenig.0.stations.1.e5.feed', 'javascript.0.tankerkoenig_quantiles.e5')
         + '</div></div></div>';
@@ -418,6 +437,23 @@ function enRoleCol(val, favourable, high) {
     if (m < 150) return LBL;
     return m < (high || 2000) ? AMBER : RED;
 }
+// Energie card frame colour by net rate (€/h). Owner scale:
+//   einspeisung (income) > 0,05 €/h -> green; |net| <= 0,05 €/h -> grey (near break-even);
+//   verbrauch (cost) > 0,05 €/h -> red when the price is "teuer" (>= 7-day p80), else yellow.
+// net>0 = importing (cost), net<0 = exporting (income). We hold a 7-day price quantile (p80) but no
+// €/h-cost quantile, so the red tier rides the existing price band rather than a made-up number.
+var COST_NEUTRAL = 0.05;
+function energyFrame(net, price, p80) {
+    if (-net > COST_NEUTRAL) return GREEN;
+    if (Math.abs(net) <= COST_NEUTRAL) return LBL;
+    return (price != null && p80 != null && price >= p80) ? RED : AMBER;
+}
+function frameStyle(c) {
+    if (c === GREEN) return 'border-color:rgba(181,251,91,.55);box-shadow:0 0 0 1px var(--green-16)';
+    if (c === AMBER) return 'border-color:rgba(241,190,61,.6);box-shadow:0 0 0 1px var(--amber-16)';
+    if (c === RED) return 'border-color:rgba(160,6,41,.85);box-shadow:0 0 0 1px var(--red-16)';
+    return 'border-color:var(--border)';  // grey / neutral = the standard card frame
+}
 function buildEnergie() {
     var prodTotal = sNum(EN + 'power_production'), maxxi = sNum(EN + 'power_maxxisun'),
         feedin = sNum(EN + 'power_feedin'), purchased = sNum(EN + 'power_purchased'),
@@ -429,20 +465,21 @@ function buildEnergie() {
     var staleS = getState(EN + 'power_data_stale'), stale = !!(staleS && staleS.val === true);
     var se = prodTotal != null ? Math.max(0, prodTotal - Math.max(0, -(maxxi || 0))) : null;  // SolarEdge-only
     var grid = (purchased || 0) - (feedin || 0);
-    var imp = grid > 50, exp = grid < -50;
     var gridCol = enRoleCol(grid, grid < 0);
-    var statusWord = exp ? 'Einspeisung' : (imp ? 'Netzbezug' : 'Ausgeglichen');
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * 0.1048;
     // net>0 = importing (a cost, "−"); net<0 = exporting (income, "+")
     var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−'), netCol = netZero ? LBL : gridCol;
-    var pb = priceBand(price, p20, p80), priceCol = pb.col, word = pb.word;
+    var pb = priceBand(price, p20, p80), priceCol = pb.col;
     var hasPrice = price != null && price > 0;
+    var fc = energyFrame(net, price, p80);
+    // importing with no price → net coerces to 0; don't paint the grey "break-even" frame (there IS a cost).
+    if (grid > 50 && !hasPrice) fc = AMBER;
 
-    var h = '<div class="card card--accent energie"><div class="eyebrow">Energie<span class="status" style="color:' + gridCol + '">' + statusWord + ' ' + watts(grid) + '</span></div><div class="card-body">';
-    // price head + spectrum bar — only when a real price exists (else the row would assert a false verdict)
+    var h = '<div class="card energie" style="' + frameStyle(fc) + '"><div class="card-body">';
+    // price head + spectrum bar — only when a real price exists. The price colour (green/amber/red)
+    // + the spectrum-bar position carry the günstig/mittel/teuer verdict, so the word is dropped (owner).
     if (hasPrice) {
         h += '<div class="price-head"><span class="lbl">Strompreis</span><span class="val num" style="color:' + priceCol + '">' + comma(price, 2) + '<span class="u">€/kWh</span></span>'
-            + '<span class="verdict" style="color:' + priceCol + '">' + word + '</span>'
             + '<span class="net" style="color:' + netCol + '">' + netSign + comma(Math.abs(net), 2) + '<span class="u">€/h</span></span></div>';
         if (p20 != null && p80 != null && p80 > p20) {
             var pf = clamp01(1 / 6 + (price - p20) / (p80 - p20) * (2 / 3)) * 100;
@@ -457,15 +494,18 @@ function buildEnergie() {
             + '<span class="track"><span class="fill" style="width:' + frac.toFixed(0) + '%;background:' + col + '"></span></span>'
             + '<span class="fv num" style="color:' + col + '">' + (approx ? '≈ ' : '') + watts(val) + '</span></div>';
     }
+    // Netz is the headline flow (owner) → first; then Haus, SolarEdge, Maxxisun.
     h += '<div class="flows">'
-        + frow('sun', 'SolarEdge', se, enRoleCol(se, true))
-        + frow('battery', 'Maxxisun', maxxi, enRoleCol(maxxi, maxxi < 0, 500))
         + frow('grid', 'Netz', grid, gridCol)
         + frow('house', 'Haus', haus, stale ? LBL : enRoleCol(haus, false), stale)
+        + frow('sun', 'SolarEdge', se, enRoleCol(se, true))
+        + frow('battery', 'Maxxisun', maxxi, enRoleCol(maxxi, maxxi < 0, 500))
         + '</div>';
-    // ratios — distinct stat treatment
+    // ratios — distinct stat treatment. Autarkie colour tracks the value (green=high/favourable,
+    // amber=mid, grey=low) so it can't read "all good" in green at 0–18 % autark.
+    var akCol = autark == null ? LBL : (autark >= 0.75 ? GREEN : (autark >= 0.4 ? AMBER : LBL));
     h += '<div class="estats">'
-        + '<div class="estat"><span class="v num" style="color:' + GREEN + '">' + Math.round((autark || 0) * 100) + '<span class="u">%</span></span><span class="l">autark' + (stale ? ' (≈)' : '') + '</span></div>'
+        + '<div class="estat"><span class="v num" style="color:' + akCol + '">' + Math.round((autark || 0) * 100) + '<span class="u">%</span></span><span class="l">autark' + (stale ? ' (≈)' : '') + '</span></div>'
         + '<div class="estat"><span class="v num" style="color:' + BLUE + '">' + Math.round((eigen || 0) * 100) + '<span class="u">%</span></span><span class="l">Eigenverbrauch</span></div>'
         + '</div>';
     return h + '</div></div>';
@@ -495,7 +535,7 @@ function buildSteuerung() {
     var icVit = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (vi ? ON : OFF) + '" stroke-width="1.6" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="15" x2="18" y2="15"/></g></svg>';
     var tc = ta ? ALERT : OFF;  // door icon grey → red when armed (mirrors the other tiles' grey→amber)
     var icTuer = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + tc + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21 V4 a1 1 0 0 1 1 -1 h8 a1 1 0 0 1 1 1 v17"/><path d="M4 21 h14"/><circle cx="13" cy="12" r="1" fill="' + tc + '" stroke="none"/></g></svg>';
-    var h = '<div class="card steuerung"><div class="eyebrow">Steuerung<span class="status" style="color:' + MUTE + '">Mehr …</span></div><div class="card-body"><div class="controls">';
+    var h = '<div class="card steuerung"><div class="card-body"><div class="controls">';
     h += tile('tv', 'scene', 'TV', 'Szene', icTV);
     h += tile('ambiente', am ? 'on' : '', 'Ambiente', am ? 'an' : 'aus', icAmb);
     h += tile('drucker', dr ? 'on' : '', 'Drucker', dr ? 'an' : 'aus', icDruck);
@@ -509,10 +549,10 @@ function buildSteuerung() {
 // Read-only door/window contacts (value.window {0:CLOSED,1:OPEN}) + the HmIP-DLD lock
 // (LOCK_STATE {0:UNKNOWN,1:LOCKED,2:UNLOCKED}). Green = secure, red = open/unlocked (alarm).
 var RIBBON_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap');
 .mv2r{--bg:#0d0e12;--surface:#15161c;--border:#262a33;--text:#CCCCCC;--muted:#8A8A8A;--green:#b5fb5b;--red-ind:#d8536f;
   width:766px;height:87px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:16px;
-  padding:12px 16px;display:flex;align-items:center;font-family:'Archivo',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+  padding:12px 16px;display:flex;align-items:center;font-family:'Figtree',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
 .mv2r *{margin:0;padding:0;box-sizing:border-box}
 .mv2r .inds{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .mv2r .rind{background:var(--bg);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px}
@@ -520,31 +560,43 @@ var RIBBON_CSS = `
 .mv2r .tx{display:flex;flex-direction:column;line-height:1.15;min-width:0}
 .mv2r .nm{font-size:14px;font-weight:600;white-space:nowrap}
 .mv2r .stt{font-size:12px;color:var(--muted)}
+.mv2r .bat{margin-left:auto;align-self:flex-start;margin-top:3px;display:flex;flex:none;padding-left:6px}
 `;
-function indDot(name, col, word, wordCol) {
-    return '<div class="rind"><span class="dot" style="background:' + col + '"></span><span class="tx"><span class="nm">' + esc(name)
-        + '</span><span class="stt"' + (wordCol ? ' style="color:' + wordCol + '"' : '') + '>' + word + '</span></span></div>';
+// battery symbol from the device's maintenance LOW_BAT flag (HmIP voltages aren't comparable across
+// device types, so LOW_BAT is the canonical "replace battery" signal). Muted when ok, red + near-empty when low.
+function lowbatIco(batOid) {
+    var lb = getState(batOid);
+    var low = !!(lb && lb.val === true);
+    var col = low ? 'var(--red-ind)' : 'var(--muted)';
+    return '<span class="bat">' + icoBatt(low ? 12 : 100, col) + '</span>';
 }
-function contactInd(name, oid) {
+function indDot(name, col, word, wordCol, batOid) {
+    return '<div class="rind"><span class="dot" style="background:' + col + '"></span><span class="tx"><span class="nm">' + esc(name)
+        + '</span><span class="stt"' + (wordCol ? ' style="color:' + wordCol + '"' : '') + '>' + word + '</span></span>'
+        + (batOid ? lowbatIco(batOid) : '') + '</div>';
+}
+function contactInd(name, oid, batOid) {
     var v = sNum(oid);
-    if (v == null) return indDot(name, 'var(--muted)', 'unbekannt');
-    return v === 1 ? indDot(name, 'var(--red-ind)', 'offen', 'var(--red-ind)') : indDot(name, 'var(--green)', 'geschlossen');
+    if (v == null) return indDot(name, 'var(--muted)', 'unbekannt', null, batOid);
+    return v === 1 ? indDot(name, 'var(--red-ind)', 'offen', 'var(--red-ind)', batOid) : indDot(name, 'var(--green)', 'geschlossen', null, batOid);
 }
 function buildRibbon() {
+    var lockBat = 'hm-rpc.1.002A226996B89C.0.LOW_BAT';
     var inds = ''
-        + contactInd('Terrasse', 'hm-rpc.1.0007DD8996AFD3.1.STATE')
-        + contactInd('Schuppen', 'hm-rpc.1.00155D89A38D55.1.STATE')
-        + contactInd('Haustür', 'hm-rpc.1.0023DD89A5152D.1.STATE');
+        + contactInd('Terrasse', 'hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT')
+        + contactInd('Schuppen', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT')
+        + contactInd('Haustür', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT');
     var lock = sNum('hm-rpc.1.002A226996B89C.1.LOCK_STATE');  // 0 UNKNOWN, 1 LOCKED, 2 UNLOCKED
-    inds += (lock === 1) ? indDot('Türschloss', 'var(--green)', 'verriegelt')
-        : (lock === 2) ? indDot('Türschloss', 'var(--red-ind)', 'entriegelt', 'var(--red-ind)')
-        : indDot('Türschloss', 'var(--muted)', 'unbekannt');
-    inds += contactInd('Bad', 'hm-rpc.1.0007DD89B41FD4.1.STATE');
+    inds += (lock === 1) ? indDot('Türschloss', 'var(--green)', 'verriegelt', null, lockBat)
+        : (lock === 2) ? indDot('Türschloss', 'var(--red-ind)', 'entriegelt', 'var(--red-ind)', lockBat)
+        : indDot('Türschloss', 'var(--muted)', 'unbekannt', null, lockBat);
+    inds += contactInd('Bad', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT');
     var inner = '<div class="mv2r"><style>' + RIBBON_CSS + '</style><div class="inds">' + inds + '</div></div>';
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 87" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
         + '<foreignObject x="0" y="0" width="766" height="87"><div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
 }
-var RIBBON_OIDS = ['hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE'];
+var RIBBON_OIDS = ['hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE',
+    'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT', 'hm-rpc.1.002A226996B89C.0.LOW_BAT'];
 
 // ===== assemble =====
 function renderMainV2() {
@@ -574,7 +626,7 @@ ROOMS.forEach(function (r) {
     });
 });
 [OUTDOOR + '.Temperature.Temperature', OUTDOOR + '.Humidity.Humidity', FCMIN, FCMAX,
- NB + '.Pressure.Pressure', NB + '.Pressure.PressureTrend',
+ NB + '.Pressure.Pressure',
  EN + 'sunrise', EN + 'sunset', EN + 'moonrise', EN + 'moonset', EN + 'moon_phase',
  'tankerkoenig.0.stations.1.diesel.feed', 'tankerkoenig.0.stations.1.e5.feed', 'ical.0.data.table'].forEach(function (id) {
     on({ id: id, change: 'ne' }, publish);
