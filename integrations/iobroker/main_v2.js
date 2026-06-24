@@ -484,12 +484,14 @@ function buildEnergie() {
     var gridCol = enRoleCol(grid, grid < 0);
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * 0.1048;
     // net>0 = importing (a cost, "−"); net<0 = exporting (income, "+")
-    var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−'), netCol = netZero ? LBL : gridCol;
+    var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−');
     var pb = priceBand(price, p20, p80), priceCol = pb.col;
     var hasPrice = price != null && price > 0;
     var fc = energyFrame(net, price, p80);
     // importing with no price → net coerces to 0; don't paint the grey "break-even" frame (there IS a cost).
     if (grid > 50 && !hasPrice) fc = AMBER;
+    // €/h headline shares the card-frame colour, so the two always agree (same cost/income verdict).
+    var netCol = netZero ? LBL : fc;
 
     var h = '<div class="card energie" style="' + frameStyle(fc) + '"><div class="card-body">';
     // price head + spectrum bar — only when a real price exists. The price colour (green/amber/red)
@@ -497,9 +499,12 @@ function buildEnergie() {
     if (hasPrice) {
         h += '<div class="price-head"><span class="lbl">Strompreis</span><span class="val num" style="color:' + priceCol + '">' + comma(price, 2) + '<span class="u">€/kWh</span></span>'
             + '<span class="net" style="color:' + netCol + '">' + netSign + comma(Math.abs(net), 2) + '<span class="u">€/h</span></span></div>';
+        // bar spans the p20–p80 band, but widens to include the live price when it falls outside the
+        // band, so the knob is always within the bar and the hi/lo labels never read below the price.
         if (p20 != null && p80 != null && p80 > p20) {
-            var pf = clamp01(1 / 6 + (price - p20) / (p80 - p20) * (2 / 3)) * 100;
-            h += '<div class="pricebar">' + spectrum(pf, comma(p20, 2), comma(p80, 2)) + '</div>';
+            var loP = Math.min(p20, price), hiP = Math.max(p80, price);
+            var pf = hiP > loP ? (price - loP) / (hiP - loP) * 100 : 50;
+            h += '<div class="pricebar">' + spectrum(pf, comma(loP, 2), comma(hiP, 2)) + '</div>';
         }
     }
     // four flow rows
