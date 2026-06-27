@@ -47,14 +47,11 @@ async def test_collect_and_store_success(
             [],  # This hour production (no solar)
             [mock_consumption_node_daily],  # Last month consumption
             [],  # Last month production (no solar)
-            [
-                {"totalCost": 100.0, "consumption": 500.0},
-                {"totalCost": 90.0, "consumption": 450.0},
-            ],  # Last year (need 2 items)
-            [
-                {"production": 0.0},
-                {"production": 0.0},
-            ],  # Last year production (no solar)
+            # Last year: ANNUAL history returns one node per *completed* year.
+            # A home with a single completed year gets exactly one node; the
+            # code reads ``cost`` (not ``totalCost``) from the last element.
+            [{"cost": 90.0, "totalCost": 100.0, "consumption": 450.0}],
+            [],  # Last year production (no solar)
         ]
     )
     mock_home.get_historic_data_date = AsyncMock(
@@ -603,7 +600,7 @@ async def test_last_year_insufficient_data(
     mock_influxdb: AsyncMock,
     mock_settings: Settings,
 ) -> None:
-    """Unhappy path: last_year has insufficient data (only 1 year instead of 2)."""
+    """Unhappy path: last_year has no completed year yet (empty ANNUAL history)."""
     mock_home = AsyncMock()
     mock_home.address1 = "Test Address"
     mock_home.current_price_data = MagicMock(
@@ -622,8 +619,8 @@ async def test_last_year_insufficient_data(
             [],  # This hour production
             [{"totalCost": 50.0, "consumption": 200.0}],  # Last month
             [],  # Last month production
-            [{"totalCost": 100.0, "consumption": 500.0}],  # Last year - ONLY 1 ITEM
-            [{"production": 0.0}],  # Last year production - ONLY 1 ITEM
+            [],  # Last year - NO completed year yet
+            [],  # Last year production
         ]
     )
     mock_home.get_historic_data_date = AsyncMock(

@@ -468,9 +468,16 @@ async def collect_last_year_data(
             n_data=2, resolution="ANNUAL", production=True
         )
 
-        if last_year_data and len(last_year_data) > 1:
-            node = last_year_data[1]
-            cost = node.get("totalCost")
+        # Tibber's ANNUAL history returns only *completed* calendar years
+        # (the current partial year is computed separately as this_year), so a
+        # home with a single completed year gets exactly one node. The most
+        # recent completed year — i.e. last_year — is always the last element.
+        if last_year_data:
+            node = last_year_data[-1]
+            # Use ``cost`` (energy, ex-tax), not ``totalCost``: this_year is
+            # built from MONTHLY ``cost`` fields, so this keeps the year-over-
+            # year comparison apples-to-apples.
+            cost = node.get("cost")
             consumption = node.get("consumption")
 
             if cost is None or consumption is None:
@@ -481,8 +488,8 @@ async def collect_last_year_data(
                 )
             else:
                 production = 0.0
-                if last_year_production and len(last_year_production) > 1:
-                    prod_node = last_year_production[1]
+                if last_year_production:
+                    prod_node = last_year_production[-1]
                     prod_value = prod_node.get("production")
                     if prod_value is not None:
                         production = prod_value
