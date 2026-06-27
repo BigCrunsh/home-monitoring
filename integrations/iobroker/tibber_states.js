@@ -464,10 +464,10 @@ function berlinParts(ts) {
 }
 
 function renderPriceForecastChart(rows) {
-    var W = 580, H = 150, PAD_T = 18, PAD_B = 16;
-    var svgOpen = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '">';
+    var W = 1154, H = 70, PAD_T = 14, PAD_B = 10;
+    var svgOpen = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ' + W + ' ' + H + '">';
     if (!rows.length) {
-        return svgOpen + '<text x="290" y="80" fill="#999" font-size="14" '
+        return svgOpen + '<text x="577" y="35" fill="#999" font-size="14" '
             + 'text-anchor="middle">kein Preis-Forecast verf\u00fcgbar</text></svg>';
     }
 
@@ -484,7 +484,7 @@ function renderPriceForecastChart(rows) {
     var bw = W / rows.length;
     var slotMs = 15 * 60000;
     var parts = [svgOpen];
-    var labelEvery = rows.length > 100 ? 6 : 3;
+    var labelEvery = 3;
 
     function euro(v) { return v.toFixed(2).replace('.', ','); }
     function yFor(v) { return PAD_T + plotH - (maxV > 0 ? (v / maxV) * plotH : 0); }
@@ -537,7 +537,7 @@ function renderPriceForecastChart(rows) {
     });
 
     // cheapest contiguous 2h window in the future
-    var WIN = 8;  // 8 x 15min
+    var WIN = 8;  // 8 x 15min = 2h
     var bestStart = -1, bestSum = Infinity;
     for (var s = 0; s + WIN <= rows.length; s++) {
         if (rows[s].ts + slotMs <= now) { continue; }
@@ -559,9 +559,11 @@ function renderPriceForecastChart(rows) {
             var avg = euro(bestSum / WIN);
             var nowInWindow = now >= rows[bestStart].ts
                 && now < rows[bestStart + WIN - 1].ts + slotMs;
+            var todayParts = berlinParts(now);
+            var dayPrefix = (!nowInWindow && b1 && todayParts && b1.day !== todayParts.day) ? b1.day + ' ' : '';
             var label = nowInWindow
                 ? 'jetzt g\u00fcnstig (bis ' + fmt(b2) + ') \u00b7 \u00d8 ' + avg + ' \u20ac'
-                : 'g\u00fcnstig ' + fmt(b1) + '\u2013' + fmt(b2) + ' \u00b7 \u00d8 ' + avg + ' \u20ac';
+                : 'g\u00fcnstig ' + dayPrefix + fmt(b1) + '\u2013' + fmt(b2) + ' \u00b7 \u00d8 ' + avg + ' \u20ac';
             var lx = Math.min(Math.max((winX0 + winX1) / 2, 75), W - 75);
             var windowTopY = yFor(Math.max.apply(null,
                 totals.slice(bestStart, bestStart + WIN)));
@@ -601,8 +603,8 @@ function renderPriceForecastChart(rows) {
 
 function buildPriceForecastChart() {
     sendTo(influxAdapter, 'query',
-        'SELECT total FROM home_monitoring.autogen.electricity_price_forecast_euro'
-        + ' WHERE time > now() - 15m ORDER BY time ASC LIMIT 200',
+        'SELECT * FROM home_monitoring.autogen.electricity_price_forecast_euro'
+        + ' WHERE time >= now() - 90m ORDER BY time ASC LIMIT 200',
         function (result) {
             if (result.error) {
                 console.error('[Tibber Chart] ' + result.error);
