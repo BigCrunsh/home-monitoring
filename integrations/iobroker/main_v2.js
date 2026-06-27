@@ -126,25 +126,19 @@ var CSS_BASE = `
 .mv2 .spectrum .mmrow{display:flex; justify-content:space-between; font-size:var(--t-cap)}
 .mv2 .spectrum .mmrow .lo{color:var(--green)} .mv2 .spectrum .mmrow .hi{color:var(--red)}
 
-/* TANKEN — Diesel & E5 side by side (split by a vertical divider); per fuel: name+price (left) beside the
-   vertical price bar (right, max label top / min bottom) so a taller bar fits a shorter box. */
+/* TANKEN — Diesel & E5 side by side (split by a vertical divider); per fuel: name + price on one row,
+   shared spectrum bar below (same component as Strompreis). */
 .mv2 .tanken{padding-top:var(--s2); padding-bottom:var(--s2)}
 .mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s3); align-items:stretch}
-.mv2 .fuel{display:flex; align-items:stretch; justify-content:space-between; gap:var(--s2)}
+.mv2 .fuel{display:flex; flex-direction:column; gap:var(--s2)}
 .mv2 .fuel + .fuel{border-left:1px solid var(--border); padding-left:var(--s3)}
-.mv2 .fuel .finfo{display:flex; flex-direction:column; justify-content:space-between; gap:var(--s2); min-width:0}
+.mv2 .fuel .finfo{display:flex; align-items:baseline; justify-content:space-between; gap:var(--s2); min-width:0}
 .mv2 .fuel .fname{font-size:18px; font-weight:600; white-space:nowrap}
 .mv2 .fuel .price{display:flex; align-items:flex-start; line-height:1; white-space:nowrap}
 .mv2 .fuel .pnum{font-size:40px; font-weight:600; line-height:.85}
 .mv2 .fuel .psup{display:flex; flex-direction:column; align-items:flex-start; margin-left:2px}
 .mv2 .fuel .p3{font-size:18px; font-weight:600; line-height:1}
 .mv2 .fuel .punit{font-size:12px; color:var(--muted); font-weight:500; margin-top:2px}
-/* bar near the right with a clear margin to the cell boundary; min/max labels beside it (top/bottom) */
-.mv2 .fuel .vbarzone{display:flex; align-items:stretch; gap:4px; flex:none; margin-right:5px}
-.mv2 .fuel .vlabels{display:flex; flex-direction:column; justify-content:space-between; text-align:right}
-.mv2 .fuel .vlbl{font-size:11px; color:var(--muted); line-height:1}
-.mv2 .fuel .vbar{width:12px; align-self:stretch; min-height:54px; border-radius:6px; position:relative; background:linear-gradient(0deg,var(--green),var(--amber),var(--red)); opacity:.85}
-.mv2 .fuel .vknob{position:absolute; left:50%; width:15px; height:15px; border-radius:50%; background:var(--text); border:2px solid var(--surface); transform:translate(-50%,50%)}
 
 /* ENERGIE */
 .mv2 .energie .price-head{display:flex; align-items:baseline; gap:var(--s2); font-size:var(--t-cap)}
@@ -429,14 +423,12 @@ function buildFuel(name, feedOid, base) {
     var price = sNum(feedOid), p20 = sNum(base + '_p20'), p80 = sNum(base + '_p80'),
         mn = sNum(base + '_min'), mx = sNum(base + '_max');
     var pb = priceBand(price, p20, p80), col = pb.col;
-    // knob position from the bottom (low price = bottom/green, high = top/red). The colour carries the verdict (no "teuer" word).
+    // knob: low price = left/green, high = right/red. Labels show actual 14-day min/max.
     var pos = (mn != null && mx != null && mx > mn && price != null) ? clamp01((price - mn) / (mx - mn)) * 100 : 50;
     var h = '<div class="fuel">';
-    // name + big price stacked (no "vor X" — the cell is too narrow alongside the bar; price freshness dropped here)
     h += '<div class="finfo"><span class="fname">' + name + '</span>'
         + '<div class="price" style="color:' + col + '">' + priceSuper(price) + '</div></div>';
-    h += '<div class="vbarzone"><div class="vlabels"><span class="vlbl num">' + comma(mx, 2) + '</span><span class="vlbl num">' + comma(mn, 2) + '</span></div>'
-        + '<div class="vbar"><div class="vknob" style="bottom:' + pos.toFixed(0) + '%"></div></div></div>';
+    h += spectrum(pos, comma(mn, 2), comma(mx, 2));
     return h + '</div>';
 }
 function buildTanken() {
@@ -477,7 +469,9 @@ function buildEnergie() {
         eigen = sNum(EN + 'rate_selfconsumption'),
         price = sNum(EN + 'tibber_states.energy_price_euro'),
         p20 = sNum(EN + 'tibber_states.energy_price_euro_p20'),
-        p80 = sNum(EN + 'tibber_states.energy_price_euro_p80');
+        p80 = sNum(EN + 'tibber_states.energy_price_euro_p80'),
+        pMin = sNum(EN + 'tibber_states.energy_price_euro_min'),
+        pMax = sNum(EN + 'tibber_states.energy_price_euro_max');
     var staleS = getState(EN + 'power_data_stale'), stale = !!(staleS && staleS.val === true);
     var se = prodTotal != null ? Math.max(0, prodTotal - Math.max(0, -(maxxi || 0))) : null;  // SolarEdge-only
     var grid = (purchased || 0) - (feedin || 0);
@@ -499,12 +493,10 @@ function buildEnergie() {
     if (hasPrice) {
         h += '<div class="price-head"><span class="lbl">Strompreis</span><span class="val num" style="color:' + priceCol + '">' + comma(price, 2) + '<span class="u">€/kWh</span></span>'
             + '<span class="net" style="color:' + netCol + '">' + netSign + comma(Math.abs(net), 2) + '<span class="u">€/h</span></span></div>';
-        // bar spans the p20–p80 band, but widens to include the live price when it falls outside the
-        // band, so the knob is always within the bar and the hi/lo labels never read below the price.
-        if (p20 != null && p80 != null && p80 > p20) {
-            var loP = Math.min(p20, price), hiP = Math.max(p80, price);
-            var pf = hiP > loP ? (price - loP) / (hiP - loP) * 100 : 50;
-            h += '<div class="pricebar">' + spectrum(pf, comma(loP, 2), comma(hiP, 2)) + '</div>';
+        // bar spans the 7-day min–max range; labels show actual min/max (quantiles drive colour only).
+        if (pMin != null && pMax != null && pMax > pMin) {
+            var pf = clamp01((price - pMin) / (pMax - pMin)) * 100;
+            h += '<div class="pricebar">' + spectrum(pf, comma(pMin, 2), comma(pMax, 2)) + '</div>';
         }
     }
     // four flow rows
@@ -683,7 +675,8 @@ ROOMS.forEach(function (r) {
 ['power_production', 'power_maxxisun', 'power_feedin', 'power_purchased', 'power_consumption', 'rate_autarky', 'rate_selfconsumption', 'power_data_stale'].forEach(function (s) {
     on({ id: EN + s, change: 'ne' }, publish);
 });
-[EN + 'tibber_states.energy_price_euro', EN + 'tibber_states.energy_price_euro_p20', EN + 'tibber_states.energy_price_euro_p80'].forEach(function (id) {
+[EN + 'tibber_states.energy_price_euro', EN + 'tibber_states.energy_price_euro_p20', EN + 'tibber_states.energy_price_euro_p80',
+ EN + 'tibber_states.energy_price_euro_min', EN + 'tibber_states.energy_price_euro_max'].forEach(function (id) {
     on({ id: id, change: 'ne' }, publish);
 });
 ['diesel', 'e5'].forEach(function (f) {
