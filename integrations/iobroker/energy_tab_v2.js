@@ -63,6 +63,7 @@ var CSS = [
     '.et2 .vlf td{padding:5px 6px;text-align:right;font-weight:600;color:var(--muted)}',
     '.et2 .vlf td:first-child{text-align:left;color:var(--muted);font-size:var(--t-label);font-weight:400}',
     '.et2 .vlf .vv{color:var(--text)}',
+    '.et2 .vlf .vk{font-size:var(--t-cap);color:var(--muted);font-weight:500;margin-top:1px}',
     '.et2 .vlf tr+tr td{border-top:1px solid var(--inset)}',
     '.et2 .divl{border-top:1px solid var(--border);margin:2px 0;flex-shrink:0}'
 ].join('\n');
@@ -88,6 +89,8 @@ function n0L(v) { return v != null ? Math.round(v).toLocaleString('de-DE') : '�
 function n1(v)  { return v != null ? v.toFixed(1).replace('.', ',') : '–'; }
 function n2(v)  { return v != null ? v.toFixed(2).replace('.', ',') : '–'; }
 function eur(v) { return v != null ? n2(v) + ' €' : '–'; }
+// small amounts keep one decimal; larger get a thousands separator
+function kwh(v) { return v != null ? (v < 10 ? n1(v) : n0L(v)) + ' kWh' : '–'; }
 
 function pbar(frac, col) {
     var pct = (Math.min(Math.max(frac || 0, 0), 1) * 100).toFixed(1);
@@ -109,11 +112,26 @@ function mrow(label, val, unit, col, bold) {
         + (unit ? '<span class="mu"> ' + unit + '</span>' : '') + '</span></div>';
 }
 
+// one live-flow row: bold label, hero value, scaled bar
+function flowRow(label, labelCol, valStr, unit, valCol, barFrac, barCol) {
+    return '<div style="display:flex;flex-direction:column;gap:6px">'
+        + '<div class="mrow"><span style="font-size:var(--t-label);color:' + labelCol + ';font-weight:700">' + label + '</span>'
+        + '<span style="font-size:var(--t-hero);font-weight:700;color:' + valCol + '">' + valStr
+        + '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:3px"> ' + unit + '</span></span></div>'
+        + pbar(barFrac, barCol)
+        + '</div>';
+}
+
 // ===== LEFT: LIVE-LEISTUNG (full height 568px) =====
 function buildLeft() {
     var W = 386, H = 568;
-    var pv   = sNum('javascript.0.solaredge_modbus_production') || 0;
-    var grid = sNum('javascript.0.solaredge_modbus_grid') || 0;    // pos=import, neg=export
+    // Reconciled whole-house states (same source as STROMKOSTEN): these fold in
+    // the Maxxisun PV+battery and handle the modbus/hybrid/stale fallback, so
+    // they stay correct when the raw SolarEdge inverter reads 0 in the evening.
+    var prod = sNum('javascript.0.power_production') || 0;
+    var cons = sNum('javascript.0.power_consumption') || 0;
+    var pur  = sNum('javascript.0.power_purchased') || 0;
+    var feed = sNum('javascript.0.power_feedin') || 0;
 
     var wa = shelly('a_act_power'), wb = shelly('b_act_power'), wc = shelly('c_act_power');
     var wt = shelly('total_act_power');
@@ -122,57 +140,34 @@ function buildLeft() {
     var ia = shelly('a_current'), ib = shelly('b_current'), ic = shelly('c_current');
     var it = shelly('total_current');
 
-    // PV: green only when meaningfully producing (≥200W)
-    var pvCol = pv >= 200 ? 'var(--green)' : 'var(--muted)';
-    var importing = grid >= 0;
-    var gridAbs = Math.abs(grid);
+    // Erzeugung: green only when meaningfully producing (≥200W)
+    var prodCol = prod >= 200 ? 'var(--green)' : 'var(--muted)';
+    // Netz: which way is power flowing right now
+    var importing = pur >= feed;
+    var gridW = importing ? pur : feed;
     var gridCol = importing
-        ? (grid > 2000 ? 'var(--red)' : grid > 150 ? 'var(--amber)' : 'var(--muted)')
+        ? (pur > 2000 ? 'var(--red)' : pur > 150 ? 'var(--amber)' : 'var(--muted)')
         : 'var(--green)';
     var gridLabel = importing ? 'Netz · Bezug' : 'Netz · Einspeisung';
-    var gridSign = importing ? '' : '−';
+    // only show the export sign once it rounds to ≥0,1 kW (avoids "−0,0 kW")
+    var gridSign = (!importing && gridW >= 50) ? '−' : '';
+    var consCol = cons > 3000 ? 'var(--amber)' : 'var(--text)';
 
-    // House consumption = PV output + signed grid; dash on measurement race
-    var hausv = pv + grid;
-    var hausvStr = hausv >= 0 ? n1(hausv / 1000) : '–';
-    var hausvCol = hausv > 1500 ? 'var(--amber)' : hausv > 0 ? 'var(--text)' : 'var(--muted)';
-
-    // 3-section card-body with space-between fills 568px without void in middle
+    // card-body: live-flow block on top, Shelly phase detail anchored at the
+    // bottom; one clean gap between rather than voids around a lone metric.
     var html = '<div class="card" style="height:' + H + 'px">'
         + '<div class="card-h">Live-Leistung</div>'
         + '<div class="card-body" style="justify-content:space-between">'
 
-        // Section 1: power sources (Solar + Netz)
-        + '<div style="display:flex;flex-direction:column;gap:16px">'
-
-        + '<div style="display:flex;flex-direction:column;gap:6px">'
-        + '<div class="mrow"><span style="font-size:var(--t-label);color:var(--green);font-weight:700">Solar PV</span>'
-        + '<span style="font-size:var(--t-hero);font-weight:700;color:' + pvCol + '">' + n1(pv / 1000)
-        + '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:3px"> kW</span></span></div>'
-        + pbar(pv / 6000, pvCol)
-        + '</div>'
-
-        + '<div style="display:flex;flex-direction:column;gap:6px">'
-        + '<div class="mrow"><span style="font-size:var(--t-label);color:' + gridCol + ';font-weight:700">' + gridLabel + '</span>'
-        + '<span style="font-size:var(--t-hero);font-weight:700;color:' + gridCol + '">' + gridSign + n1(gridAbs / 1000)
-        + '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:3px"> kW</span></span></div>'
-        + pbar(gridAbs / 6000, gridCol)
-        + '</div>'
-
+        // Section 1: live energy flow (Erzeugung + Netz = Hausverbrauch)
+        + '<div style="display:flex;flex-direction:column;gap:14px">'
+        + flowRow('Erzeugung', 'var(--green)', n1(prod / 1000), 'kW', prodCol, prod / 6000, prodCol)
+        + flowRow(gridLabel, gridCol, gridSign + n1(gridW / 1000), 'kW', gridCol, gridW / 6000, gridCol)
+        + '<div class="divl"></div>'
+        + flowRow('Hausverbrauch', 'var(--text)', n1(cons / 1000), 'kW', consCol, cons / 6000, 'var(--blue)')
         + '</div>'  // end section 1
 
-        // Section 2: net house consumption — centred by space-between
-        + '<div>'
-        + '<div class="divl"></div>'
-        + '<div class="mrow" style="padding:6px 0">'
-        + '<span style="font-size:var(--t-label);font-weight:700;color:var(--text)">Hausverbrauch</span>'
-        + '<span style="font-size:var(--t-big);font-weight:700;color:' + hausvCol + '">' + hausvStr
-        + (hausv >= 0 ? '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:3px"> kW</span>' : '')
-        + '</span></div>'
-        + '<div class="divl"></div>'
-        + '</div>'  // end section 2
-
-        // Section 3: Shelly 3EM phase detail
+        // Section 2: Shelly 3EM phase detail
         + '<div style="display:flex;flex-direction:column;gap:6px">'
         + '<div style="color:var(--muted);font-size:var(--t-cap);font-weight:600;letter-spacing:.06em;text-transform:uppercase">Phasen · Shelly 3EM</div>'
         + '<table class="ptable">'
@@ -240,25 +235,32 @@ function buildMidTop() {
 function buildMidBot() {
     var W = 386, H = 282;
 
-    // cur < prev → green (spending less), cur > prev → amber (spending more)
-    function vrow(label, cur, prev) {
-        var col = (cur != null && prev != null && prev > 0.001)
-            ? (cur < prev ? 'var(--green)' : cur > prev ? 'var(--amber)' : 'var(--text)')
+    // cur < prev → green (spending less), cur > prev → amber (spending more).
+    // Each cell carries the cost (primary) and grid kWh (muted sub-line).
+    function vrow(label, period) {
+        var curC = tibber('cost_this_' + period);
+        var prevC = tibber('cost_last_' + period);
+        var curK = tibber('consumption_grid_this_' + period);
+        var prevK = tibber('consumption_grid_last_' + period);
+        var col = (curC != null && prevC != null && prevC > 0.001)
+            ? (curC < prevC ? 'var(--green)' : curC > prevC ? 'var(--amber)' : 'var(--text)')
             : 'var(--text)';
         return '<tr><td>' + label + '</td>'
-            + '<td><span class="vv" style="color:' + col + '">' + eur(cur) + '</span></td>'
-            + '<td>' + eur(prev) + '</td></tr>';
+            + '<td><div class="vv" style="color:' + col + '">' + eur(curC) + '</div>'
+            + '<div class="vk">' + kwh(curK) + '</div></td>'
+            + '<td><div>' + eur(prevC) + '</div>'
+            + '<div class="vk">' + kwh(prevK) + '</div></td></tr>';
     }
 
     var html = '<div class="card" style="height:' + H + 'px">'
-        + '<div class="card-h">Verlauf</div>'
+        + '<div class="card-h">Verlauf · Netzbezug</div>'
         + '<div class="card-body" style="justify-content:center">'
         + '<table class="vlf">'
         + '<tr><th></th><th>Aktuell</th><th>Vorig</th></tr>'
-        + vrow('Stunde',  tibber('cost_this_hour'),  tibber('cost_last_hour'))
-        + vrow('Tag',     tibber('cost_this_day'),   tibber('cost_last_day'))
-        + vrow('Monat',   tibber('cost_this_month'), tibber('cost_last_month'))
-        + vrow('Jahr',    tibber('cost_this_year'),  null)
+        + vrow('Stunde', 'hour')
+        + vrow('Tag',    'day')
+        + vrow('Monat',  'month')
+        + vrow('Jahr',   'year')
         + '</table>'
         + '</div></div>';
 
@@ -367,8 +369,8 @@ createState('rate_selfconsumption_7d', 0, { type: 'number', role: 'value' }, fun
 
 // ===== reactive subscriptions =====
 ['javascript.0.mqtt_shelly.total_act_power',
- 'javascript.0.solaredge_modbus_production',
- 'javascript.0.solaredge_modbus_grid'].forEach(function (id) {
+ 'javascript.0.power_production', 'javascript.0.power_consumption',
+ 'javascript.0.power_purchased', 'javascript.0.power_feedin'].forEach(function (id) {
     on({ id: id, change: 'ne' }, function () { setState('et_v2_left', buildLeft()); });
 });
 
@@ -377,7 +379,11 @@ createState('rate_selfconsumption_7d', 0, { type: 'number', role: 'value' }, fun
  'javascript.0.tibber_states.cost_this_hour',  'javascript.0.tibber_states.cost_last_hour',
  'javascript.0.tibber_states.cost_this_day',   'javascript.0.tibber_states.cost_last_day',
  'javascript.0.tibber_states.cost_this_month', 'javascript.0.tibber_states.cost_last_month',
- 'javascript.0.tibber_states.cost_this_year'].forEach(function (id) {
+ 'javascript.0.tibber_states.cost_this_year',  'javascript.0.tibber_states.cost_last_year',
+ 'javascript.0.tibber_states.consumption_grid_this_hour',  'javascript.0.tibber_states.consumption_grid_last_hour',
+ 'javascript.0.tibber_states.consumption_grid_this_day',   'javascript.0.tibber_states.consumption_grid_last_day',
+ 'javascript.0.tibber_states.consumption_grid_this_month', 'javascript.0.tibber_states.consumption_grid_last_month',
+ 'javascript.0.tibber_states.consumption_grid_this_year',  'javascript.0.tibber_states.consumption_grid_last_year'].forEach(function (id) {
     on({ id: id, change: 'ne' }, function () {
         setState('et_v2_mid_top', buildMidTop());
         setState('et_v2_mid_bot', buildMidBot());
