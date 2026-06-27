@@ -17,10 +17,18 @@
       (Einkauf/Gewinn/Gespart) + Autarkie + Eigenverbrauch; real `vis-icontwo` icons (no emoji)
 - [ ] 2.6 Move **Heizkreis + Warmwasser** panels Main → Energy tab (user-approved 2026-06-16; frees the left column)
 
-## 3. Roll out + enforce
-- [ ] 3.1 Apply the system to the Energy / Advanced / Weather tabs
-- [ ] 3.2 `tools/lint_vis.py` in `check_drift` (off-palette hex, off-scale fonts, nav widgets missing icons, unitless lengths)
-- [ ] 3.3 Reduce absolute-positioning fragility (grouped containers / templates) where feasible
+## 3. Roll out — new tabs (each: build → deploy → wall verify)
+- [x] 3.0 Nav renamed: Overview · Energy · Climate · Control · Diagnostics (2026-06-27)
+- [x] 3.0 Custom SVG icons: nav_main.svg (2×2 grid) + nav_deprecated.svg (archive) deployed to vis-icontwo/Custom/
+- [x] 3.1 **Energy tab** — `energy_tab_v2.js` deployed; 5 HTML/CSS widgets (left/mid-top/mid-bot/right-top/right-bot);
+      vis-views.json updated (chart→110px, 5 new tplValueStringRaw, nav→688px); pending wall verification
+- [ ] 3.2 **Climate tab** — new HTML/CSS view replacing old Weather (51 widgets); outdoor hero +
+      4 room CO₂ cards; confirm Carlottas/Claras module mapping before build
+- [ ] 3.3 **Control tab** — new view in slot 5; full light/shutter/plug surface from old Main;
+      decision: native i-vis-universal tiles vs. HTML/CSS
+- [ ] 3.4 **Diagnostics tab** — new HTML/CSS view; adapter status + Pi metrics + data freshness;
+      replaces empty Advanced after cost cards move to Energy
+- [ ] 3.5 Remove old Main view after Control tab wall-verified; retire old_main_reference.png to archive
 
 ## 4. Spacing & alignment concept + full audit (user-requested 2026-06-16)
 - [ ] 4.1 Define a written spacing/alignment concept: column grid, gutters (H==V), card padding, baseline rules,
