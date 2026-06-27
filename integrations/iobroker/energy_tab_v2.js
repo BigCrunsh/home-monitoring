@@ -122,61 +122,66 @@ function buildLeft() {
     var ia = shelly('a_current'), ib = shelly('b_current'), ic = shelly('c_current');
     var it = shelly('total_current');
 
-    // PV colour: green when producing, muted at night
-    var pvCol = pv > 75 ? 'var(--green)' : 'var(--muted)';
+    // PV: green only when meaningfully producing (≥200W)
+    var pvCol = pv >= 200 ? 'var(--green)' : 'var(--muted)';
     var importing = grid >= 0;
     var gridAbs = Math.abs(grid);
     var gridCol = importing
         ? (grid > 2000 ? 'var(--red)' : grid > 150 ? 'var(--amber)' : 'var(--muted)')
         : 'var(--green)';
-    var gridLabel = importing ? 'Netz (Bezug)' : 'Netz (Einspeisung)';
+    var gridLabel = importing ? 'Netz · Bezug' : 'Netz · Einspeisung';
     var gridSign = importing ? '' : '−';
 
-    // House consumption = PV output + signed grid (negative grid = export)
-    // Negative result means measurement race between Modbus and Shelly → show dash
+    // House consumption = PV output + signed grid; dash on measurement race
     var hausv = pv + grid;
     var hausvStr = hausv >= 0 ? n1(hausv / 1000) : '–';
-    var hausvCol = hausv > 300 ? 'var(--amber)' : hausv > 0 ? 'var(--text)' : 'var(--muted)';
+    var hausvCol = hausv > 1500 ? 'var(--amber)' : hausv > 0 ? 'var(--text)' : 'var(--muted)';
 
+    // 3-section card-body with space-between fills 568px without void in middle
     var html = '<div class="card" style="height:' + H + 'px">'
         + '<div class="card-h">Live-Leistung</div>'
-        + '<div class="card-body">'
+        + '<div class="card-body" style="justify-content:space-between">'
 
-        // Solar PV — displayed in kW, bar scaled to 6 kWp
-        + '<div style="display:flex;flex-direction:column;gap:4px">'
-        + '<div class="mrow"><span class="ml" style="font-weight:600;color:var(--green)">Solar PV</span>'
-        + '<span style="font-size:var(--t-big);font-weight:700;color:' + pvCol + '">' + n1(pv / 1000)
-        + '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:2px"> kW</span></span></div>'
+        // Section 1: power sources (Solar + Netz)
+        + '<div style="display:flex;flex-direction:column;gap:16px">'
+
+        + '<div style="display:flex;flex-direction:column;gap:6px">'
+        + '<div class="mrow"><span style="font-size:var(--t-label);color:var(--green);font-weight:700">Solar PV</span>'
+        + '<span style="font-size:var(--t-hero);font-weight:700;color:' + pvCol + '">' + n1(pv / 1000)
+        + '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:3px"> kW</span></span></div>'
         + pbar(pv / 6000, pvCol)
         + '</div>'
 
-        // Grid — signed kW
-        + '<div style="display:flex;flex-direction:column;gap:4px">'
-        + '<div class="mrow"><span class="ml" style="font-weight:600;color:' + gridCol + '">' + gridLabel + '</span>'
-        + '<span style="font-size:var(--t-big);font-weight:700;color:' + gridCol + '">' + gridSign + n1(gridAbs / 1000)
-        + '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:2px"> kW</span></span></div>'
+        + '<div style="display:flex;flex-direction:column;gap:6px">'
+        + '<div class="mrow"><span style="font-size:var(--t-label);color:' + gridCol + ';font-weight:700">' + gridLabel + '</span>'
+        + '<span style="font-size:var(--t-hero);font-weight:700;color:' + gridCol + '">' + gridSign + n1(gridAbs / 1000)
+        + '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:3px"> kW</span></span></div>'
         + pbar(gridAbs / 6000, gridCol)
         + '</div>'
 
-        + '<div class="divl"></div>'
+        + '</div>'  // end section 1
 
-        // Hausverbrauch = PV + grid (signed; dash if negative = race condition)
-        + '<div class="mrow">'
-        + '<span class="ml" style="font-weight:600;color:var(--text)">Hausverbrauch</span>'
-        + '<span style="font-size:var(--t-sub);font-weight:700;color:' + hausvCol + '">' + hausvStr
-        + (hausv >= 0 ? '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:2px"> kW</span>' : '')
+        // Section 2: net house consumption — centred by space-between
+        + '<div>'
+        + '<div class="divl"></div>'
+        + '<div class="mrow" style="padding:6px 0">'
+        + '<span style="font-size:var(--t-label);font-weight:700;color:var(--text)">Hausverbrauch</span>'
+        + '<span style="font-size:var(--t-big);font-weight:700;color:' + hausvCol + '">' + hausvStr
+        + (hausv >= 0 ? '<span style="font-size:var(--t-cap);color:var(--muted);margin-left:3px"> kW</span>' : '')
         + '</span></div>'
-
         + '<div class="divl"></div>'
+        + '</div>'  // end section 2
 
-        // Shelly 3EM phase detail — muted detail section
-        + '<div style="color:var(--muted);font-size:var(--t-cap);font-weight:600;letter-spacing:.05em;text-transform:uppercase">Phasen · Shelly 3EM</div>'
+        // Section 3: Shelly 3EM phase detail
+        + '<div style="display:flex;flex-direction:column;gap:6px">'
+        + '<div style="color:var(--muted);font-size:var(--t-cap);font-weight:600;letter-spacing:.06em;text-transform:uppercase">Phasen · Shelly 3EM</div>'
         + '<table class="ptable">'
         + '<tr><th></th><th>Σ</th><th>L1</th><th>L2</th><th>L3</th></tr>'
         + '<tr class="hi div"><td>Wirkl. W</td><td>' + n0L(wt) + '</td><td>' + n0L(wa) + '</td><td>' + n0L(wb) + '</td><td>' + n0L(wc) + '</td></tr>'
         + '<tr><td>Schein VA</td><td>' + n0L(vat) + '</td><td>' + n0L(vaa) + '</td><td>' + n0L(vab) + '</td><td>' + n0L(vac) + '</td></tr>'
         + '<tr><td>Strom A</td><td>' + n1(it) + '</td><td>' + n1(ia) + '</td><td>' + n1(ib) + '</td><td>' + n1(ic) + '</td></tr>'
         + '</table>'
+        + '</div>'  // end section 3
 
         + '</div></div>';
 
@@ -235,9 +240,13 @@ function buildMidTop() {
 function buildMidBot() {
     var W = 386, H = 282;
 
+    // cur < prev → green (spending less), cur > prev → amber (spending more)
     function vrow(label, cur, prev) {
+        var col = (cur != null && prev != null && prev > 0.001)
+            ? (cur < prev ? 'var(--green)' : cur > prev ? 'var(--amber)' : 'var(--text)')
+            : 'var(--text)';
         return '<tr><td>' + label + '</td>'
-            + '<td class="vv">' + eur(cur) + '</td>'
+            + '<td><span class="vv" style="color:' + col + '">' + eur(cur) + '</span></td>'
             + '<td>' + eur(prev) + '</td></tr>';
     }
 
@@ -245,7 +254,7 @@ function buildMidBot() {
         + '<div class="card-h">Verlauf</div>'
         + '<div class="card-body" style="justify-content:center">'
         + '<table class="vlf">'
-        + '<tr><th></th><th>Aktuell</th><th>Vorige</th></tr>'
+        + '<tr><th></th><th>Aktuell</th><th>Vorig</th></tr>'
         + vrow('Stunde',  tibber('cost_this_hour'),  tibber('cost_last_hour'))
         + vrow('Tag',     tibber('cost_this_day'),   tibber('cost_last_day'))
         + vrow('Monat',   tibber('cost_this_month'), tibber('cost_last_month'))
