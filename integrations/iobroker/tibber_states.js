@@ -464,137 +464,110 @@ function berlinParts(ts) {
 }
 
 function renderPriceForecastChart(rows) {
-    var W = 1154, H = 70, PAD_T = 14, PAD_B = 10;
-    var svgOpen = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ' + W + ' ' + H + '">';
+    // Elegant colored-line/area chart on the dashboard design system (Figtree, palette).
+    var W = 1154, H = 74, PT = 20, PB = 12, PX = 5;
+    var GREEN = '#b5fb5b', AMBER = '#F1BE3D', RED = '#A00629', MUT = '#8A8A8A', BORD = '#262a33';
+    var head = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ' + W + ' ' + H + '">'
+        + '<defs><linearGradient id="fcf" x1="0" y1="0" x2="0" y2="1">'
+        + '<stop offset="0" stop-color="rgba(138,138,138,0.20)"/><stop offset="1" stop-color="rgba(138,138,138,0)"/>'
+        + '</linearGradient></defs>'
+        + "<style>@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');"
+        + 'text{font-family:Figtree,system-ui,sans-serif;font-variant-numeric:tabular-nums}</style>';
     if (!rows.length) {
-        return svgOpen + '<text x="577" y="35" fill="#999" font-size="14" '
+        return head + '<text x="577" y="40" fill="' + MUT + '" font-size="14" '
             + 'text-anchor="middle">kein Preis-Forecast verf\u00fcgbar</text></svg>';
     }
 
     var totals = rows.map(function (r) { return r.total; });
-    var maxV = Math.max.apply(null, totals);
-    var minV = Math.min.apply(null, totals);
+    var maxV = Math.max.apply(null, totals), minV = Math.min.apply(null, totals);
     var p20s = getState(stateBasePath + '.energy_price_euro_p20');
     var p80s = getState(stateBasePath + '.energy_price_euro_p80');
     var p20 = (p20s && typeof p20s.val === 'number') ? p20s.val : minV + (maxV - minV) / 3;
     var p80 = (p80s && typeof p80s.val === 'number') ? p80s.val : minV + 2 * (maxV - minV) / 3;
 
-    var now = Date.now();
-    var plotH = H - PAD_T - PAD_B;
-    var bw = W / rows.length;
-    var slotMs = 15 * 60000;
-    var parts = [svgOpen];
-    var labelEvery = 3;
-
+    var now = Date.now(), slotMs = 15 * 60000, n = rows.length;
+    // amplify the (often small) variation: baseline below min, a little headroom above
+    var lo = Math.max(0, minV - (maxV - minV) * 0.35), hi = maxV + (maxV - minV) * 0.12;
+    if (hi <= lo) { hi = lo + 0.1; }
+    var plotH = H - PT - PB, baseY = PT + plotH;
+    function X(i) { return PX + (i / (n - 1)) * (W - 2 * PX); }
+    function Y(v) { return PT + plotH - ((v - lo) / (hi - lo)) * plotH; }
+    function band(v) { return v <= p20 ? GREEN : (v >= p80 ? RED : AMBER); }
     function euro(v) { return v.toFixed(2).replace('.', ','); }
-    function yFor(v) { return PAD_T + plotH - (maxV > 0 ? (v / maxV) * plotH : 0); }
-
-    // dashed percentile thresholds, colored like the band they bound
-    [[p20, '#b5fb5b'], [p80, '#A00629']].forEach(function (pair) {
-        var t = pair[0];
-        if (t > 0 && t < maxV) {
-            parts.push('<line x1="0" y1="' + yFor(t).toFixed(1) + '" x2="' + W
-                + '" y2="' + yFor(t).toFixed(1) + '" stroke="' + pair[1]
-                + '" stroke-width="0.8" stroke-dasharray="4 3" opacity="0.8"/>');
-        }
-    });
-
-    var minIdx = totals.indexOf(minV);
-    var maxIdx = totals.indexOf(maxV);
-    var nowX = null;
-    var nowVal = null;
-
-    rows.forEach(function (r, i) {
-        var v = r.total;
-        var h = maxV > 0 ? (v / maxV) * plotH : 0;
-        var color = v <= p20 ? '#b5fb5b' : (v >= p80 ? '#A00629' : '#F1BE3D');
-        var bp = berlinParts(r.ts);
-        var gap = 0.8;  // uniform gap; hour structure comes from the tick labels
-        parts.push('<rect x="' + (i * bw).toFixed(2)
-            + '" y="' + (PAD_T + plotH - h).toFixed(2)
-            + '" width="' + Math.max(bw - gap, 0.5).toFixed(2)
-            + '" height="' + h.toFixed(2)
-            + '" fill="' + color + '"/>');
-
-        if (r.ts <= now && now < r.ts + slotMs) {
-            nowX = i * bw + bw * ((now - r.ts) / slotMs);
-            nowVal = v;
-        }
-
-        if (bp && bp.minute === 0) {
-            var x = i * bw;
-            if (bp.hour === 0 && i > 0) {
-                parts.push('<line x1="' + x.toFixed(1) + '" y1="0" x2="' + x.toFixed(1)
-                    + '" y2="' + H + '" stroke="#888" stroke-width="0.7"/>');
-                parts.push('<text x="' + (x + 4).toFixed(1)
-                    + '" y="12" fill="#bbb" font-size="10">' + bp.day + '</text>');
-            } else if (bp.hour % labelEvery === 0 && bp.hour !== 0
-                       && x > 12 && x < W - 12) {  // R5: no clipped edge labels
-                parts.push('<text x="' + x.toFixed(1) + '" y="' + (H - 4)
-                    + '" fill="#888" font-size="9" text-anchor="middle">' + bp.hour + '</text>');
-            }
-        }
-    });
+    var parts = [head];
 
     // cheapest contiguous 2h window in the future
-    var WIN = 8;  // 8 x 15min = 2h
-    var bestStart = -1, bestSum = Infinity;
-    for (var s = 0; s + WIN <= rows.length; s++) {
+    var WIN = 8, bestStart = -1, bestSum = Infinity;
+    for (var s = 0; s + WIN <= n; s++) {
         if (rows[s].ts + slotMs <= now) { continue; }
-        var sum = 0;
-        for (var k = s; k < s + WIN; k++) { sum += rows[k].total; }
+        var sum = 0; for (var k = s; k < s + WIN; k++) { sum += rows[k].total; }
         if (sum < bestSum) { bestSum = sum; bestStart = s; }
     }
-    var winX0 = -1, winX1 = -1;
+    // soft cheap-window band (behind the curve)
     if (bestStart >= 0) {
-        winX0 = bestStart * bw;
-        winX1 = winX0 + WIN * bw;
-        var b1 = berlinParts(rows[bestStart].ts);
-        var b2 = berlinParts(rows[bestStart + WIN - 1].ts + slotMs);
-        parts.push('<rect x="' + winX0.toFixed(1) + '" y="' + (H - PAD_B + 1)
-            + '" width="' + (winX1 - winX0).toFixed(1)
-            + '" height="2.5" fill="#b5fb5b" opacity="0.9"/>');
+        var wx0 = X(bestStart), wx1 = X(bestStart + WIN - 1);
+        parts.push('<rect x="' + wx0.toFixed(1) + '" y="' + PT + '" width="' + (wx1 - wx0).toFixed(1)
+            + '" height="' + plotH + '" rx="6" fill="rgba(181,251,91,0.10)"/>');
+    }
+
+    // area fill under the curve
+    var area = 'M ' + X(0).toFixed(1) + ' ' + baseY.toFixed(1);
+    rows.forEach(function (r, i) { area += ' L ' + X(i).toFixed(1) + ' ' + Y(r.total).toFixed(1); });
+    area += ' L ' + X(n - 1).toFixed(1) + ' ' + baseY.toFixed(1) + ' Z';
+    parts.push('<path d="' + area + '" fill="url(#fcf)"/>');
+
+    // day separators + day labels (top) + hour ticks (bottom)
+    rows.forEach(function (r, i) {
+        var bp = berlinParts(r.ts); if (!bp || bp.minute !== 0) { return; }
+        var x = X(i);
+        if (bp.hour === 0 && i > 4) {
+            parts.push('<line x1="' + x.toFixed(1) + '" y1="' + PT + '" x2="' + x.toFixed(1)
+                + '" y2="' + baseY + '" stroke="' + BORD + '" stroke-width="1"/>');
+            parts.push('<text x="' + (x + 5).toFixed(1) + '" y="' + (PT - 7) + '" fill="' + MUT
+                + '" font-size="11" font-weight="600">' + bp.day + '</text>');
+        } else if (bp.hour % 6 === 0 && x > 16 && x < W - 16) {
+            parts.push('<text x="' + x.toFixed(1) + '" y="' + (H - 2) + '" fill="' + MUT
+                + '" font-size="10" text-anchor="middle">' + bp.hour + '</text>');
+        }
+    });
+
+    // the price curve as band-coloured segments
+    var nowX = null, nowVal = null;
+    for (var i = 0; i < n - 1; i++) {
+        parts.push('<line x1="' + X(i).toFixed(1) + '" y1="' + Y(rows[i].total).toFixed(1)
+            + '" x2="' + X(i + 1).toFixed(1) + '" y2="' + Y(rows[i + 1].total).toFixed(1)
+            + '" stroke="' + band((rows[i].total + rows[i + 1].total) / 2) + '" stroke-width="2.2" stroke-linecap="round"/>');
+        if (rows[i].ts <= now && now < rows[i].ts + slotMs) {
+            nowX = X(i) + (X(i + 1) - X(i)) * ((now - rows[i].ts) / slotMs); nowVal = rows[i].total;
+        }
+    }
+
+    // cheap-window label (top, green)
+    if (bestStart >= 0) {
+        var b1 = berlinParts(rows[bestStart].ts), b2 = berlinParts(rows[bestStart + WIN - 1].ts + slotMs);
         if (b1 && b2) {
             var fmt = function (p) { return p.hour + ':' + (p.minute < 10 ? '0' : '') + p.minute; };
             var avg = euro(bestSum / WIN);
-            var nowInWindow = now >= rows[bestStart].ts
-                && now < rows[bestStart + WIN - 1].ts + slotMs;
-            var todayParts = berlinParts(now);
-            var dayPrefix = (!nowInWindow && b1 && todayParts && b1.day !== todayParts.day) ? b1.day + ' ' : '';
-            var label = nowInWindow
-                ? 'jetzt g\u00fcnstig (bis ' + fmt(b2) + ') \u00b7 \u00d8 ' + avg + ' \u20ac'
-                : 'g\u00fcnstig ' + dayPrefix + fmt(b1) + '\u2013' + fmt(b2) + ' \u00b7 \u00d8 ' + avg + ' \u20ac';
-            var lx = Math.min(Math.max((winX0 + winX1) / 2, 75), W - 75);
-            var windowTopY = yFor(Math.max.apply(null,
-                totals.slice(bestStart, bestStart + WIN)));
-            parts.push('<text x="' + lx.toFixed(1) + '" y="'
-                + Math.max(windowTopY - 5, 11).toFixed(1)
-                + '" fill="#b5fb5b" stroke="#222" stroke-width="2.5" paint-order="stroke"'
-                + ' font-size="10" text-anchor="middle">' + label + '</text>');
+            var nowIn = now >= rows[bestStart].ts && now < rows[bestStart + WIN - 1].ts + slotMs;
+            var today = berlinParts(now);
+            var dp = (!nowIn && b1 && today && b1.day !== today.day) ? b1.day + ' ' : '';
+            var label = nowIn ? 'jetzt g\u00fcnstig \u00b7 \u00d8 ' + avg + ' \u20ac'
+                : 'g\u00fcnstig ' + dp + fmt(b1) + '\u2013' + fmt(b2) + ' \u00b7 \u00d8 ' + avg + ' \u20ac';
+            var lx = Math.min(Math.max((X(bestStart) + X(bestStart + WIN - 1)) / 2, 95), W - 95);
+            parts.push('<text x="' + lx.toFixed(1) + '" y="' + (PT - 7) + '" fill="' + GREEN
+                + '" font-size="11" font-weight="600" text-anchor="middle">' + label + '</text>');
         }
     }
 
-    // min/max value labels (suppressed inside the labeled cheap window / near now)
-    [[minIdx, minV], [maxIdx, maxV]].forEach(function (pair) {
-        var x = pair[0] * bw + bw / 2;
-        if (nowX !== null && Math.abs(x - nowX) < 45) { return; }
-        if (winX0 >= 0 && x >= winX0 - 10 && x <= winX1 + 10) { return; }
-        parts.push('<text x="' + Math.min(Math.max(x, 16), W - 16).toFixed(1)
-            + '" y="' + Math.max(yFor(pair[1]) - 4, 11).toFixed(1)
-            + '" fill="#ddd" stroke="#222" stroke-width="2.5" paint-order="stroke"'
-            + ' font-size="9" text-anchor="middle">' + euro(pair[1]) + '</text>');
-    });
-
-    // R1: full-height now-line with the current price pinned to it
+    // now: subtle vertical line + a clean price pill (drawn last, on top)
     if (nowX !== null) {
-        parts.push('<line x1="' + nowX.toFixed(1) + '" y1="2" x2="' + nowX.toFixed(1)
-            + '" y2="' + (H - PAD_B) + '" stroke="#ffffff" stroke-width="1.8"/>');
-        var tx = nowX + 5, anchor = 'start';
-        if (nowX > W - 70) { tx = nowX - 5; anchor = 'end'; }
-        parts.push('<text x="' + tx.toFixed(1) + '" y="12" fill="#ffffff" '
-            + 'stroke="#222" stroke-width="2.5" paint-order="stroke" font-size="11" '
-            + 'font-weight="bold" text-anchor="' + anchor + '">'
-            + (nowVal !== null ? euro(nowVal) + ' \u20ac' : 'jetzt') + '</text>');
+        parts.push('<line x1="' + nowX.toFixed(1) + '" y1="' + PT + '" x2="' + nowX.toFixed(1)
+            + '" y2="' + baseY + '" stroke="#ffffff" stroke-width="1.4" opacity="0.65"/>');
+        var pw = 60, ph = 18, px = Math.min(Math.max(nowX - pw / 2, 2), W - pw - 2);
+        parts.push('<rect x="' + px.toFixed(1) + '" y="1" width="' + pw + '" height="' + ph
+            + '" rx="9" fill="#15161c" stroke="' + BORD + '"/>');
+        parts.push('<text x="' + (px + pw / 2).toFixed(1) + '" y="14" fill="#ffffff" font-size="12" '
+            + 'font-weight="700" text-anchor="middle">' + (nowVal !== null ? euro(nowVal) + ' \u20ac' : 'jetzt') + '</text>');
     }
 
     parts.push('</svg>');
