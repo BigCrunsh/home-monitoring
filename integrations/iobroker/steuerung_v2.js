@@ -34,6 +34,12 @@ var CSS_BASE = `
 .mv2 .tile.on{border-color:rgba(241,190,61,.55)} .mv2 .tile.on .cap{color:var(--text)} .mv2 .tile.on .st{color:var(--amber)}
 .mv2 .tile.open{border-color:rgba(80,128,172,.5)} .mv2 .tile.open .cap{color:var(--text)} .mv2 .tile.open .st{color:var(--blue)}
 .mv2 .tile.scene{border-color:rgba(80,128,172,.45)} .mv2 .tile.scene .st{color:var(--blue)}
+/* shutter tile: top-aligned head (icon · name · position) + 3 buttons below */
+.mv2 .tile.stile{flex-direction:column; align-items:stretch; justify-content:flex-start; padding:8px 10px}
+.mv2 .stile .shead{display:flex; align-items:center; gap:6px}
+.mv2 .stile .shead .cap{flex:1; text-align:left}
+.mv2 .stile .shead .st{color:var(--blue); font-weight:600}
+.mv2 .sbtn{position:absolute; background:var(--inset); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:var(--text)}
 `;
 
 var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
@@ -85,62 +91,77 @@ function plugIcon(serial, c) {
 }
 
 function pos(x, y, w, h) { return 'style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px"'; }
+function rnd(o) { return { kind: o.kind, oid: o.oid, value: o.value, x: Math.round(o.x), y: Math.round(o.y), w: Math.round(o.w), h: Math.round(o.h) }; }
+// renderers return {html, targets:[{kind,oid,value?,x,y,w,h}]} — targets drive the native tap-overlays
 function tileHtml(cls, p, icon, cap, st) {
     return '<div class="tile' + (cls ? ' ' + cls : '') + '" ' + p + '>'
         + '<span class="ic">' + icon + '</span><span class="cap">' + esc(cap) + '</span><span class="st">' + st + '</span></div>';
 }
 function lightTile(it, x, y, w, h) {
     var on = sBool(it[1]);
-    return tileHtml(on ? 'on' : '', pos(x, y, w, h), icoBulb(on ? AMBER : LBL), it[0], on ? 'an' : 'aus');
+    return { html: tileHtml(on ? 'on' : '', pos(x, y, w, h), icoBulb(on ? AMBER : LBL), it[0], on ? 'an' : 'aus'),
+        targets: [rnd({ kind: 'toggle', oid: it[1], x: x, y: y, w: w, h: h })] };
 }
 function plugTile(it, x, y, w, h) {
-    var on = sBool(it[1] + '.3.STATE'); var pw = sNum('hm-rpc.1.' + it[1] + '.6.POWER');
+    var oid = 'hm-rpc.1.' + it[1] + '.3.STATE';
+    var on = sBool('hm-rpc.1.' + it[1] + '.3.STATE'); var pw = sNum('hm-rpc.1.' + it[1] + '.6.POWER');
     var st = on ? (pw != null ? Math.round(pw) + ' W' : 'an') : 'aus';
-    return tileHtml(on ? 'on' : '', pos(x, y, w, h), plugIcon(it[1], on ? AMBER : LBL), it[0], st);
-}
-function shutterTile(it, x, y, w, h) {
-    // the "Alle" group action (a scene) renders blue with a "starten" label
-    if (it[1] && it[1].indexOf('scene.') === 0) {
-        return tileHtml('open', pos(x, y, w, h), icoBlind(BLUE), it[0], 'starten');
-    }
-    var lvl = sNum('hm-rpc.1.' + it[1] + '.4.LEVEL');
-    var open = lvl != null && lvl > 5;
-    return tileHtml(open ? 'open' : '', pos(x, y, w, h), icoBlind(open ? BLUE : LBL), it[0], lvl != null ? Math.round(lvl) + ' %' : '–');
+    return { html: tileHtml(on ? 'on' : '', pos(x, y, w, h), plugIcon(it[1], on ? AMBER : LBL), it[0], st),
+        targets: [rnd({ kind: 'toggle', oid: oid, x: x, y: y, w: w, h: h })] };
 }
 function sceneTile(it, x, y, w, h) {
     var icon = it[1] === 'scene.0.Fernsehabend' ? icoTV(BLUE) : icoScene(BLUE);
-    return tileHtml('scene', pos(x, y, w, h), icon, it[0], 'starten');
+    return { html: tileHtml('scene', pos(x, y, w, h), icon, it[0], 'starten'),
+        targets: [rnd({ kind: 'set', oid: it[1], value: true, x: x, y: y, w: w, h: h })] };
+}
+// shutter tile: name + position on top, three Auf/80%/Zu buttons below (each a write-target)
+function shutterTile(it, x, y, w, h) {
+    var isAlle = it[0] === 'Alle';
+    var oidBase = isAlle ? 'javascript.0.roll_all_cmd' : 'hm-rpc.1.' + it[1] + '.4.LEVEL';
+    var lvl = isAlle ? null : sNum(oidBase);
+    var posTxt = isAlle ? 'alle' : (lvl != null ? Math.round(lvl) + ' %' : '–');
+    var open = isAlle || (lvl != null && lvl > 5);
+    var html = '<div class="tile stile' + (open ? ' open' : '') + '" ' + pos(x, y, w, h) + '>'
+        + '<div class="shead">' + icoBlind(open ? BLUE : LBL) + '<span class="cap">' + esc(it[0]) + '</span><span class="st">' + posTxt + '</span></div></div>';
+    var pad = 8, gap = 6, byH = 30, bw = (w - 2 * pad - 2 * gap) / 3, by = y + h - pad - byH;
+    var labels = [['Auf', 100], ['80%', 80], ['Zu', 0]];
+    var targets = [];
+    labels.forEach(function (lb, i) {
+        var bx = x + pad + i * (bw + gap);
+        html += '<div class="sbtn" style="left:' + bx + 'px;top:' + by + 'px;width:' + bw + 'px;height:' + byH + 'px">' + lb[0] + '</div>';
+        targets.push(rnd({ kind: 'set', oid: oidBase, value: lb[1], x: bx, y: by, w: bw, h: byH }));
+    });
+    return { html: html, targets: targets };
 }
 
-// one titled section card with its tile grid; tiles get absolute coords (for overlays)
-function section(title, items, cols, render, top, rows, allRects, key) {
-    var CPAD = 12, HEAD = 22, HGAP = 10, TH = 80, TGAP = 10;
+// one titled section card with its tile grid; targets collected for the overlay generator
+function section(title, items, cols, render, top, rows, allTargets, key) {
+    var CPAD = 12, HEAD = 22, HGAP = 10, TH = 88, TGAP = 10;
     var ix = PADX + CPAD, iw = W - 2 * PADX - 2 * CPAD;
     var tilesTop = top + CPAD + HEAD + HGAP;
     var cardH = CPAD + HEAD + HGAP + rows * TH + (rows - 1) * TGAP + CPAD;
     var html = '<div class="seccard" style="left:' + PADX + 'px;top:' + top + 'px;width:' + (W - 2 * PADX) + 'px;height:' + cardH + 'px"></div>'
         + '<div class="card-h" style="left:' + ix + 'px;top:' + (top + CPAD) + 'px">' + title + '</div>';
     var cw = (iw - (cols - 1) * TGAP) / cols;
-    var rects = [];
     items.forEach(function (it, i) {
         var c = i % cols, r = Math.floor(i / cols);
         var tx = ix + c * (cw + TGAP), ty = tilesTop + r * (TH + TGAP);
-        html += render(it, tx, ty, cw, TH);
-        rects.push({ label: it[0], oid: it[1], x: Math.round(tx), y: Math.round(ty), w: Math.round(cw), h: TH });
+        var res = render(it, tx, ty, cw, TH);
+        html += res.html;
+        (res.targets || []).forEach(function (t) { allTargets.push(t); });
     });
-    allRects[key] = rects;
     return { html: html, nextY: top + cardH + 12 };
 }
 
 function build() {
-    var y = 6, html = '', allRects = {};
-    var L = section('Lichter', LIGHTS, 6, lightTile, y, 2, allRects, 'lights'); html += L.html; y = L.nextY;
-    var R = section('Rollläden', SHUTTERS.concat([ROLL_ALL]), 6, shutterTile, y, 1, allRects, 'shutters'); html += R.html; y = R.nextY;
-    var P = section('Steckdosen', PLUGS, 6, plugTile, y, 1, allRects, 'plugs'); html += P.html; y = P.nextY;
-    var S = section('Szenen', SCENES, 6, sceneTile, y, 1, allRects, 'scenes'); html += S.html;
+    var y = 6, html = '', targets = [];
+    var L = section('Lichter', LIGHTS, 6, lightTile, y, 2, targets, 'lights'); html += L.html; y = L.nextY;
+    var R = section('Rollläden', SHUTTERS.concat([ROLL_ALL]), 6, shutterTile, y, 1, targets, 'shutters'); html += R.html; y = R.nextY;
+    var P = section('Steckdosen', PLUGS, 6, plugTile, y, 1, targets, 'plugs'); html += P.html; y = P.nextY;
+    var S = section('Szenen', SCENES, 6, sceneTile, y, 1, targets, 'scenes'); html += S.html;
 
-    // emit the layout once so the vis-views overlay generator can read exact tile rects
-    if (!build._logged) { console.log('STEUERUNG_LAYOUT ' + JSON.stringify(allRects)); build._logged = true; }
+    // emit the flat tap-target list once so the vis-views overlay generator can place native widgets
+    if (!build._logged) { console.log('STEUERUNG_LAYOUT ' + JSON.stringify(targets)); build._logged = true; }
 
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
         + '<foreignObject width="' + W + '" height="' + H + '">'
@@ -150,6 +171,14 @@ function build() {
 
 function publish() { setState('steuerung_grid', build(), true); }
 createState('javascript.0.steuerung_grid', '', { type: 'string', role: 'html', desc: 'Steuerung tile grid' });
+
+// "Alle Rollläden" fan-out: the Alle tile's Auf/80%/Zu buttons write 100/80/0 here; mirror to all 5
+createState('javascript.0.roll_all_cmd', 0, { type: 'number', role: 'level', desc: 'Alle Rollläden Sollwert' });
+on({ id: 'javascript.0.roll_all_cmd', change: 'any' }, function (obj) {
+    var v = obj && obj.state ? obj.state.val : null;
+    if (typeof v !== 'number') return;
+    SHUTTERS.forEach(function (s) { setState('hm-rpc.1.' + s[1] + '.4.LEVEL', v); });
+});
 
 // re-render on any control state change
 LIGHTS.forEach(function (l) { on({ id: l[1], change: 'ne' }, publish); });
