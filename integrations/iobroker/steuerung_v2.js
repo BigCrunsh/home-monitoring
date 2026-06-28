@@ -124,7 +124,7 @@ function shutterTile(it, x, y, w, h) {
     var html = '<div class="tile stile' + (open ? ' open' : '') + '" ' + pos(x, y, w, h) + '>'
         + '<div class="shead">' + icoBlind(open ? BLUE : LBL) + '<span class="cap">' + esc(it[0]) + '</span><span class="st">' + posTxt + '</span></div></div>';
     var pad = 8, gap = 6, byH = 30, bw = (w - 2 * pad - 2 * gap) / 3, by = y + h - pad - byH;
-    var labels = [['Auf', 100], ['80%', 80], ['Zu', 0]];
+    var labels = [['Auf', 100], ['50%', 50], ['Zu', 0]];
     var targets = [];
     labels.forEach(function (lb, i) {
         var bx = x + pad + i * (bw + gap);
