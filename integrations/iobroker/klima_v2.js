@@ -46,25 +46,32 @@ var CSS_BASE = `
 .mv2 .otemp{font-size:var(--t-hero); font-weight:600; line-height:.82; letter-spacing:-.03em}
 .mv2 .h-mm{display:flex; gap:var(--s4); font-size:var(--t-sub); color:var(--muted)}
 .mv2 .h-mm b{color:var(--text); font-weight:600}
-.mv2 .h-wx img{width:var(--sym-wx); height:var(--sym-wx); object-fit:contain}
+.mv2 .h-mid{justify-self:center; display:flex; flex-direction:column; align-items:center; gap:var(--s2)}
+.mv2 .h-wx img{width:84px; height:84px; object-fit:contain}
+.mv2 .h-spark{display:flex; align-items:center; gap:var(--s2); width:300px}
+.mv2 .h-spark .lab{font-size:var(--t-cap); color:var(--mute); flex:none}
+.mv2 .h-spark svg{flex:1}
 .mv2 .h-cond{font-size:var(--t-sub); color:var(--muted); font-weight:500}
 .mv2 .h-line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted)}
 .mv2 .h-line b{color:var(--text); font-weight:600; font-size:var(--t-sub)}
 
 /* ROOMS (expanded) — same Room component as main_v2 + a min/max/trend strip */
-.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(4,1fr); gap:var(--s2)}
-.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto; column-gap:var(--s3); row-gap:2px; align-items:center; background:var(--bg); border-radius:var(--r3); padding:var(--s2) var(--s4)}
-.mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center}
-.mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:24px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(4,1fr); gap:6px}
+.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto auto; column-gap:var(--s3); row-gap:1px; align-items:center; background:var(--bg); border-radius:var(--r3); padding:6px var(--s4)}
+.mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center}
+.mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:22px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .room .op{grid-column:2; grid-row:2; margin-top:-4px; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted); white-space:nowrap}
 .mv2 .room .op .batt{display:flex; align-items:center; gap:3px}
 .mv2 .room .env{grid-column:2; display:flex; align-items:center; gap:var(--s1); font-size:var(--t-label); white-space:nowrap}
 .mv2 .room .env.hum{grid-row:3} .mv2 .room .env.co2{grid-row:4}
 .mv2 .room .env .un{color:var(--muted); font-weight:500}
-.mv2 .room .env .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; flex:none}
-.mv2 .room .temp{grid-column:3; grid-row:2 / 4; align-self:center; justify-self:end; font-size:48px; font-weight:600; line-height:.9; white-space:nowrap}
-.mv2 .room .mmx{grid-column:3; grid-row:4; justify-self:end; display:flex; align-items:center; gap:6px; font-size:var(--t-cap); color:var(--muted); white-space:nowrap}
+.mv2 .room .temp{grid-column:3; grid-row:2 / 4; align-self:center; justify-self:end; font-size:42px; font-weight:600; line-height:.9; white-space:nowrap}
+.mv2 .room .mmx{grid-column:3; grid-row:4; justify-self:end; display:flex; align-items:flex-end; gap:6px; font-size:var(--t-cap); color:var(--muted); white-space:nowrap}
 .mv2 .room .mmx b{color:var(--text); font-weight:600}
+/* 24h temperature sparkline — what makes the Klima room out-earn the overview card */
+.mv2 .room .spark{grid-column:1 / 4; grid-row:5; display:flex; align-items:center; gap:var(--s2); margin-top:3px; padding-top:3px; border-top:1px solid var(--border)}
+.mv2 .room .spark .lab{font-size:var(--t-cap); color:var(--mute); flex:none}
+.mv2 .room .spark svg{flex:1}
 
 /* 6-TAGE VORHERSAGE */
 .mv2 .fc{flex:1; display:flex; flex-direction:column}
@@ -74,15 +81,17 @@ var CSS_BASE = `
 .mv2 .fcrow .dow{font-size:var(--t-sub); font-weight:600}
 .mv2 .fcrow img{width:26px; height:26px; object-fit:contain}
 .mv2 .fcrow .cond{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mv2 .fcrow .fcbar{position:relative; height:8px; border-radius:4px; background:var(--inset); align-self:center}
+.mv2 .fcrow .fcbar .fill{position:absolute; top:0; height:8px; border-radius:4px; min-width:6px}
 .mv2 .fcrow .mm{font-size:var(--t-label); white-space:nowrap; text-align:right}
 .mv2 .fcrow .mm .mx{color:var(--text); font-weight:600}
 .mv2 .fcrow .mm .mn{color:var(--muted); margin-left:6px}
 
 /* GARTEN — valves + soil, bubble rows */
 .mv2 .gsec{font-size:var(--t-cap); font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin:var(--s1) 0 2px}
-.mv2 .vrow{display:grid; grid-template-columns:auto 1fr auto; gap:var(--s2); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
+.mv2 .vrow{display:grid; grid-template-columns:1fr auto; gap:var(--s2); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
 .mv2 .vrow .vn{font-size:var(--t-label); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .vrow .vs{font-size:var(--t-cap); color:var(--muted); white-space:nowrap}
+.mv2 .vrow .vs{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; text-align:right}
 .mv2 .vrow .badge{font-size:var(--t-cap); font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap}
 .mv2 .srow{display:grid; grid-template-columns:1fr auto auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
 .mv2 .srow .sn{font-size:var(--t-label); font-weight:600}
@@ -99,12 +108,15 @@ var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
 var OUTDOOR = NB + '.02-00-00-32-ae-a4';
 var RAINMOD = NB + '.05-00-00-05-d4-18';
 var FC = 'daswetter.0.NextDays.Location_1.Day_';   // + N + '.<field>'
+// [display name, ioBroker module path, InfluxDB module_name for the 24h sparkline]
 var ROOMS = [
-    ['Wohnzimmer', NB],
-    ['Carlottas Zimmer', NB + '.03-00-00-0e-16-36'],
-    ['Claras Zimmer', NB + '.03-00-00-0f-01-6e'],
-    ['Cleas Zimmer', NB + '.03-00-00-10-e5-42']
+    ['Wohnzimmer', NB, 'Wohnzimmer'],
+    ['Carlottas Zimmer', NB + '.03-00-00-0e-16-36', 'Kinderzimmer Carlotta'],
+    ['Claras Zimmer', NB + '.03-00-00-0f-01-6e', 'Kinderzimmer Clara'],
+    ['Cleas Zimmer', NB + '.03-00-00-10-e5-42', 'Kinderzimmer Clea']
 ];
+var INFLUX = 'influxdb.0';
+var SPARK = {};   // module_name -> [hourly mean temps over the last 24h]
 // Gardena
 var GLOC = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.';
 var GVALVE = GLOC + 'DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
@@ -151,9 +163,32 @@ function trendArrow(tr, col) {
     if (tr === 'down') return '<span style="color:' + col + '">↓</span>';
     return '';
 }
+// Barometer/Wetterhäuschen reading: rising pressure → improving, falling → worsening.
+function pressureDir(tr) {
+    if (tr === 'up') return ['↑ steigend', GREEN];
+    if (tr === 'down') return ['↓ fallend', BLUE];
+    return ['→ stabil', LBL];
+}
 function wxImg(id, sz) {
     if (id == null) return '';
     return '<img src="/daswetter.admin/icons/tiempo-weather/galeria1/' + Math.round(id) + '.png" alt=""/>';
+}
+// 24h temperature sparkline: each segment coloured by that period's comfort band
+// (so you read *when* it was hot/cool), last point dotted in the current colour.
+function sparkline(vals, w, h, dotCol) {
+    if (!vals || vals.length < 2) return '';
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), rng = (hi - lo) || 1, pad = 3;
+    function X(i) { return pad + (i / (vals.length - 1)) * (w - 2 * pad); }
+    function Y(v) { return pad + (1 - (v - lo) / rng) * (h - 2 * pad); }
+    var segs = '';
+    for (var i = 0; i < vals.length - 1; i++) {
+        var col = comfortCol((vals[i] + vals[i + 1]) / 2);
+        segs += '<line x1="' + X(i).toFixed(1) + '" y1="' + Y(vals[i]).toFixed(1)
+            + '" x2="' + X(i + 1).toFixed(1) + '" y2="' + Y(vals[i + 1]).toFixed(1)
+            + '" stroke="' + col + '" stroke-width="1.8" stroke-linecap="round"/>';
+    }
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" preserveAspectRatio="none">'
+        + segs + '<circle cx="' + X(vals.length - 1).toFixed(1) + '" cy="' + Y(vals[vals.length - 1]).toFixed(1) + '" r="2.6" fill="' + (dotCol || LBL) + '"/></svg>';
 }
 function fo(cls, w, h, body) {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">'
@@ -169,31 +204,39 @@ function buildHero() {
     var otr = sStr(OUTDOOR + '.Temperature.TemperatureTrend');
     var mn = sNum(FC + '1.Minimale_Temperatur_value'), mx = sNum(FC + '1.Maximale_Temperatur_value');
     var oh = sNum(OUTDOOR + '.Humidity.Humidity');
+    var dew = sNum(OUTDOOR + '.Temperature.DewPoint');
     var pr = sNum(NB + '.Pressure.Pressure'), prt = sStr(NB + '.Pressure.PressureTrend');
     var rain = sNum(RAINMOD + '.Rain.SumRain24');
     var wsym = sNum(FC + '1.Wetter_Symbol_id');
-    var cond = sStr(FC + '1.Wetterbedingungen_value');
 
     // Colour rule A (value-ranges): outside temp coloured by comfort band.
     var otc = comfortCol(ot);
+    // Pressure as a Wetterhäuschen direction: rising → improving, falling → worsening.
+    var pd = pressureDir(prt);
+
     var h = '<div class="hero">';
+    // LEFT: big outdoor temp + today min/max
     h += '<div class="h-left">'
         + '<div class="otemp num" style="color:' + otc + '">' + comma(ot, 1) + '<span class="u">°C</span></div>'
-        + '<div class="h-mm"><span>heute</span><span><b>' + (mn != null ? Math.round(mn) : '–') + '°</b> min</span><span><b>' + (mx != null ? Math.round(mx) : '–') + '°</b> max</span>'
-        + (trendArrow(otr, otc) ? '<span>' + trendArrow(otr, otc) + '</span>' : '') + '</div>'
+        + '<div class="h-mm"><span>heute</span><span><b>' + (mn != null ? Math.round(mn) : '–') + '°</b> min</span><span><b>' + (mx != null ? Math.round(mx) : '–') + '°</b> max</span></div>'
         + '</div>';
-    // condition: weather icon only — daswetter has no reliable short text label
-    h += '<div class="h-mid"><div class="h-wx">' + wxImg(wsym) + '</div></div>';
+    // CENTER: outdoor 24h curve (more than the overview's snapshot) + today's weather icon
+    var osp = SPARK['Gartenhaus'];
+    h += '<div class="h-mid">'
+        + '<div class="h-wx">' + wxImg(wsym) + '</div>'
+        + (osp && osp.length > 1 ? '<div class="h-spark"><span class="lab">24 h</span>' + sparkline(osp, 240, 30, otc) + '</div>' : '')
+        + '</div>';
+    // RIGHT: rain · gefühlt (dewpoint) · pressure direction
     h += '<div class="h-right">'
         + '<div class="h-line">' + icoDrop(rain != null && rain > 0 ? BLUE : LBL, 16) + 'Regen heute <b>' + (rain != null ? comma(rain, 1) : '0,0') + '</b><span class="u">mm</span></div>'
-        + '<div class="h-line">Luftfeuchte <b>' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
-        + '<div class="h-line">Druck <b>' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">hPa</span> ' + trendArrow(prt, LBL) + '</div>'
+        + '<div class="h-line">gefühlt <b>' + (dew != null ? Math.round(dew) : '–') + '</b><span class="u">°C</span> · ' + (oh != null ? Math.round(oh) : '–') + '<span class="u">%</span></div>'
+        + '<div class="h-line">Druck <b>' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">hPa</span> <span style="color:' + pd[1] + '">' + pd[0] + '</span></div>'
         + '</div>';
     return h + '</div>';
 }
 
 // ===== ROOM (expanded) — B′ colouring =====
-function buildRoom(name, module) {
+function buildRoom(name, module, influxName) {
     var t = sNum(module + '.Temperature.Temperature'), hh = sNum(module + '.Humidity.Humidity'),
         c = sNum(module + '.CO2.CO2'), bs = sNum(module + '.BatteryStatus');
     var tmin = sNum(module + '.Temperature.TemperatureMin'), tmax = sNum(module + '.Temperature.TemperatureMax');
@@ -216,31 +259,74 @@ function buildRoom(name, module) {
     // expanded detail: today min/max + trend
     h += '<div class="mmx">' + trendArrow(tr, cc)
         + '<span>heute <b>' + (tmin != null ? Math.round(tmin) : '–') + '°</b>/<b>' + (tmax != null ? Math.round(tmax) : '–') + '°</b></span></div>';
+    // 24h trend sparkline (from home_monitoring InfluxDB) — the depth the overview can't show
+    var sv = SPARK[influxName];
+    if (sv && sv.length > 1) {
+        h += '<div class="spark"><span class="lab">24 h</span>' + sparkline(sv, 230, 16, cc) + '</div>';
+    }
     return h + '</div>';
 }
 function buildRooms() {
     var h = '<div class="card"><div class="card-h">Räume</div><div class="card-body"><div class="rooms">';
-    ROOMS.forEach(function (r) { h += buildRoom(r[0], r[1]); });
+    ROOMS.forEach(function (r) { h += buildRoom(r[0], r[1], r[2]); });
     return h + '</div></div></div>';
+}
+
+// Fetch each room's last-24h hourly temperature curve from home_monitoring InfluxDB
+// into SPARK, then run `done` (the rooms re-render once the curves are in).
+function fetchSparks(done) {
+    var mods = ROOMS.map(function (r) { return r[2]; }).concat(['Gartenhaus']);  // + outdoor
+    var pending = mods.length;
+    mods.forEach(function (mod) {
+        var q = 'SELECT mean("Temperature") AS m FROM home_monitoring.autogen.weather_temperature_celsius'
+            + " WHERE module_name='" + mod + "' AND time > now()-24h GROUP BY time(1h) fill(none)";
+        sendTo(INFLUX, 'query', q, function (res) {
+            try {
+                var rows = (res && res.result && res.result[0]) || [];
+                var vals = rows.map(function (x) { return x.m; }).filter(function (v) { return typeof v === 'number'; });
+                if (vals.length > 1) SPARK[mod] = vals;
+            } catch (e) { /* leave SPARK[mod] as-is */ }
+            if (--pending === 0 && typeof done === 'function') done();
+        });
+    });
 }
 
 // ===== 6-TAGE VORHERSAGE =====
 function buildForecast() {
     var now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-    var h = '<div class="card"><div class="card-h">6-Tage Vorhersage</div><div class="card-body"><div class="fc">';
+    // gather all days first to build a shared temperature scale for the range bars
+    var days = [];
     for (var i = 1; i <= 6; i++) {
-        var mn = sNum(FC + i + '.Minimale_Temperatur_value'), mx = sNum(FC + i + '.Maximale_Temperatur_value');
-        var sym = sNum(FC + i + '.Wetter_Symbol_id');
         var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (i - 1));
-        var dow = d.getDay(), weekend = (dow === 0 || dow === 6);
-        // condition: icon only (no reliable short text from daswetter); max coloured by band
-        h += '<div class="fcrow' + (weekend ? ' we' : '') + '">'
-            + '<div class="dow">' + DAYS_SHORT[dow] + '</div>'
-            + '<div>' + wxImg(sym) + '</div>'
-            + '<div class="cond"></div>'
-            + '<div class="mm"><span class="mx" style="color:' + comfortCol(mx) + '">' + (mx != null ? Math.round(mx) : '–') + '°</span><span class="mn">' + (mn != null ? Math.round(mn) : '–') + '°</span></div>'
-            + '</div>';
+        days.push({
+            mn: sNum(FC + i + '.Minimale_Temperatur_value'),
+            mx: sNum(FC + i + '.Maximale_Temperatur_value'),
+            sym: sNum(FC + i + '.Wetter_Symbol_id'),
+            dow: d.getDay()
+        });
     }
+    var mns = days.map(function (x) { return x.mn; }).filter(function (v) { return typeof v === 'number'; });
+    var mxs = days.map(function (x) { return x.mx; }).filter(function (v) { return typeof v === 'number'; });
+    var gmin = mns.length ? Math.min.apply(null, mns) : 0;
+    var gmax = mxs.length ? Math.max.apply(null, mxs) : 1;
+    var grng = (gmax - gmin) || 1;
+
+    var h = '<div class="card"><div class="card-h">6-Tage Vorhersage</div><div class="card-body"><div class="fc">';
+    days.forEach(function (x) {
+        var weekend = (x.dow === 0 || x.dow === 6);
+        var bar = '';
+        if (typeof x.mn === 'number' && typeof x.mx === 'number') {
+            var L = ((x.mn - gmin) / grng) * 100, W = ((x.mx - x.mn) / grng) * 100;
+            bar = '<div class="fcbar"><div class="fill" style="left:' + L.toFixed(1) + '%;width:' + W.toFixed(1)
+                + '%;background:linear-gradient(90deg,' + comfortCol(x.mn) + ',' + comfortCol(x.mx) + ')"></div></div>';
+        }
+        h += '<div class="fcrow' + (weekend ? ' we' : '') + '">'
+            + '<div class="dow">' + DAYS_SHORT[x.dow] + '</div>'
+            + '<div>' + wxImg(x.sym) + '</div>'
+            + bar
+            + '<div class="mm"><span class="mx" style="color:' + comfortCol(x.mx) + '">' + (x.mx != null ? Math.round(x.mx) : '–') + '°</span><span class="mn">' + (x.mn != null ? Math.round(x.mn) : '–') + '°</span></div>'
+            + '</div>';
+    });
     return h + '</div></div></div>';
 }
 
@@ -257,15 +343,13 @@ function buildGarden() {
         var ats = sStr(base + '.activity_timestamp');
         if (ats && (!anyTs || new Date(ats) > new Date(anyTs))) anyTs = ats;
         var watering = /WATERING|MANUAL|SCHEDULED/i.test(act);
-        var badgeCol = watering ? GREEN : LBL;
-        var badgeBg = watering ? 'var(--green-16)' : 'var(--muted-16)';
+        // the status text already says open/closed — no redundant badge
         var statusTxt = watering
-            ? (left != null ? 'läuft · ' + Math.round(left / 60) + ' min' : 'läuft')
+            ? '<span style="color:' + GREEN + ';font-weight:700">läuft' + (left != null ? ' · ' + Math.round(left / 60) + ' min' : '') + '</span>'
             : 'zu · ' + (agoStr(ats) ? 'vor ' + agoStr(ats) : '–');
         h += '<div class="vrow">'
-            + '<div class="vn">' + clip(nm, 16) + '</div>'
+            + '<div class="vn">' + clip(nm, 18) + '</div>'
             + '<div class="vs">' + statusTxt + '</div>'
-            + '<div class="badge" style="color:' + badgeCol + ';background:' + badgeBg + '">' + (watering ? 'AN' : 'ZU') + '</div>'
             + '</div>';
     });
     h += '<div class="gsec">Bodensensoren</div>';
@@ -273,6 +357,17 @@ function buildGarden() {
         var hum = sNum(s[1] + 'soilHumidity_value'), tmp = sNum(s[1] + 'soilTemperature_value');
         var ts = sStr(s[1] + 'soilHumidity_timestamp');
         if (ts && (!anyTs || new Date(ts) > new Date(anyTs))) anyTs = ts;
+        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–" + age,
+        // never a false dry-verdict.
+        var stale = ageMs(ts) == null || ageMs(ts) > 86400000;
+        if (stale) {
+            h += '<div class="srow">'
+                + '<div class="sn">' + esc(s[0]) + '</div>'
+                + '<div class="sv" style="color:var(--mute)">–</div>'
+                + '<div class="sv" style="color:var(--mute);font-size:var(--t-cap);font-weight:500">' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</div>'
+                + '</div>';
+            return;
+        }
         // soil moisture: value-coloured (dry amber / ok green / wet blue)
         var humCol2 = hum == null ? LBL : (hum < 30 ? AMBER : (hum <= 70 ? GREEN : BLUE));
         h += '<div class="srow">'
@@ -320,6 +415,12 @@ SOIL.forEach(function (s) {
 });
 
 // initial + periodic refresh (covers states without change events)
-setTimeout(publish, 2000);
+function refreshSparkViews() {
+    setState('klima_mid', fo('mw', 377, 534, buildRooms()), true);  // room curves
+    setState('klima_hero', fo('hw', 1170, 178, buildHero()), true); // outdoor curve
+}
+setTimeout(function () { publish(); fetchSparks(refreshSparkViews); }, 2000);
 schedule('*/2 * * * *', publish);
+// sparklines change slowly — refresh the 24h curves every 15 min
+schedule('*/15 * * * *', function () { fetchSparks(refreshSparkViews); });
 console.log('[Klima v2] initialized');
