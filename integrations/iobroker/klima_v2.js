@@ -86,6 +86,14 @@ var CSS_BASE = `
 .mv2 .fcrow .mm{font-size:var(--t-label); white-space:nowrap; text-align:right}
 .mv2 .fcrow .mm .mx{color:var(--text); font-weight:600}
 .mv2 .fcrow .mm .mn{color:var(--muted); margin-left:6px}
+/* short-term hourly outlook (+1/3/6/12h) above the 6-day rows */
+.mv2 .hourly{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s2); flex:none}
+.mv2 .hcell{background:var(--bg); border-radius:var(--r3); padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:2px}
+.mv2 .hcell .hlab{font-size:var(--t-cap); color:var(--mute); font-weight:600}
+.mv2 .hcell .hico img{width:26px; height:26px; object-fit:contain}
+.mv2 .hcell .htemp{font-size:20px; font-weight:600; line-height:1}
+.mv2 .hcell .hclk{font-size:11px; color:var(--muted)}
+.mv2 .hdiv{height:1px; background:var(--border); margin:10px 0 8px; flex:none}
 
 /* GARTEN — valves + soil, bubble rows */
 .mv2 .gsec{font-size:var(--t-cap); font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin:var(--s1) 0 2px}
@@ -108,6 +116,8 @@ var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
 var OUTDOOR = NB + '.02-00-00-32-ae-a4';
 var RAINMOD = NB + '.05-00-00-05-d4-18';
 var FC = 'daswetter.0.NextDays.Location_1.Day_';   // + N + '.<field>'
+var HF = 'daswetter.0.NextHours.Location_1.';      // hourly: Day_d.Hour_h.<field> (hour_value "HH:00")
+var HOURS_AHEAD = [1, 3, 6, 12];
 // [display name, ioBroker module path, InfluxDB module_name for the 24h sparkline]
 var ROOMS = [
     ['Wohnzimmer', NB, 'Wohnzimmer'],
@@ -292,6 +302,33 @@ function fetchSparks(done) {
 }
 
 // ===== 6-TAGE VORHERSAGE =====
+// hourly forecast at now+n hours, matched by day_value + clock-hour index (midnight = 24:00)
+function ymd(d) { return '' + d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
+function hourFC(n) {
+    var now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+    var t = new Date(now.getTime() + n * 3600000);
+    var H = t.getHours(), clockH = (H === 0) ? 24 : H;
+    var dayDate = ymd(H === 0 ? new Date(t.getTime() - 3600000) : t);
+    var dayIdx = null;
+    for (var d = 1; d <= 4; d++) { if (sStr(HF + 'Day_' + d + '.day_value') === dayDate) { dayIdx = d; break; } }
+    if (!dayIdx) return null;
+    var base = HF + 'Day_' + dayIdx + '.Hour_' + clockH + '.';
+    return { n: n, clock: (clockH === 24 ? 0 : clockH) + ' Uhr', temp: sNum(base + 'temp_value'), sym: sNum(base + 'symbol_value') };
+}
+function buildHourly() {
+    var cells = '';
+    HOURS_AHEAD.forEach(function (n) {
+        var f = hourFC(n);
+        cells += '<div class="hcell"><div class="hlab">+' + n + ' h</div>'
+            + (f ? '<div class="hico">' + wxImg(f.sym) + '</div>'
+                + '<div class="htemp" style="color:' + comfortCol(f.temp) + '">' + (f.temp != null ? Math.round(f.temp) + '°' : '–') + '</div>'
+                + '<div class="hclk">' + f.clock + '</div>'
+                : '<div class="htemp" style="color:var(--mute)">–</div>')
+            + '</div>';
+    });
+    return '<div class="hourly">' + cells + '</div>';
+}
+
 function buildForecast() {
     var now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
     // gather all days first to build a shared temperature scale for the range bars
@@ -311,7 +348,8 @@ function buildForecast() {
     var gmax = mxs.length ? Math.max.apply(null, mxs) : 1;
     var grng = (gmax - gmin) || 1;
 
-    var h = '<div class="card"><div class="card-h">6-Tage Vorhersage</div><div class="card-body"><div class="fc">';
+    var h = '<div class="card"><div class="card-h">Vorhersage</div><div class="card-body">'
+        + buildHourly() + '<div class="hdiv"></div><div class="fc">';
     days.forEach(function (x) {
         var weekend = (x.dow === 0 || x.dow === 6);
         var bar = '';
