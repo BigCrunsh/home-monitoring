@@ -34,10 +34,10 @@ var CSS = `
 .mv2 .room .ar{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .room .grp{font-size:11px; color:var(--blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .room .ctl{flex:none; display:flex; align-items:center; gap:8px}
-.mv2 .room .pp{width:40px; height:40px; border-radius:50%; background:var(--inset); display:flex; align-items:center; justify-content:center}
+.mv2 .room .pp{width:48px; height:48px; border-radius:50%; background:var(--inset); display:flex; align-items:center; justify-content:center}
 .mv2 .room.playing .pp{background:var(--green-16)}
-.mv2 .room .vb{width:34px; height:34px; border-radius:9px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:var(--text)}
-.mv2 .room .vol{font-size:13px; color:var(--muted); width:34px; text-align:center}
+.mv2 .room .vb{width:42px; height:42px; border-radius:10px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; color:var(--text)}
+.mv2 .room .vol{font-size:14px; color:var(--text); font-weight:600; width:40px; text-align:center}
 `;
 
 var GREEN = '#b5fb5b', BLUE = '#5080AC', LBL = '#8A8A8A', TEXT = '#CCCCCC', MUT = '#8A8A8A';
@@ -53,9 +53,10 @@ var ROOMS = [
     ['Studio', '192_168_178_43', 'Studio'],
     ['Move', '192_168_178_64', 'Move']
 ];
-var COORD = 'Wohnzimmer';                       // group coordinator
-var WOHNEN = ['Kueche', 'Fernsehzimmer'];       // joined to COORD for the "Wohnen" preset
-var VOL_STEP = 7;
+var COORD = 'Wohnzimmer';                        // group coordinator (Sonos player name)
+var COORD_IP = '192_168_178_29';                 // Wohnzimmer ip-key (write groupings here)
+var WOHNEN = ['Kueche', 'Fernsehzimmer'];        // joined to COORD for the "Wohnen" preset
+var VOL_STEP = 1;
 
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
 function sStr(id) { var s = getState(id); return (s && s.val != null) ? String(s.val) : null; }
@@ -72,7 +73,8 @@ function icoLink(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g
 
 function roomCard(it, x, y, w, h) {
     var ip = it[1], P = SROOT + ip + '.';
-    var st = sStr(P + 'state'); var playing = st === 'play';
+    var ss = getState(P + 'state_simple'); var playing = !!(ss && ss.val);  // truth (state can be stale)
+    var st = sStr(P + 'state');
     var vol = sNum(P + 'volume');
     var title = sStr(P + 'current_title') || sStr(P + 'current_station');
     var artist = sStr(P + 'current_artist');
@@ -94,15 +96,15 @@ function roomCard(it, x, y, w, h) {
         + '<span class="pp">' + ppIcon + '</span>'
         + '</div></div>';
     // tap targets: vol−, vol+, play/pause — right-anchored ctl row [vb−][vol][vb+][pp], gap g
-    var pad = 14, ppW = 40, vbW = 34, volW = 34, g = 8;
+    var pad = 14, ppW = 48, vbW = 42, volW = 40, g = 8, th = 48;
     var ppX = x + w - pad - ppW;            // play/pause
     var volPX = ppX - g - vbW;              // vol +
     var volNX = volPX - g - volW - g - vbW; // vol − (two gaps + the volume readout between)
-    var cy = y + (h - 40) / 2;
+    var cy = y + (h - th) / 2;
     var targets = [
-        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: ip + ':vol:down', x: volNX, y: cy, w: vbW, h: 40 }),
-        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: ip + ':vol:up', x: volPX, y: cy, w: vbW, h: 40 }),
-        rnd({ kind: 'toggle', oid: P + 'state_simple', x: ppX, y: cy, w: ppW, h: 40 })
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: ip + ':vol:down', x: volNX, y: cy, w: vbW, h: th }),
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: ip + ':vol:up', x: volPX, y: cy, w: vbW, h: th }),
+        rnd({ kind: 'toggle', oid: P + 'state_simple', x: ppX, y: cy, w: ppW, h: th })
     ];
     return { html: html, targets: targets };
 }
@@ -155,16 +157,22 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
         setState(vid, clamp(cur + (m[2] === 'up' ? VOL_STEP : -VOL_STEP), 0, 100));
         return;
     }
+    // grouping: write the MEMBER's name to the COORDINATOR's add_to_group / remove_from_group
+    // (addToGroup(state.val, player) → player=the one written to becomes coordinator). Stagger the
+    // writes so the Sonos API isn't hammered on the same state.
+    function gAdd(name, d) { setTimeout(function () { setState(SROOT + COORD_IP + '.add_to_group', name); }, d); }
+    function gRem(name, d) { setTimeout(function () { setState(SROOT + COORD_IP + '.remove_from_group', name); }, d); }
+    var d = 0;
     if (v === 'group:alle') {
-        ROOMS.forEach(function (r) { if (r[2] !== COORD) setState(SROOT + r[1] + '.add_to_group', COORD); });
+        ROOMS.forEach(function (r) { if (r[2] !== COORD) { gAdd(r[2], d); d += 400; } });
     } else if (v === 'group:wohnen') {
         ROOMS.forEach(function (r) {
             if (r[2] === COORD) return;
-            if (WOHNEN.indexOf(r[2]) >= 0) setState(SROOT + r[1] + '.add_to_group', COORD);
-            else setState(SROOT + r[1] + '.remove_from_group', r[2]);
+            if (WOHNEN.indexOf(r[2]) >= 0) gAdd(r[2], d); else gRem(r[2], d);
+            d += 400;
         });
     } else if (v === 'group:einzeln') {
-        ROOMS.forEach(function (r) { setState(SROOT + r[1] + '.remove_from_group', r[2]); });
+        ROOMS.forEach(function (r) { if (r[2] !== COORD) { gRem(r[2], d); d += 400; } });
     }
 });
 
