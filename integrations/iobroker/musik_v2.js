@@ -93,11 +93,11 @@ function roomCard(it, x, y, w, h) {
         + '<span class="vb">–</span><span class="vol">' + (vol != null ? Math.round(vol) : '–') + '</span><span class="vb">+</span>'
         + '<span class="pp">' + ppIcon + '</span>'
         + '</div></div>';
-    // tap targets: vol−, vol+, play/pause (computed from the ctl layout, right-aligned)
+    // tap targets: vol−, vol+, play/pause — right-anchored ctl row [vb−][vol][vb+][pp], gap g
     var pad = 14, ppW = 40, vbW = 34, volW = 34, g = 8;
-    var ppX = x + w - pad - ppW;
-    var volPX = ppX - g - vbW;          // vol +
-    var volNX = volPX - volW - vbW;     // vol −
+    var ppX = x + w - pad - ppW;            // play/pause
+    var volPX = ppX - g - vbW;              // vol +
+    var volNX = volPX - g - volW - g - vbW; // vol − (two gaps + the volume readout between)
     var cy = y + (h - 40) / 2;
     var targets = [
         rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: ip + ':vol:down', x: volNX, y: cy, w: vbW, h: 40 }),
