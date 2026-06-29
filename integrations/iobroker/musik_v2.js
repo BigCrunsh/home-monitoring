@@ -158,7 +158,9 @@ function refresh() {
 
 // command helper: turn musik_cmd into jishi HTTP calls
 on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
-    var v = obj && obj.state ? String(obj.state.val || '') : '';
+    // overlays alternate value/value+space so every tap is a state change (the i-vis-universal
+    // Switch won't re-write an identical value) — trim the marker back off here.
+    var v = (obj && obj.state ? String(obj.state.val || '') : '').trim();
     if (!v) return;
     if (v === 'group:alle') {
         var d = 0; ROOMS.forEach(function (r) { if (r !== COORD) { (function (rr, dd) { setTimeout(function () { jget('/' + rr + '/join/' + COORD); }, dd); })(r, d); d += 500; } });
