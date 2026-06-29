@@ -1,7 +1,18 @@
-// ioBroker JavaScript: Musik (Sonos) tab on the .mv2 design system.
-// 8 room cards (cover + now-playing + play/pause + volume) and preset group buttons.
-// HTML/CSS is display-only → native i-vis-universal overlays drive the taps (positions logged as
-// MUSIK_LAYOUT). Relative actions (volume ±, grouping) go through the javascript.0.musik_cmd helper.
+// ioBroker JavaScript: Musik (Sonos) tab — driven by the Sonos HTTP API (jishi,
+// node-sonos-http-api on localhost:5005), because the native iobroker.sonos adapter can't group
+// this (S2) system (HTTP 500). jishi gives correct live room names, state, and working grouping.
+//
+// 8 room cards (now-playing + play/pause + volume ±) + preset group buttons (Alle/Wohnen/Einzeln).
+// HTML/CSS is display-only → native i-vis-universal overlays write to javascript.0.musik_cmd; this
+// script polls /zones for state and turns commands into jishi HTTP calls.
+
+var http = require('http');
+var API = { host: '127.0.0.1', port: 5005 };
+function jget(path, cb) {
+    http.get({ host: API.host, port: API.port, path: encodeURI(path), timeout: 4000 }, function (res) {
+        var d = ''; res.on('data', function (c) { d += c; }); res.on('end', function () { cb && cb(null, d); });
+    }).on('error', function (e) { cb && cb(e); }).on('timeout', function () { cb && cb(new Error('timeout')); });
+}
 
 var W = 1170, H = 680, PADX = 4;
 
@@ -21,13 +32,11 @@ var CSS = `
 .mv2 .wrap{position:relative; width:${W}px; height:${H}px}
 .mv2 .seccard{position:absolute; background:var(--surface); border:1px solid var(--border); border-radius:var(--r2)}
 .mv2 .card-h{position:absolute; font-size:14px; font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase}
-/* preset group buttons */
 .mv2 .gbtn{position:absolute; background:var(--bg); border:1px solid var(--border); border-radius:var(--r3); display:flex; align-items:center; justify-content:center; gap:8px; font-size:16px; font-weight:600}
-.mv2 .gbtn .gi{display:flex}
-/* room card */
 .mv2 .room{position:absolute; background:var(--bg); border:1px solid var(--border); border-radius:var(--r3); padding:12px 14px; display:flex; align-items:center; gap:12px; overflow:hidden}
 .mv2 .room.playing{border-color:rgba(181,251,91,.4)}
-.mv2 .room .cover{width:58px; height:58px; border-radius:8px; background:var(--inset); flex:none; object-fit:cover}
+.mv2 .room .disc{width:54px; height:54px; border-radius:50%; background:var(--inset); flex:none; display:flex; align-items:center; justify-content:center}
+.mv2 .room.playing .disc{background:var(--green-16)}
 .mv2 .room .mid{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px}
 .mv2 .room .nm{font-size:17px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .room .ti{font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -40,97 +49,74 @@ var CSS = `
 .mv2 .room .vol{font-size:14px; color:var(--text); font-weight:600; width:40px; text-align:center}
 `;
 
-var GREEN = '#b5fb5b', BLUE = '#5080AC', LBL = '#8A8A8A', TEXT = '#CCCCCC', MUT = '#8A8A8A';
-var SROOT = 'sonos.0.root.';
-// [label, ip-key, coordinator-name (object common.name) for grouping]
-var ROOMS = [
-    ['Fernsehzimmer', '192_168_178_25', 'Fernsehzimmer'],
-    ['Küche', '192_168_178_28', 'Kueche'],
-    ['Wohnzimmer', '192_168_178_29', 'Wohnzimmer'],
-    ['Sauna', '192_168_178_30', 'Sauna'],
-    ['Bad', '192_168_178_41', 'Bad'],
-    ['Kinderzimmer', '192_168_178_42', 'Kinderzimmer'],
-    ['Studio', '192_168_178_43', 'Studio'],
-    ['Move', '192_168_178_64', 'Move']
-];
-var COORD = 'Wohnzimmer';                        // group coordinator (Sonos player name)
-var COORD_IP = '192_168_178_29';                 // Wohnzimmer ip-key (write groupings here)
-var WOHNEN = ['Kueche', 'Fernsehzimmer'];        // joined to COORD for the "Wohnen" preset
-var VOL_STEP = 1;
+var GREEN = '#b5fb5b', BLUE = '#5080AC', LBL = '#8A8A8A';
+// live Sonos room names (from jishi /zones), fixed order for a stable layout
+var ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zimmer', 'Carlottas Zimmer', 'Studio'];
+var COORD = 'Wohnzimmer';                         // preset group coordinator
+var WOHNEN = ['Küche', 'Fernsehzimmer'];          // joined to COORD for "Wohnen"
+var ZONES = {};                                   // roomName -> {vol, play, title, artist, coord}
 
-function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
-function sStr(id) { var s = getState(id); return (s && s.val != null) ? String(s.val) : null; }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function rnd(o) { return { kind: o.kind, oid: o.oid, value: o.value, x: Math.round(o.x), y: Math.round(o.y), w: Math.round(o.w), h: Math.round(o.h) }; }
 
 function icoPlay(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 4 L19 12 L7 20 Z" fill="' + c + '"/></svg>'; }
 function icoPause(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="' + c + '"/><rect x="14" y="4" width="4" height="16" rx="1" fill="' + c + '"/></svg>'; }
-function icoSpeaker(c) { return '<svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="15" r="3.4"/><circle cx="12" cy="6.5" r="1"/></g></svg>'; }
+function icoSpeaker(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="15" r="3.4"/><circle cx="12" cy="6.5" r="1"/></g></svg>'; }
 function icoStop(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
 function icoLink(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round"><path d="M9 12 h6"/><path d="M8 8 H6 a4 4 0 0 0 0 8 h2"/><path d="M16 8 h2 a4 4 0 0 1 0 8 h-2"/></g></svg>'; }
 
-function roomCard(it, x, y, w, h) {
-    var ip = it[1], P = SROOT + ip + '.';
-    var ss = getState(P + 'state_simple'); var playing = !!(ss && ss.val);  // truth (state can be stale)
-    var st = sStr(P + 'state');
-    var vol = sNum(P + 'volume');
-    var title = sStr(P + 'current_title') || sStr(P + 'current_station');
-    var artist = sStr(P + 'current_artist');
-    var coord = sStr(P + 'coordinator');           // an ip-key (e.g. 192_168_178_29)
-    var grouped = coord && coord !== ip;           // grouped when the coordinator isn't itself
-    var coordName = grouped ? (ipName(coord) || coord) : null;
-    var cover = '/sonos/coverImage/' + ip + '.png';
+function roomCard(room, x, y, w, h) {
+    var z = ZONES[room] || {};
+    var playing = !!z.play;
+    var vol = (typeof z.vol === 'number') ? z.vol : null;
+    var grouped = z.coord && z.coord !== room;
     var ppIcon = playing ? icoPause(GREEN) : icoPlay(LBL);
     var html = '<div class="room' + (playing ? ' playing' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px">'
-        + '<img class="cover" src="' + cover + '" alt=""/>'
-        + '<div class="mid"><div class="nm">' + esc(it[0]) + '</div>'
+        + '<div class="disc">' + icoSpeaker(playing ? GREEN : LBL) + '</div>'
+        + '<div class="mid"><div class="nm">' + esc(room) + '</div>'
         + (playing
-            ? '<div class="ti">' + clip(title, 34) + '</div><div class="ar">' + clip(artist, 34) + '</div>'
-            : '<div class="ar">' + (st === 'stop' ? 'gestoppt' : 'pausiert') + '</div>')
-        + (grouped ? '<div class="grp">↪ ' + esc(coordName) + '</div>' : '')
+            ? '<div class="ti">' + clip(z.title, 36) + '</div><div class="ar">' + clip(z.artist, 36) + '</div>'
+            : '<div class="ar">' + (z.coord ? (z.stopped ? 'gestoppt' : 'pausiert') : '–') + '</div>')
+        + (grouped ? '<div class="grp">↪ ' + esc(z.coord) + '</div>' : '')
         + '</div>'
         + '<div class="ctl">'
-        + '<span class="vb">–</span><span class="vol">' + (vol != null ? Math.round(vol) : '–') + '</span><span class="vb">+</span>'
+        + '<span class="vb">–</span><span class="vol">' + (vol != null ? vol : '–') + '</span><span class="vb">+</span>'
         + '<span class="pp">' + ppIcon + '</span>'
         + '</div></div>';
-    // tap targets: vol−, vol+, play/pause — right-anchored ctl row [vb−][vol][vb+][pp], gap g
     var pad = 14, ppW = 48, vbW = 42, volW = 40, g = 8, th = 48;
-    var ppX = x + w - pad - ppW;            // play/pause
-    var volPX = ppX - g - vbW;              // vol +
-    var volNX = volPX - g - volW - g - vbW; // vol − (two gaps + the volume readout between)
+    var ppX = x + w - pad - ppW;
+    var volPX = ppX - g - vbW;
+    var volNX = volPX - g - volW - g - vbW;
     var cy = y + (h - th) / 2;
     var targets = [
-        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: ip + ':vol:down', x: volNX, y: cy, w: vbW, h: th }),
-        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: ip + ':vol:up', x: volPX, y: cy, w: vbW, h: th }),
-        rnd({ kind: 'toggle', oid: P + 'state_simple', x: ppX, y: cy, w: ppW, h: th })
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':vol:down', x: volNX, y: cy, w: vbW, h: th }),
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':vol:up', x: volPX, y: cy, w: vbW, h: th }),
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':playpause', x: ppX, y: cy, w: ppW, h: th })
     ];
     return { html: html, targets: targets };
 }
 
 function build() {
     var html = '', targets = [];
-    // 1) Gruppen preset row
-    var gTop = 4, gH = 84, gHeadY = gTop + 12;
+    var gTop = 4, gH = 84;
     html += '<div class="seccard" style="left:' + PADX + 'px;top:' + gTop + 'px;width:' + (W - 2 * PADX) + 'px;height:' + gH + 'px"></div>'
-        + '<div class="card-h" style="left:' + (PADX + 14) + 'px;top:' + gHeadY + 'px">Gruppen</div>';
+        + '<div class="card-h" style="left:' + (PADX + 14) + 'px;top:' + (gTop + 12) + 'px">Gruppen</div>';
     var presets = [['Alle', 'group:alle', icoLink(GREEN)], ['Wohnen', 'group:wohnen', icoLink(BLUE)], ['Einzeln', 'group:einzeln', icoStop(LBL)]];
     var pbY = gTop + 36, pbH = 38, pbGap = 10, pbW = (W - 2 * PADX - 28 - (presets.length - 1) * pbGap) / presets.length, pbX0 = PADX + 14;
     presets.forEach(function (p, i) {
         var px = pbX0 + i * (pbW + pbGap);
-        html += '<div class="gbtn" style="left:' + px + 'px;top:' + pbY + 'px;width:' + pbW + 'px;height:' + pbH + 'px"><span class="gi">' + p[2] + '</span>' + p[0] + '</div>';
+        html += '<div class="gbtn" style="left:' + px + 'px;top:' + pbY + 'px;width:' + pbW + 'px;height:' + pbH + 'px"><span>' + p[2] + '</span>' + p[0] + '</div>';
         targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: p[1], x: px, y: pbY, w: pbW, h: pbH }));
     });
 
-    // 2) room cards: 2 cols x 4 rows
     var top = gTop + gH + 10, cols = 2, gap = 10;
     var cw = (W - 2 * PADX - (cols - 1) * gap) / cols;
     var ch = Math.floor((H - top - 4 - 3 * gap) / 4);
-    ROOMS.forEach(function (it, i) {
+    ROOMS.forEach(function (room, i) {
         var c = i % cols, r = Math.floor(i / cols);
         var x = PADX + c * (cw + gap), y = top + r * (ch + gap);
-        var res = roomCard(it, x, y, cw, ch);
+        var res = roomCard(room, x, y, cw, ch);
         html += res.html; res.targets.forEach(function (t) { targets.push(t); });
     });
 
@@ -143,45 +129,56 @@ function build() {
 
 function publish() { setState('musik_grid', build(), true); }
 createState('javascript.0.musik_grid', '', { type: 'string', role: 'html', desc: 'Musik (Sonos) grid' });
-createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (vol/group)' });
+createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (jishi)' });
 
-// command helper: volume ± and preset grouping
-function ipName(ip) { for (var i = 0; i < ROOMS.length; i++) { if (ROOMS[i][1] === ip) return ROOMS[i][2]; } return null; }
+// poll jishi /zones → ZONES cache → render
+function refresh() {
+    jget('/zones', function (err, body) {
+        if (err) return;
+        try {
+            var z = JSON.parse(body), map = {};
+            z.forEach(function (g) {
+                var coord = g.coordinator && g.coordinator.roomName;
+                var ct = g.coordinator && g.coordinator.state && g.coordinator.state.currentTrack;
+                (g.members || []).forEach(function (m) {
+                    var st = m.state || (m.roomName === coord ? g.coordinator.state : null) || {};
+                    var t = st.currentTrack || ct || {};
+                    map[m.roomName] = {
+                        vol: st.volume, play: st.playbackState === 'PLAYING',
+                        stopped: st.playbackState === 'STOPPED',
+                        title: t.title || t.stationName, artist: t.artist, coord: coord
+                    };
+                });
+            });
+            ZONES = map;
+        } catch (e) { /* keep last */ }
+        publish();
+    });
+}
+
+// command helper: turn musik_cmd into jishi HTTP calls
 on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     var v = obj && obj.state ? String(obj.state.val || '') : '';
     if (!v) return;
-    var m = v.match(/^(\d+_\d+_\d+_\d+):vol:(up|down)$/);
-    if (m) {
-        var vid = SROOT + m[1] + '.volume';
-        var cur = sNum(vid); if (cur == null) cur = 30;
-        setState(vid, clamp(cur + (m[2] === 'up' ? VOL_STEP : -VOL_STEP), 0, 100));
-        return;
-    }
-    // grouping: write the MEMBER's name to the COORDINATOR's add_to_group / remove_from_group
-    // (addToGroup(state.val, player) → player=the one written to becomes coordinator). Stagger the
-    // writes so the Sonos API isn't hammered on the same state.
-    function gAdd(name, d) { setTimeout(function () { setState(SROOT + COORD_IP + '.add_to_group', name); }, d); }
-    function gRem(name, d) { setTimeout(function () { setState(SROOT + COORD_IP + '.remove_from_group', name); }, d); }
-    var d = 0;
     if (v === 'group:alle') {
-        ROOMS.forEach(function (r) { if (r[2] !== COORD) { gAdd(r[2], d); d += 400; } });
+        var d = 0; ROOMS.forEach(function (r) { if (r !== COORD) { (function (rr, dd) { setTimeout(function () { jget('/' + rr + '/join/' + COORD); }, dd); })(r, d); d += 500; } });
     } else if (v === 'group:wohnen') {
-        ROOMS.forEach(function (r) {
-            if (r[2] === COORD) return;
-            if (WOHNEN.indexOf(r[2]) >= 0) gAdd(r[2], d); else gRem(r[2], d);
-            d += 400;
+        var d2 = 0; ROOMS.forEach(function (r) {
+            if (r === COORD) return;
+            var path = (WOHNEN.indexOf(r) >= 0) ? '/' + r + '/join/' + COORD : '/' + r + '/leave';
+            (function (p, dd) { setTimeout(function () { jget(p); }, dd); })(path, d2); d2 += 500;
         });
     } else if (v === 'group:einzeln') {
-        ROOMS.forEach(function (r) { if (r[2] !== COORD) { gRem(r[2], d); d += 400; } });
+        var d3 = 0; ROOMS.forEach(function (r) { (function (rr, dd) { setTimeout(function () { jget('/' + rr + '/leave'); }, dd); })(r, d3); d3 += 400; });
+    } else {
+        var parts = v.split(':');           // "<room>:playpause" | "<room>:vol:up|down"
+        var room = parts[0];
+        if (parts[1] === 'playpause') jget('/' + room + '/playpause');
+        else if (parts[1] === 'vol') jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+1' : '-1'));
     }
+    setTimeout(refresh, 900);               // reflect the change quickly
 });
 
-// re-render on playback/volume/group changes
-ROOMS.forEach(function (r) {
-    ['state', 'volume', 'current_title', 'current_artist', 'coordinator'].forEach(function (s) {
-        on({ id: SROOT + r[1] + '.' + s, change: 'ne' }, publish);
-    });
-});
-setTimeout(publish, 2000);
-schedule('*/2 * * * *', publish);
-console.log('[Musik v2] initialized');
+setTimeout(refresh, 2000);
+setInterval(refresh, 4000);                 // jishi has no push; poll
+console.log('[Musik v2] initialized (jishi)');
