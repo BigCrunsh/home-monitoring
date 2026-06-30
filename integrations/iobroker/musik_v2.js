@@ -162,27 +162,33 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     // Switch won't re-write an identical value) — trim the marker back off here.
     var v = (obj && obj.state ? String(obj.state.val || '') : '').trim();
     if (!v) return;
-    if (v === 'group:alle') {
-        var d = 0; ROOMS.forEach(function (r) { if (r !== COORD) { (function (rr, dd) { setTimeout(function () { jget('/' + rr + '/join/' + COORD); }, dd); })(r, d); d += 500; } });
-    } else if (v === 'group:wohnen') {
-        var d2 = 0; ROOMS.forEach(function (r) {
-            if (r === COORD) return;
-            var path = (WOHNEN.indexOf(r) >= 0) ? '/' + r + '/join/' + COORD : '/' + r + '/leave';
-            (function (p, dd) { setTimeout(function () { jget(p); }, dd); })(path, d2); d2 += 500;
+    function zof(r) { return ZONES[r] || (ZONES[r] = {}); }
+    if (v === 'group:alle' || v === 'group:wohnen' || v === 'group:einzeln') {
+        // optimistic membership so the cards update instantly, then fire the staggered joins/leaves
+        ROOMS.forEach(function (r) {
+            zof(r).coord = (v === 'group:einzeln') ? r
+                : (v === 'group:wohnen' && r !== COORD && WOHNEN.indexOf(r) < 0) ? r : COORD;
         });
-    } else if (v === 'group:einzeln') {
-        var d3 = 0; ROOMS.forEach(function (r) { (function (rr, dd) { setTimeout(function () { jget('/' + rr + '/leave'); }, dd); })(r, d3); d3 += 400; });
-    } else {
-        var parts = v.split(':');           // "<room>:playpause" | "<room>:vol:up|down"
-        var room = parts[0];
-        var z = ZONES[room] || (ZONES[room] = {});
-        if (parts[1] === 'playpause') {
-            z.play = !z.play; publish();    // optimistic: flip the icon now, jishi confirms on next poll
-            jget('/' + room + '/playpause');
-        } else if (parts[1] === 'vol') {
-            if (typeof z.vol === 'number') { z.vol = Math.max(0, Math.min(100, z.vol + (parts[2] === 'up' ? 1 : -1))); publish(); }
-            jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+1' : '-1'));
-        }
+        publish();
+        var d = 0;
+        ROOMS.forEach(function (r) {
+            if (r === COORD) return;
+            var join = (v === 'group:alle') || (v === 'group:wohnen' && WOHNEN.indexOf(r) >= 0);
+            var path = join ? '/' + r + '/join/' + COORD : '/' + r + '/leave';
+            (function (p, dd) { setTimeout(function () { jget(p); }, dd); })(path, d); d += 500;
+        });
+        setTimeout(refresh, d + 1500);      // reconcile after the staggered group calls finish
+        return;
+    }
+    var parts = v.split(':');               // "<room>:playpause" | "<room>:vol:up|down"
+    var room = parts[0], z = zof(room);
+    if (parts[1] === 'playpause') {
+        var willPlay = !z.play;
+        z.play = willPlay; publish();       // optimistic
+        jget('/' + room + '/' + (willPlay ? 'play' : 'pause'));  // explicit, not toggle (stopped rooms wouldn't start)
+    } else if (parts[1] === 'vol') {
+        if (typeof z.vol === 'number') { z.vol = Math.max(0, Math.min(100, z.vol + (parts[2] === 'up' ? 1 : -1))); publish(); }
+        jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+1' : '-1'));
     }
     setTimeout(refresh, 900);               // reconcile with jishi shortly after
 });

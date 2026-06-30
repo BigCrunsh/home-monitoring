@@ -47,11 +47,16 @@ Listens on **localhost:5005**. Verify: `curl -s http://localhost:5005/zones`.
 now-playing, group membership) and renders the 8 room cards. Native tap-overlays write to
 `javascript.0.musik_cmd`; the script turns commands into jishi calls:
 
-- `<room>:playpause` → `/<room>/playpause`
+- `<room>:playpause` → `/<room>/play` or `/<room>/pause` (explicit, chosen from the known state —
+  the `/playpause` toggle does **not** reliably start a *stopped* room, which made play "revert")
 - `<room>:vol:up|down` → `/<room>/volume/+1|-1`
 - `group:alle` → each room `/<room>/join/Wohnzimmer`
 - `group:wohnen` → Küche+Fernsehzimmer join Wohnzimmer, others `/leave`
 - `group:einzeln` → each room `/<room>/leave`
+
+Controls are **optimistic**: the script updates its local `ZONES` cache and re-publishes the grid
+immediately (play icon flip, volume step, group membership `↪ coordinator`), then reconciles against
+`/zones` on the next poll. This gives instant on-tap feedback instead of waiting for the 4 s poll.
 
 Room names are the live Sonos names (URL-encoded by the script): Fernsehzimmer, Küche, Wohnzimmer,
 Sauna, Bad, Claras Zimmer, Carlottas Zimmer, Studio. Adjust the `Wohnen` preset / coordinator in
