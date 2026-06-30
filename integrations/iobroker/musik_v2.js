@@ -44,6 +44,7 @@ var CSS = `
 .mv2 .room .grp{font-size:11px; color:var(--blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .room .ctl{flex:none; display:flex; align-items:center; gap:8px}
 .mv2 .room .pp{width:48px; height:48px; border-radius:50%; background:var(--inset); display:flex; align-items:center; justify-content:center}
+.mv2 .room .pp.ghost{background:transparent}
 .mv2 .room.playing .pp{background:var(--green-16)}
 .mv2 .room .vb{width:42px; height:42px; border-radius:10px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; color:var(--text)}
 .mv2 .room .vol{font-size:14px; color:var(--text); font-weight:600; width:40px; text-align:center}
@@ -55,6 +56,9 @@ var ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zi
 var COORD = 'Wohnzimmer';                         // preset group coordinator
 var WOHNEN = ['Küche', 'Fernsehzimmer'];          // joined to COORD for "Wohnen"
 var ZONES = {};                                   // roomName -> {vol, play, title, artist, coord}
+// TV-room soundbars reject standalone transport (play/pause/seek all HTTP 500) — show volume + group
+// only, no play button. Seeded with the known one; auto-learned if any other room rejects play too.
+var TV = { 'Fernsehzimmer': true };
 
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
@@ -68,21 +72,24 @@ function icoLink(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g
 
 function roomCard(room, x, y, w, h) {
     var z = ZONES[room] || {};
+    var isTV = !!TV[room];                         // TV soundbar: no standalone play, volume + group only
     var playing = !!z.play;
     var vol = (typeof z.vol === 'number') ? z.vol : null;
     var grouped = z.coord && z.coord !== room;
-    var ppIcon = playing ? icoPause(GREEN) : icoPlay(LBL);
+    var idle = isTV ? 'TV' : (z.coord ? (z.stopped ? 'gestoppt' : 'pausiert') : '–');
     var html = '<div class="room' + (playing ? ' playing' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px">'
         + '<div class="disc">' + icoSpeaker(playing ? GREEN : LBL) + '</div>'
         + '<div class="mid"><div class="nm">' + esc(room) + '</div>'
         + (playing
             ? '<div class="ti">' + clip(z.title, 36) + '</div><div class="ar">' + clip(z.artist, 36) + '</div>'
-            : '<div class="ar">' + (z.coord ? (z.stopped ? 'gestoppt' : 'pausiert') : '–') + '</div>')
+            : '<div class="ar">' + idle + '</div>')
         + (grouped ? '<div class="grp">↪ ' + esc(z.coord) + '</div>' : '')
         + '</div>'
         + '<div class="ctl">'
         + '<span class="vb">–</span><span class="vol">' + (vol != null ? vol : '–') + '</span><span class="vb">+</span>'
-        + '<span class="pp">' + ppIcon + '</span>'
+        // TV rooms keep an invisible play slot so the volume buttons stay aligned with their existing
+        // overlays; the play tap is simply ignored by the command handler (no standalone transport)
+        + '<span class="pp' + (isTV ? ' ghost' : '') + '">' + (isTV ? '' : (playing ? icoPause(GREEN) : icoPlay(LBL))) + '</span>'
         + '</div></div>';
     var pad = 14, ppW = 48, vbW = 42, volW = 40, g = 8, th = 48;
     var ppX = x + w - pad - ppW;
@@ -136,7 +143,7 @@ function refresh() {
     jget('/zones', function (err, body) {
         if (err) return;
         try {
-            var z = JSON.parse(body), map = {};
+            var now = Date.now(), z = JSON.parse(body), map = {};
             z.forEach(function (g) {
                 var coord = g.coordinator && g.coordinator.roomName;
                 var ct = g.coordinator && g.coordinator.state && g.coordinator.state.currentTrack;
@@ -149,6 +156,18 @@ function refresh() {
                         title: t.title || t.stationName, artist: t.artist, coord: coord
                     };
                 });
+            });
+            // while a tap is still settling, keep the optimistic value — a mid-transition poll
+            // would otherwise clobber it (the playing→paused→playing flicker the user saw)
+            Object.keys(ZONES).forEach(function (r) {
+                var old = ZONES[r];
+                if (old && old.holdUntil > now && map[r]) {
+                    map[r].play = old.play;
+                    map[r].stopped = old.play ? false : map[r].stopped;
+                    if (typeof old.vol === 'number') map[r].vol = old.vol;
+                    map[r].coord = old.coord;       // hold membership through the staggered group joins
+                    map[r].holdUntil = old.holdUntil;
+                }
             });
             ZONES = map;
         } catch (e) { /* keep last */ }
@@ -163,34 +182,46 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     var v = (obj && obj.state ? String(obj.state.val || '') : '').trim();
     if (!v) return;
     function zof(r) { return ZONES[r] || (ZONES[r] = {}); }
+    var HOLD = 3500;                        // ms to protect an optimistic value from a stale poll
     if (v === 'group:alle' || v === 'group:wohnen' || v === 'group:einzeln') {
         // optimistic membership so the cards update instantly, then fire the staggered joins/leaves
+        var d = 0; ROOMS.forEach(function (r) { if (r !== COORD) d += 500; });
+        var groupHold = Date.now() + d + HOLD;
         ROOMS.forEach(function (r) {
-            zof(r).coord = (v === 'group:einzeln') ? r
+            var zz = zof(r);
+            zz.coord = (v === 'group:einzeln') ? r
                 : (v === 'group:wohnen' && r !== COORD && WOHNEN.indexOf(r) < 0) ? r : COORD;
+            zz.holdUntil = groupHold;       // hold membership through the staggered calls + settle
         });
         publish();
-        var d = 0;
+        var dd2 = 0;
         ROOMS.forEach(function (r) {
             if (r === COORD) return;
             var join = (v === 'group:alle') || (v === 'group:wohnen' && WOHNEN.indexOf(r) >= 0);
             var path = join ? '/' + r + '/join/' + COORD : '/' + r + '/leave';
-            (function (p, dd) { setTimeout(function () { jget(p); }, dd); })(path, d); d += 500;
+            (function (p, ddd) { setTimeout(function () { jget(p); }, ddd); })(path, dd2); dd2 += 500;
         });
-        setTimeout(refresh, d + 1500);      // reconcile after the staggered group calls finish
+        setTimeout(refresh, d + HOLD + 300); // reconcile just after the hold expires
         return;
     }
     var parts = v.split(':');               // "<room>:playpause" | "<room>:vol:up|down"
     var room = parts[0], z = zof(room);
     if (parts[1] === 'playpause') {
-        var willPlay = !z.play;
-        z.play = willPlay; publish();       // optimistic
-        jget('/' + room + '/' + (willPlay ? 'play' : 'pause'));  // explicit, not toggle (stopped rooms wouldn't start)
+        if (TV[room]) return;                       // TV soundbar has no standalone play control
+        var prev = !!z.play;
+        z.play = !prev; z.holdUntil = Date.now() + HOLD; publish();     // optimistic, protected
+        jget('/' + room + '/' + (z.play ? 'play' : 'pause'), function (err, body) {  // explicit, not toggle
+            if (err || (body && body.indexOf('"status":"error"') >= 0)) {
+                if (body && body.indexOf('AVTransport') >= 0) TV[room] = true;  // learn: soundbar can't be driven standalone
+                z.play = prev; z.holdUntil = 0; publish();             // rejected → honest revert (+ drop play button)
+            }
+        });
     } else if (parts[1] === 'vol') {
-        if (typeof z.vol === 'number') { z.vol = Math.max(0, Math.min(100, z.vol + (parts[2] === 'up' ? 1 : -1))); publish(); }
+        if (typeof z.vol === 'number') { z.vol = Math.max(0, Math.min(100, z.vol + (parts[2] === 'up' ? 1 : -1))); }
+        z.holdUntil = Date.now() + HOLD; publish();
         jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+1' : '-1'));
     }
-    setTimeout(refresh, 900);               // reconcile with jishi shortly after
+    setTimeout(refresh, HOLD + 300);        // reconcile just after the hold expires (state has settled)
 });
 
 setTimeout(refresh, 2000);

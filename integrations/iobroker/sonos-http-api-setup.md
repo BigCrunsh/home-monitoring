@@ -57,6 +57,15 @@ now-playing, group membership) and renders the 8 room cards. Native tap-overlays
 Controls are **optimistic**: the script updates its local `ZONES` cache and re-publishes the grid
 immediately (play icon flip, volume step, group membership `↪ coordinator`), then reconciles against
 `/zones` on the next poll. This gives instant on-tap feedback instead of waiting for the 4 s poll.
+An optimistic value is **held ~3.5 s** so a mid-transition poll can't clobber it (that caused a
+playing→paused→playing flicker). If a play/pause call is **rejected** (jishi returns
+`{"status":"error"}`), the optimistic flip is reverted — no fake "playing".
+
+**TV-room soundbars** (e.g. *Fernsehzimmer*) reject *every* standalone transport command (play,
+pause, seek, favorite all return HTTP 500 on `/MediaRenderer/AVTransport/Control`) — they only play
+TV audio or follow a group coordinator. Such rooms render **volume + grouping only, no play button**
+(labelled "TV"). `musik_v2.js` seeds the known one in `TV = {...}` and **auto-learns** any other room
+whose play is rejected with an `AVTransport` error.
 
 Room names are the live Sonos names (URL-encoded by the script): Fernsehzimmer, Küche, Wohnzimmer,
 Sauna, Bad, Claras Zimmer, Carlottas Zimmer, Studio. Adjust the `Wohnen` preset / coordinator in
