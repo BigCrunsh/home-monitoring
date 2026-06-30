@@ -175,10 +175,16 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     } else {
         var parts = v.split(':');           // "<room>:playpause" | "<room>:vol:up|down"
         var room = parts[0];
-        if (parts[1] === 'playpause') jget('/' + room + '/playpause');
-        else if (parts[1] === 'vol') jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+1' : '-1'));
+        var z = ZONES[room] || (ZONES[room] = {});
+        if (parts[1] === 'playpause') {
+            z.play = !z.play; publish();    // optimistic: flip the icon now, jishi confirms on next poll
+            jget('/' + room + '/playpause');
+        } else if (parts[1] === 'vol') {
+            if (typeof z.vol === 'number') { z.vol = Math.max(0, Math.min(100, z.vol + (parts[2] === 'up' ? 1 : -1))); publish(); }
+            jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+1' : '-1'));
+        }
     }
-    setTimeout(refresh, 900);               // reflect the change quickly
+    setTimeout(refresh, 900);               // reconcile with jishi shortly after
 });
 
 setTimeout(refresh, 2000);
