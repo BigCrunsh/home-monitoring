@@ -161,6 +161,7 @@ function attention(col) { return col !== GREEN && col !== LBL; }
 
 function icoThermo(col) { return '<svg width="16" height="22" viewBox="0 0 16 22"><rect x="6" y="1" width="4" height="13" rx="2" fill="' + col + '"/><circle cx="8" cy="17" r="4.5" fill="' + col + '"/></svg>'; }
 function icoDrop(col, sz) { sz = sz || 14; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><path d="M12 2.5 C12 2.5 5.5 10.5 5.5 15.2 a6.5 6.5 0 0 0 13 0 C18.5 10.5 12 2.5 12 2.5 Z" fill="' + col + '"/></svg>'; }
+function icoGauge(sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><g fill="none" stroke="#8A8A8A" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="7.5" x2="12" y2="9.2"/><line x1="16.5" y1="12" x2="14.8" y2="12"/><line x1="7.5" y1="12" x2="9.2" y2="12"/><line x1="12" y1="12" x2="15.4" y2="9.2"/></g><circle cx="12" cy="12" r="1.6" fill="#8A8A8A"/></svg>'; }
 function icoBatt(pct, col) {
     var w = (pct == null ? 0 : clamp01(pct / 100) * 10.0).toFixed(1);
     return '<svg width="17" height="11" viewBox="0 0 17 11"><rect x="1" y="2" width="12" height="7" rx="1.4" fill="none" stroke="' + col + '" stroke-width="1.2"/>'
@@ -236,11 +237,14 @@ function buildHero() {
         + '<div class="h-wx">' + wxImg(wsym) + '</div>'
         + (osp && osp.length > 1 ? '<div class="h-spark"><span class="lab">24 h</span>' + sparkline(osp, 240, 30, otc) + '</div>' : '')
         + '</div>';
-    // RIGHT: rain · gefühlt (dewpoint) · pressure direction
+    // RIGHT: overview-style metric lines — humidity (drop) + pressure (gauge, mbar) mirror the
+    // Übersicht hero; rain, the pressure-trend word and Taupunkt are the Klima-only extras kept here.
+    // "Taupunkt" is the Netatmo DewPoint shown verbatim — NOT a computed feels-like temperature.
     h += '<div class="h-right">'
-        + '<div class="h-line">' + icoDrop(rain != null && rain > 0 ? BLUE : LBL, 16) + 'Regen heute <b>' + (rain != null ? comma(rain, 1) : '0,0') + '</b><span class="u">mm</span></div>'
-        + '<div class="h-line">gefühlt <b>' + (dew != null ? Math.round(dew) : '–') + '</b><span class="u">°C</span> · ' + (oh != null ? Math.round(oh) : '–') + '<span class="u">%</span></div>'
-        + '<div class="h-line">Druck <b>' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">hPa</span> <span style="color:' + pd[1] + '">' + pd[0] + '</span></div>'
+        + '<div class="h-line">' + icoDrop(rain != null && rain > 0 ? BLUE : LBL, 16) + 'Regen <b>' + (rain != null ? comma(rain, 1) : '0,0') + '</b><span class="u">mm</span></div>'
+        + '<div class="h-line">' + icoDrop(BLUE, 16) + 'Luftfeuchte <b>' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
+        + '<div class="h-line">' + icoGauge(16) + 'Druck <b>' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar</span> <span style="color:' + pd[1] + '">' + pd[0] + '</span></div>'
+        + '<div class="h-line">Taupunkt <b>' + (dew != null ? Math.round(dew) : '–') + '</b><span class="u">°C</span></div>'
         + '</div>';
     return h + '</div>';
 }
