@@ -75,7 +75,7 @@ var CSS_BASE = `
 
 /* 6-TAGE VORHERSAGE */
 .mv2 .fc{flex:1; display:flex; flex-direction:column}
-.mv2 .fcrow{display:grid; grid-template-columns:34px 30px 1fr auto; gap:var(--s2); align-items:center; border-top:1px solid var(--border); padding:var(--s2) 2px}
+.mv2 .fcrow{display:grid; grid-template-columns:34px 30px auto 1fr auto; gap:var(--s2); align-items:center; border-top:1px solid var(--border); padding:var(--s2) 2px}
 .mv2 .fcrow:first-child{border-top:none}
 .mv2 .fcrow.we .dow{color:var(--blue)}
 .mv2 .fcrow .dow{font-size:var(--t-sub); font-weight:600}
@@ -83,9 +83,10 @@ var CSS_BASE = `
 .mv2 .fcrow .cond{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .fcrow .fcbar{position:relative; height:8px; border-radius:4px; background:var(--inset); align-self:center}
 .mv2 .fcrow .fcbar .fill{position:absolute; top:0; height:8px; border-radius:4px; min-width:6px}
-.mv2 .fcrow .mm{font-size:var(--t-label); white-space:nowrap; text-align:right}
-.mv2 .fcrow .mm .mx{color:var(--text); font-weight:600}
-.mv2 .fcrow .mm .mn{color:var(--muted); margin-left:6px}
+/* min sits left of the bar, max right of it — the numbers flank the range they describe.
+   Both carry the comfort colour (min was previously muted-grey on the far right). */
+.mv2 .fcrow .tmin{font-size:var(--t-label); font-weight:600; white-space:nowrap; text-align:right; min-width:22px}
+.mv2 .fcrow .tmax{font-size:var(--t-label); font-weight:600; white-space:nowrap; text-align:left; min-width:22px}
 /* short-term hourly outlook (+1/3/6/12h) above the 6-day rows */
 .mv2 .hourly{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s2); flex:none}
 .mv2 .hcell{background:var(--bg); border-radius:var(--r3); padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:2px}
@@ -365,8 +366,9 @@ function buildForecast() {
         h += '<div class="fcrow' + (weekend ? ' we' : '') + '">'
             + '<div class="dow">' + DAYS_SHORT[x.dow] + '</div>'
             + '<div>' + wxImg(x.sym) + '</div>'
-            + bar
-            + '<div class="mm"><span class="mx" style="color:' + comfortCol(x.mx) + '">' + (x.mx != null ? Math.round(x.mx) : '–') + '°</span><span class="mn">' + (x.mn != null ? Math.round(x.mn) : '–') + '°</span></div>'
+            + '<div class="tmin" style="color:' + comfortCol(x.mn) + '">' + (x.mn != null ? Math.round(x.mn) : '–') + '°</div>'
+            + (bar || '<div class="fcbar"></div>')
+            + '<div class="tmax" style="color:' + comfortCol(x.mx) + '">' + (x.mx != null ? Math.round(x.mx) : '–') + '°</div>'
             + '</div>';
     });
     return h + '</div></div></div>';
