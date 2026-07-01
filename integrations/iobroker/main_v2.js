@@ -104,14 +104,14 @@ var CSS_BASE = `
 
 /* WOCHE */
 .mv2 .woche .days{flex:1; display:flex; flex-direction:column; min-height:0}
-.mv2 .drow{display:grid; grid-template-columns:46px 1fr; gap:var(--s3); align-items:start; border-top:1px solid var(--border); padding:var(--s2) 2px}
+.mv2 .drow{display:grid; grid-template-columns:58px 1fr; gap:var(--s3); align-items:start; border-top:1px solid var(--border); padding:var(--s2) 2px}
 .mv2 .drow:first-child{border-top:none}
 .mv2 .drow.today,.mv2 .drow.we{margin:0 calc(-1 * var(--s2)); padding-left:calc(var(--s2) + 2px); padding-right:calc(var(--s2) + 2px); border-radius:var(--r3); border-top-color:transparent}
 .mv2 .drow.today{background:rgba(241,190,61,.09)}
 .mv2 .drow.we{background:rgba(80,128,172,.12)}
 .mv2 .drow.today .dow,.mv2 .drow.today .dnum{color:var(--amber)}
 .mv2 .drow.we .dow,.mv2 .drow.we .dnum{color:var(--blue)}
-.mv2 .drow .dcell{display:flex; flex-direction:column; line-height:1.05}
+.mv2 .drow .dcell{display:flex; flex-direction:row; align-items:baseline; gap:5px; line-height:1.22}
 .mv2 .drow .dow{font-size:17px; font-weight:600}
 .mv2 .drow .dnum{font-size:13px; color:var(--muted)}
 .mv2 .drow .ev{display:flex; flex-direction:column; gap:3px; min-width:0}
@@ -387,9 +387,11 @@ function buildWoche() {
     // Px-budget fit guard (the card height isn't measurable server-side): estimate each day's height
     // and fill the LAST day partially, so the list fills the card without clipping and with no "+N"
     // clutter. PX_BUDGET ≈ the calendar card body; DAY_PAD = row padding, ROW_PX ≈ one event line.
+    // The date sits inline with the weekday (one-line label), so a 0–1-event day is a single line:
+    // MIN_DAY (empty/1-event cost) ≈ one line, which lets more days fit on a busy week (e.g. Sat survives).
     // COLUMN-SPLIT: PX_BUDGET is hand-synced to the mid widget's Woche row (mw 534 px, 5.5fr of
     // 5.5fr+1fr). Re-tune if the .mv2.mw height or that ratio changes (server-side height isn't measurable).
-    var PX_BUDGET = 416, DAY_PAD = 16, ROW_PX = 26, MIN_DAY = 34, DAY_CAP = 4, used = 0, rows = '';
+    var PX_BUDGET = 416, DAY_PAD = 16, ROW_PX = 24, MIN_DAY = 22, DAY_CAP = 4, used = 0, rows = '';
     for (var i = 0; i < 7; i++) {
         var dd = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i);
         var dow = dd.getDay(), weekend = (dow === 0 || dow === 6), today = (i === 0);
