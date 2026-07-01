@@ -103,7 +103,10 @@ var CSS_BASE = `
 .mv2 .vrow .vs{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; text-align:right}
 .mv2 .vrow .badge{font-size:var(--t-cap); font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap}
 .mv2 .srow{display:grid; grid-template-columns:1fr auto auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
+.mv2 .srow .sinfo{min-width:0}
 .mv2 .srow .sn{font-size:var(--t-label); font-weight:600}
+.mv2 .srow .smeta{display:flex; align-items:center; gap:6px; font-size:var(--t-cap); font-weight:500; color:var(--muted); margin-top:1px}
+.mv2 .srow .smeta .batt{display:flex; align-items:center; gap:3px}
 .mv2 .srow .sv{font-size:var(--t-sub); font-weight:600}
 .mv2 .srow .sv .u{font-size:11px}
 .mv2 .gstale{font-size:var(--t-cap); color:var(--muted); margin-top:auto; padding-top:var(--s2)}
@@ -400,22 +403,29 @@ function buildGarden() {
     SOIL.forEach(function (s) {
         var hum = sNum(s[1] + 'soilHumidity_value'), tmp = sNum(s[1] + 'soilTemperature_value');
         var ts = sStr(s[1] + 'soilHumidity_timestamp');
+        // Battery lives on the sibling COMMON service (…SERVICE_SENSOR_<id>. → …SERVICE_COMMON_<id>.).
+        var batt = sNum(s[1].replace('SERVICE_SENSOR_', 'SERVICE_COMMON_') + 'batteryLevel_value');
         if (ts && (!anyTs || new Date(ts) > new Date(anyTs))) anyTs = ts;
-        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–" + age,
-        // never a false dry-verdict.
+        // Operational line under the name: last-update age + battery — mirrors the room component.
+        var battChip = '';
+        if (batt != null) {
+            var bcol = batt < 20 ? RED : (batt < 30 ? AMBER : LBL);
+            battChip = '<span class="batt" style="color:' + bcol + '">' + icoBatt(batt, bcol) + Math.round(batt) + '%</span>';
+        }
+        var info = '<div class="sinfo"><div class="sn">' + esc(s[0]) + '</div>'
+            + '<div class="smeta"><span>' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</span>' + battChip + '</div></div>';
+        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–", never a false dry-verdict.
         var stale = ageMs(ts) == null || ageMs(ts) > 86400000;
         if (stale) {
-            h += '<div class="srow">'
-                + '<div class="sn">' + esc(s[0]) + '</div>'
+            h += '<div class="srow">' + info
                 + '<div class="sv" style="color:var(--mute)">–</div>'
-                + '<div class="sv" style="color:var(--mute);font-size:var(--t-cap);font-weight:500">' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</div>'
+                + '<div class="sv" style="color:var(--mute)">–</div>'
                 + '</div>';
             return;
         }
         // soil moisture: value-coloured (dry amber / ok green / wet blue)
         var humCol2 = hum == null ? LBL : (hum < 30 ? AMBER : (hum <= 70 ? GREEN : BLUE));
-        h += '<div class="srow">'
-            + '<div class="sn">' + esc(s[0]) + '</div>'
+        h += '<div class="srow">' + info
             + '<div class="sv" style="color:' + humCol2 + '">' + (hum != null ? Math.round(hum) : '–') + '<span class="u">%</span></div>'
             + '<div class="sv" style="color:var(--muted)">' + (tmp != null ? Math.round(tmp) : '–') + '<span class="u">°C</span></div>'
             + '</div>';
