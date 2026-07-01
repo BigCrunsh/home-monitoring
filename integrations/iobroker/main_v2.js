@@ -104,14 +104,14 @@ var CSS_BASE = `
 
 /* WOCHE */
 .mv2 .woche .days{flex:1; display:flex; flex-direction:column; min-height:0}
-.mv2 .drow{display:grid; grid-template-columns:46px 1fr; gap:var(--s3); align-items:start; border-top:1px solid var(--border); padding:var(--s2) 2px}
+.mv2 .drow{display:grid; grid-template-columns:58px 1fr; gap:var(--s3); align-items:start; border-top:1px solid var(--border); padding:var(--s2) 2px}
 .mv2 .drow:first-child{border-top:none}
 .mv2 .drow.today,.mv2 .drow.we{margin:0 calc(-1 * var(--s2)); padding-left:calc(var(--s2) + 2px); padding-right:calc(var(--s2) + 2px); border-radius:var(--r3); border-top-color:transparent}
 .mv2 .drow.today{background:rgba(241,190,61,.09)}
 .mv2 .drow.we{background:rgba(80,128,172,.12)}
 .mv2 .drow.today .dow,.mv2 .drow.today .dnum{color:var(--amber)}
 .mv2 .drow.we .dow,.mv2 .drow.we .dnum{color:var(--blue)}
-.mv2 .drow .dcell{display:flex; flex-direction:column; line-height:1.05}
+.mv2 .drow .dcell{display:flex; flex-direction:row; align-items:baseline; gap:5px; line-height:1.22}
 .mv2 .drow .dow{font-size:17px; font-weight:600}
 .mv2 .drow .dnum{font-size:13px; color:var(--muted)}
 .mv2 .drow .ev{display:flex; flex-direction:column; gap:3px; min-width:0}
@@ -252,7 +252,7 @@ function icoBatt(pct, col) {
         + '<rect x="13.4" y="4" width="1.8" height="3" rx=".6" fill="' + col + '"/>'
         + '<rect x="2.3" y="3.2" width="' + w + '" height="4.6" rx=".7" fill="' + col + '"/></svg>';
 }
-function icoGauge(sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><g fill="none" stroke="#8A8A8A" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="7.5" x2="12" y2="9.2"/><line x1="16.5" y1="12" x2="14.8" y2="12"/><line x1="7.5" y1="12" x2="9.2" y2="12"/><line x1="12" y1="12" x2="15.4" y2="9.2"/></g><circle cx="12" cy="12" r="1.6" fill="#8A8A8A"/></svg>'; }
+function icoGauge(sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><g fill="none" stroke="' + LBL + '" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="7.5" x2="12" y2="9.2"/><line x1="16.5" y1="12" x2="14.8" y2="12"/><line x1="7.5" y1="12" x2="9.2" y2="12"/><line x1="12" y1="12" x2="15.4" y2="9.2"/></g><circle cx="12" cy="12" r="1.6" fill="' + LBL + '"/></svg>'; }
 function icoSunSmall() { return '<svg width="18" height="18" viewBox="0 0 22 22"><g stroke="#F1BE3D" stroke-width="1.5" fill="none" stroke-linecap="round"><circle cx="11" cy="11" r="3.4" fill="#F1BE3D" stroke="none"/><line x1="11" y1="2.5" x2="11" y2="4.6"/><line x1="11" y1="17.4" x2="11" y2="19.5"/><line x1="2.5" y1="11" x2="4.6" y2="11"/><line x1="17.4" y1="11" x2="19.5" y2="11"/><line x1="5" y1="5" x2="6.5" y2="6.5"/><line x1="15.5" y1="15.5" x2="17" y2="17"/><line x1="17" y1="5" x2="15.5" y2="6.5"/><line x1="6.5" y1="15.5" x2="5" y2="17"/></g></svg>'; }
 // small crescent for the moon rise/set row (the big phase emoji is the hero symbol)
 function icoMoonMini(col) { return '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M12.2 2.6 A6.6 6.6 0 1 0 12.8 13.4 A5.2 5.2 0 0 1 12.2 2.6 Z" fill="' + col + '"/></svg>'; }
@@ -387,9 +387,11 @@ function buildWoche() {
     // Px-budget fit guard (the card height isn't measurable server-side): estimate each day's height
     // and fill the LAST day partially, so the list fills the card without clipping and with no "+N"
     // clutter. PX_BUDGET ≈ the calendar card body; DAY_PAD = row padding, ROW_PX ≈ one event line.
+    // The date sits inline with the weekday (one-line label), so a 0–1-event day is a single line:
+    // MIN_DAY (empty/1-event cost) ≈ one line, which lets more days fit on a busy week (e.g. Sat survives).
     // COLUMN-SPLIT: PX_BUDGET is hand-synced to the mid widget's Woche row (mw 534 px, 5.5fr of
     // 5.5fr+1fr). Re-tune if the .mv2.mw height or that ratio changes (server-side height isn't measurable).
-    var PX_BUDGET = 416, DAY_PAD = 16, ROW_PX = 26, MIN_DAY = 34, DAY_CAP = 4, used = 0, rows = '';
+    var PX_BUDGET = 416, DAY_PAD = 16, ROW_PX = 24, MIN_DAY = 22, DAY_CAP = 4, used = 0, rows = '';
     for (var i = 0; i < 7; i++) {
         var dd = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i);
         var dow = dd.getDay(), weekend = (dow === 0 || dow === 6), today = (i === 0);

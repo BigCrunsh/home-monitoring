@@ -75,7 +75,7 @@ var CSS_BASE = `
 
 /* 6-TAGE VORHERSAGE */
 .mv2 .fc{flex:1; display:flex; flex-direction:column}
-.mv2 .fcrow{display:grid; grid-template-columns:34px 30px 1fr auto; gap:var(--s2); align-items:center; border-top:1px solid var(--border); padding:var(--s2) 2px}
+.mv2 .fcrow{display:grid; grid-template-columns:34px 30px auto 1fr auto; gap:var(--s2); align-items:center; border-top:1px solid var(--border); padding:var(--s2) 2px}
 .mv2 .fcrow:first-child{border-top:none}
 .mv2 .fcrow.we .dow{color:var(--blue)}
 .mv2 .fcrow .dow{font-size:var(--t-sub); font-weight:600}
@@ -83,9 +83,10 @@ var CSS_BASE = `
 .mv2 .fcrow .cond{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .fcrow .fcbar{position:relative; height:8px; border-radius:4px; background:var(--inset); align-self:center}
 .mv2 .fcrow .fcbar .fill{position:absolute; top:0; height:8px; border-radius:4px; min-width:6px}
-.mv2 .fcrow .mm{font-size:var(--t-label); white-space:nowrap; text-align:right}
-.mv2 .fcrow .mm .mx{color:var(--text); font-weight:600}
-.mv2 .fcrow .mm .mn{color:var(--muted); margin-left:6px}
+/* min sits left of the bar, max right of it — the numbers flank the range they describe.
+   Both carry the comfort colour (min was previously muted-grey on the far right). */
+.mv2 .fcrow .tmin{font-size:var(--t-label); font-weight:600; white-space:nowrap; text-align:right; min-width:22px}
+.mv2 .fcrow .tmax{font-size:var(--t-label); font-weight:600; white-space:nowrap; text-align:left; min-width:22px}
 /* short-term hourly outlook (+1/3/6/12h) above the 6-day rows */
 .mv2 .hourly{display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s2); flex:none}
 .mv2 .hcell{background:var(--bg); border-radius:var(--r3); padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:2px}
@@ -102,7 +103,10 @@ var CSS_BASE = `
 .mv2 .vrow .vs{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; text-align:right}
 .mv2 .vrow .badge{font-size:var(--t-cap); font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap}
 .mv2 .srow{display:grid; grid-template-columns:1fr auto auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
+.mv2 .srow .sinfo{min-width:0}
 .mv2 .srow .sn{font-size:var(--t-label); font-weight:600}
+.mv2 .srow .smeta{display:flex; align-items:center; gap:6px; font-size:var(--t-cap); font-weight:500; color:var(--muted); margin-top:1px}
+.mv2 .srow .smeta .batt{display:flex; align-items:center; gap:3px}
 .mv2 .srow .sv{font-size:var(--t-sub); font-weight:600}
 .mv2 .srow .sv .u{font-size:11px}
 .mv2 .gstale{font-size:var(--t-cap); color:var(--muted); margin-top:auto; padding-top:var(--s2)}
@@ -161,6 +165,7 @@ function attention(col) { return col !== GREEN && col !== LBL; }
 
 function icoThermo(col) { return '<svg width="16" height="22" viewBox="0 0 16 22"><rect x="6" y="1" width="4" height="13" rx="2" fill="' + col + '"/><circle cx="8" cy="17" r="4.5" fill="' + col + '"/></svg>'; }
 function icoDrop(col, sz) { sz = sz || 14; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><path d="M12 2.5 C12 2.5 5.5 10.5 5.5 15.2 a6.5 6.5 0 0 0 13 0 C18.5 10.5 12 2.5 12 2.5 Z" fill="' + col + '"/></svg>'; }
+function icoGauge(sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><g fill="none" stroke="' + LBL + '" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="7.5" x2="12" y2="9.2"/><line x1="16.5" y1="12" x2="14.8" y2="12"/><line x1="7.5" y1="12" x2="9.2" y2="12"/><line x1="12" y1="12" x2="15.4" y2="9.2"/></g><circle cx="12" cy="12" r="1.6" fill="' + LBL + '"/></svg>'; }
 function icoBatt(pct, col) {
     var w = (pct == null ? 0 : clamp01(pct / 100) * 10.0).toFixed(1);
     return '<svg width="17" height="11" viewBox="0 0 17 11"><rect x="1" y="2" width="12" height="7" rx="1.4" fill="none" stroke="' + col + '" stroke-width="1.2"/>'
@@ -236,11 +241,14 @@ function buildHero() {
         + '<div class="h-wx">' + wxImg(wsym) + '</div>'
         + (osp && osp.length > 1 ? '<div class="h-spark"><span class="lab">24 h</span>' + sparkline(osp, 240, 30, otc) + '</div>' : '')
         + '</div>';
-    // RIGHT: rain · gefühlt (dewpoint) · pressure direction
+    // RIGHT: overview-style metric lines — humidity (drop) + pressure (gauge, mbar) mirror the
+    // Übersicht hero; rain, the pressure-trend word and Taupunkt are the Klima-only extras kept here.
+    // "Taupunkt" is the Netatmo DewPoint shown verbatim — NOT a computed feels-like temperature.
     h += '<div class="h-right">'
-        + '<div class="h-line">' + icoDrop(rain != null && rain > 0 ? BLUE : LBL, 16) + 'Regen heute <b>' + (rain != null ? comma(rain, 1) : '0,0') + '</b><span class="u">mm</span></div>'
-        + '<div class="h-line">gefühlt <b>' + (dew != null ? Math.round(dew) : '–') + '</b><span class="u">°C</span> · ' + (oh != null ? Math.round(oh) : '–') + '<span class="u">%</span></div>'
-        + '<div class="h-line">Druck <b>' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">hPa</span> <span style="color:' + pd[1] + '">' + pd[0] + '</span></div>'
+        + '<div class="h-line">' + icoDrop(rain != null && rain > 0 ? BLUE : LBL, 16) + 'Regen <b>' + (rain != null ? comma(rain, 1) : '0,0') + '</b><span class="u">mm</span></div>'
+        + '<div class="h-line">' + icoDrop(BLUE, 16) + 'Luftfeuchte <b>' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
+        + '<div class="h-line">' + icoGauge(16) + 'Druck <b>' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar</span> <span style="color:' + pd[1] + '">' + pd[0] + '</span></div>'
+        + '<div class="h-line">Taupunkt <b>' + (dew != null ? Math.round(dew) : '–') + '</b><span class="u">°C</span></div>'
         + '</div>';
     return h + '</div>';
 }
@@ -361,8 +369,9 @@ function buildForecast() {
         h += '<div class="fcrow' + (weekend ? ' we' : '') + '">'
             + '<div class="dow">' + DAYS_SHORT[x.dow] + '</div>'
             + '<div>' + wxImg(x.sym) + '</div>'
-            + bar
-            + '<div class="mm"><span class="mx" style="color:' + comfortCol(x.mx) + '">' + (x.mx != null ? Math.round(x.mx) : '–') + '°</span><span class="mn">' + (x.mn != null ? Math.round(x.mn) : '–') + '°</span></div>'
+            + '<div class="tmin" style="color:' + comfortCol(x.mn) + '">' + (x.mn != null ? Math.round(x.mn) : '–') + '°</div>'
+            + (bar || '<div class="fcbar"></div>')
+            + '<div class="tmax" style="color:' + comfortCol(x.mx) + '">' + (x.mx != null ? Math.round(x.mx) : '–') + '°</div>'
             + '</div>';
     });
     return h + '</div></div></div>';
@@ -394,22 +403,29 @@ function buildGarden() {
     SOIL.forEach(function (s) {
         var hum = sNum(s[1] + 'soilHumidity_value'), tmp = sNum(s[1] + 'soilTemperature_value');
         var ts = sStr(s[1] + 'soilHumidity_timestamp');
+        // Battery lives on the sibling COMMON service (…SERVICE_SENSOR_<id>. → …SERVICE_COMMON_<id>.).
+        var batt = sNum(s[1].replace('SERVICE_SENSOR_', 'SERVICE_COMMON_') + 'batteryLevel_value');
         if (ts && (!anyTs || new Date(ts) > new Date(anyTs))) anyTs = ts;
-        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–" + age,
-        // never a false dry-verdict.
+        // Operational line under the name: last-update age + battery — mirrors the room component.
+        var battChip = '';
+        if (batt != null) {
+            var bcol = batt < 20 ? RED : (batt < 30 ? AMBER : LBL);
+            battChip = '<span class="batt" style="color:' + bcol + '">' + icoBatt(batt, bcol) + Math.round(batt) + '%</span>';
+        }
+        var info = '<div class="sinfo"><div class="sn">' + esc(s[0]) + '</div>'
+            + '<div class="smeta"><span>' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</span>' + battChip + '</div></div>';
+        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–", never a false dry-verdict.
         var stale = ageMs(ts) == null || ageMs(ts) > 86400000;
         if (stale) {
-            h += '<div class="srow">'
-                + '<div class="sn">' + esc(s[0]) + '</div>'
+            h += '<div class="srow">' + info
                 + '<div class="sv" style="color:var(--mute)">–</div>'
-                + '<div class="sv" style="color:var(--mute);font-size:var(--t-cap);font-weight:500">' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</div>'
+                + '<div class="sv" style="color:var(--mute)">–</div>'
                 + '</div>';
             return;
         }
         // soil moisture: value-coloured (dry amber / ok green / wet blue)
         var humCol2 = hum == null ? LBL : (hum < 30 ? AMBER : (hum <= 70 ? GREEN : BLUE));
-        h += '<div class="srow">'
-            + '<div class="sn">' + esc(s[0]) + '</div>'
+        h += '<div class="srow">' + info
             + '<div class="sv" style="color:' + humCol2 + '">' + (hum != null ? Math.round(hum) : '–') + '<span class="u">%</span></div>'
             + '<div class="sv" style="color:var(--muted)">' + (tmp != null ? Math.round(tmp) : '–') + '<span class="u">°C</span></div>'
             + '</div>';
