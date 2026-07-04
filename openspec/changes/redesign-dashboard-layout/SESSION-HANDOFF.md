@@ -9,10 +9,11 @@
 > headless-Chrome screenshot). Core diagnosis: one design system, seven hand-copied CSS
 > implementations — see `consistency-matrix-2026-07.md`. Work queue: tasks.md §5 (shared
 > layer first) → per-tab re-cuts → polish; §12 owner decisions gate several items.
-> Confirmed live bugs: weather symbols show daswetter *wind arrows* (galeria1 low indices;
-> fix = `Wetter_Symbol_id2` + galeria2/3/4), Klima soil-card bottom row clips, Main
-> Diesel/E5 labels 4px from edge, Energie view on the legacy 386/6px grid touching the
-> nav, Wohnzimmer battery slot dropped. `spacing-alignment-concept.md` is rewritten (v2)
+> Confirmed live bugs: Klima soil-card bottom row clips, Main Diesel/E5 labels 4px from
+> edge, Energie view on the legacy 386/6px grid touching the nav, Wohnzimmer battery slot
+> dropped. (A fifth "weather icons show wind arrows" finding was **RETRACTED 2026-07-04**
+> — artifact of the local render harness fetching the viento-wind gallery; the wall was
+> always correct. Owner decisions OD1–OD7 all settled; see tasks.md §12.) `spacing-alignment-concept.md` is rewritten (v2)
 > as the `.mv2` geometric contract. `improve-dashboard-data-states` archived (intent
 > folded in as the data-state lens).
 

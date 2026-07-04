@@ -19,18 +19,25 @@ redesign; it needs **unification onto the components that already exist**.
 Findings carry IDs (`X`=cross-tab, `U/E/K/S/D/M`=per tab, `B`=confirmed bug,
 `OD`=owner decision). The task list in `tasks.md` references these IDs.
 
+*Correction 2026-07-04:* the first-pass evidence renders showed wind arrows in the
+weather-symbol slots — a harness artifact, not a dashboard bug (see the B1 retraction).
+The `review-2026-07/*.png` renders were regenerated with the correct icons.
+
 ---
 
 ## Confirmed live bugs (B)
 
-- **B1 — Weather symbols show wind arrows.** `wxImg()` uses
-  `daswetter…galeria1/{Wetter_Symbol_id}.png`, but `galeria1`'s low indices are the
-  adapter's **wind-direction arrow set** (verified: 1/2/3/6.png are arrows; the 19-icon
-  condition sets live in `galeria2/3/4`, and `Wetter_Symbol_id2` (=12 vs id=6 today) is
-  the matching index). Affects Main hero, Klima hero, all hourly tiles, all 6-day rows —
-  and produces the fake "pressure rising vs fallend" contradiction both reviewers flagged
-  (the giant unlabeled arrow next to 1030 mbar). Fix: pair `Wetter_Symbol_id2` with a
-  19-icon gallery (owner picks galeria2/3/4 style), same for the hourly/day states.
+- **B1 — RETRACTED (2026-07-04). Weather symbols were never broken.** The review's local
+  renders fetched daswetter icons with a loose path match
+  (`find … -path "*galeria1/6.png" | head -1`) that hit the adapter's **viento-wind**
+  (wind-arrow) family instead of **tiempo-weather** — both ship a `galeria1`. So the
+  rendered heroes/forecast tiles showed arrows the wall never displayed; owner confirmed
+  the wall shows correct weather art, and `tiempo-weather/galeria1/6.png` is verified to
+  be a proper condition icon. `Wetter_Symbol_id` + `tiempo-weather/galeria1` is a correct
+  pairing — **no change needed**. Every arrow-derived finding dies with this (incl. the
+  "pressure rising vs fallend contradiction" two lenses reported). Evidence renders
+  regenerated with the correct icons. Lesson: harness assets must be fetched from the
+  exact serving path, and the owner's eyes on the wall are ground truth.
 - **B2 — Klima soil-sensor card clips its last row.** Rows 46px/14px gaps; "Dachterrasse"
   needs y724, card ends y723 → 0px bottom padding, corner radii cut through the row.
 - **B3 — Main Diesel/E5 scale labels 4px from the card bottom** (top inset 11px) —
@@ -245,8 +252,8 @@ Findings carry IDs (`X`=cross-tab, `U/E/K/S/D/M`=per tab, `B`=confirmed bug,
 5. **OD5 — Spectrum direction.** Price spectra run green→red, Autarkie red→green — same
    component, mirrored reading. Options: value-axis always left-low/right-high with
    verdict colouring per position (current, formalize it) or one fixed gradient direction.
-6. **OD6 — daswetter icon style.** galeria2/3/4 are different art styles (19-condition
-   sets each) — pick one for B1.
+6. **OD6 — moot (B1 retracted 2026-07-04):** the wall's weather icons were always
+   correct; `galeria1` stays.
 7. **OD7 — Fixed scale for energy magnitude bars** (U1/E2): suggest 0–4 kW house/grid,
    0–10 kW PV? Confirm typical maxima.
 

@@ -69,9 +69,9 @@ OD items (§12) that gate a task are noted inline.
       one magnitude bar (one height; scaling stays relative per OD7).
 - [ ] 5.8 **Section-header grammar** (X10; gated by OD3): apply the blessed `.card-h` spec
       on detail tabs; overview stays headline-free.
-- [ ] 5.9 **Fix B1 weather icons** (gated by OD6): `wxImg()` & friends →
-      `Wetter_Symbol_id2` + chosen 19-icon gallery on Main hero, Klima hero, hourly tiles,
-      6-day rows; wall-verify each slot.
+- [x] 5.9 ~~Fix B1 weather icons~~ — **retracted 2026-07-04**: not a bug. The arrows
+      existed only in the review's local renders (harness fetched the viento-wind gallery
+      instead of tiempo-weather). Wall + `galeria1` pairing is correct; no change.
 
 ## 6. Übersicht
 - [ ] 6.1 Label the card header "0,00€/h" as "jetzt" (U4). ~~Fixed bar scale~~ dropped
@@ -161,8 +161,8 @@ OD items (§12) that gate a task are noted inline.
        rule everywhere; "an/aktiv" = amber tint frame, full amber reserved for verdicts).
 - [x] 12.5 OD5: **rule confirmed** — axis = value low→high, colors follow that value's
        verdict; write into DESIGN_SYSTEM.md, unify the component (5.7).
-- [ ] 12.6 OD6: daswetter gallery style — full 19-icon comparison of galeria2/3/4
-       delivered on the decision page; awaiting the pick.
+- [x] 12.6 OD6: **moot — B1 retracted** (2026-07-04): owner confirmed the wall shows
+       correct weather symbols; `galeria1` stays, no change.
 - [x] 12.7 OD7: **keep the current bar normalization** (relative to the largest current
        flow) — owner accepted deliberately; no fixed scale. U1/E2 scale sub-items dropped.
 
