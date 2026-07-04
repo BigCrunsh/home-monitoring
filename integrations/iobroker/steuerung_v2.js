@@ -4,9 +4,12 @@
 // (printed to the log as STEUERUNG_LAYOUT for the vis-views generator).
 //
 // Convention (owner's bubble concept): ON = bright accent + tint, OFF = muted. Plugs show live W,
-// shutters show position % + ↑↓ affordance, scenes are buttons.
+// shutters show position % + ↑↓ affordance.
+//
+// This grid renders only the upper three bands (Lichter / Rollläden / Steckdosen∥Garten, H=360);
+// the Musik band below it on the same view is a second widget rendered by musik_v2.js.
 
-var W = 1170, H = 680, GAP = 10, PADX = 4;
+var W = 1170, H = 360, GAP = 10, PADX = 4;
 
 var CSS_BASE = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
@@ -33,8 +36,13 @@ var CSS_BASE = `
 .mv2 .tile .st{font-size:var(--t-cap); color:var(--mute)}
 .mv2 .tile.on{border-color:rgba(241,190,61,.55)} .mv2 .tile.on .cap{color:var(--text)} .mv2 .tile.on .st{color:var(--amber)}
 .mv2 .tile.open{border-color:rgba(80,128,172,.5)} .mv2 .tile.open .cap{color:var(--text)} .mv2 .tile.open .st{color:var(--blue)}
-.mv2 .tile.scene{border-color:rgba(80,128,172,.45)} .mv2 .tile.scene .st{color:var(--blue)}
 .mv2 .tile.stop{border-color:rgba(160,6,41,.5)} .mv2 .tile.stop .st{color:var(--red)}
+/* square 68×68 tiles: state lives in border + icon colour; captions shrink to fit */
+.mv2 .tile.sq{gap:3px} .mv2 .tile.sq .cap,.mv2 .tile.sq1 .cap{font-size:11px}
+.mv2 .tile.sq .cap{white-space:normal; text-align:center; line-height:1.15; padding:0 1px; letter-spacing:-.01em; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
+.mv2 .tile.sq1{gap:2px}
+/* garden tiles are narrower (7 per row) — slightly smaller caption */
+.mv2 .tile.gt .cap{font-size:12px}
 /* shutter tile: top-aligned head (icon · name · position) + 3 buttons below */
 .mv2 .tile.stile{flex-direction:column; align-items:stretch; justify-content:flex-start; padding:8px 10px}
 .mv2 .stile .shead{display:flex; align-items:center; gap:6px}
@@ -45,13 +53,14 @@ var CSS_BASE = `
 
 var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
 
-// [label, hue on-state]
+// [label, hue on-state] — long one-word labels carry a soft hyphen (­) so the 2-line
+// square-tile clamp can break them cleanly if the device font runs wider than the preview
 var LIGHTS = [
-    ['Esstisch', 'hue.0.Esszimmer.on'], ['Couchtisch', 'hue.0.Wohnzimmertischlampe.on'],
+    ['Esstisch', 'hue.0.Esszimmer.on'], ['Couch­tisch', 'hue.0.Wohnzimmertischlampe.on'],
     ['TV', 'hue.0.TV-Bereich.on'], ['Küche', 'hue.0.Küche.on'],
     ['Eingang', 'hue.0.Eingangsbereich.on'], ['Flur', 'hue.0.Flur.on'],
     ['Büro', 'hue.0.Arbeitszimmerlicht.on'], ['Keller', 'hue.0.Keller.on'],
-    ['Spielzimmer', 'hue.0.Spielzimmer.on'], ['Clara Decke', 'hue.0.Claras_Deckenlampe.on'],
+    ['Spiel­zimmer', 'hue.0.Spielzimmer.on'], ['Clara Decke', 'hue.0.Claras_Deckenlampe.on'],
     ['Carlotta Decke', 'hue.0.Carlottas_Deckenlampe.on'], ['Carlotta Lampe', 'hue.0.Carlottas_Stehlampe.on']
 ];
 // [label, hm serial] → .3.STATE (on/off) + .6.POWER (W)
@@ -64,7 +73,6 @@ var SHUTTERS = [
     ['Terrasse', '001118A997B92D'], ['Bad', '001118A997B950'], ['Wohnzimmer', '00111A498CE3E2'],
     ['Küche', '00111A498CE451'], ['Seite', '00111A498CE463']
 ];
-var SCENES = [['Fernsehabend', 'scene.0.Fernsehabend']];
 // "Alle Rollläden" lives with the shutters (it's a shutter-group action, not a scene)
 var ROLL_ALL = ['Alle', 'scene.0.Alle_Rollläden'];
 // Gardena: tap a valve → start WATER_SECS; "Stop" → stop_all_valves_i
@@ -88,8 +96,6 @@ function icoPrinter(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"
 function icoCabinet(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="15" x2="18" y2="15"/></g></svg>'; }
 function icoBattery(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="15" height="9" rx="1.5"/><line x1="20.5" y1="11" x2="20.5" y2="14"/><path d="M11 9.5 L9 13 h3 l-2 3.5" stroke-width="1.4"/></g></svg>'; }
 function icoBlind(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round"><rect x="4" y="3" width="16" height="16" rx="1"/><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="16" x2="20" y2="16"/></g></svg>'; }
-function icoTV(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="' + c + '" stroke-width="1.6"/><line x1="8" y1="20" x2="16" y2="20" stroke="' + c + '" stroke-width="1.6" stroke-linecap="round"/></svg>'; }
-function icoScene(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 2l2.6 6.3L21 9l-5 4.3L17.5 21 12 17.2 6.5 21 8 13.3 3 9l6.4-.7L12 2Z" fill="' + c + '"/></svg>'; }
 function icoValve(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3 C12 3 6 10 6 14.5 a6 6 0 0 0 12 0 C18 10 12 3 12 3 Z" fill="' + c + '"/><ellipse cx="9.8" cy="14.5" rx="1.5" ry="2.2" fill="#ffffff" opacity=".35"/></svg>'; }
 function icoStop(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
 // per-plug icon (reuse the overview's device icons where they match)
@@ -108,40 +114,34 @@ function tileHtml(cls, p, icon, cap, st) {
     return '<div class="tile' + (cls ? ' ' + cls : '') + '" ' + p + '>'
         + '<span class="ic">' + icon + '</span><span class="cap">' + esc(cap) + '</span><span class="st">' + st + '</span></div>';
 }
+// square light tile: no status line — state reads from the amber border + icon colour
 function lightTile(it, x, y, w, h) {
     var on = sBool(it[1]);
-    return { html: tileHtml(on ? 'on' : '', pos(x, y, w, h), icoBulb(on ? AMBER : LBL), it[0], on ? 'an' : 'aus'),
-        targets: [rnd({ kind: 'toggle', oid: it[1], x: x, y: y, w: w, h: h })] };
+    var html = '<div class="tile sq' + (on ? ' on' : '') + '" ' + pos(x, y, w, h) + '>'
+        + '<span class="ic">' + icoBulb(on ? AMBER : LBL) + '</span><span class="cap">' + esc(it[0]) + '</span></div>';
+    return { html: html, targets: [rnd({ kind: 'toggle', oid: it[1], x: x, y: y, w: w, h: h })] };
 }
+// square plug tile: keeps the live-W status line
 function plugTile(it, x, y, w, h) {
     var oid = 'hm-rpc.1.' + it[1] + '.3.STATE';
-    var on = sBool('hm-rpc.1.' + it[1] + '.3.STATE'); var pw = sNum('hm-rpc.1.' + it[1] + '.6.POWER');
+    var on = sBool(oid); var pw = sNum('hm-rpc.1.' + it[1] + '.6.POWER');
     var st = on ? (pw != null ? Math.round(pw) + ' W' : 'an') : 'aus';
-    return { html: tileHtml(on ? 'on' : '', pos(x, y, w, h), plugIcon(it[1], on ? AMBER : LBL), it[0], st),
+    return { html: tileHtml('sq1' + (on ? ' on' : ''), pos(x, y, w, h), plugIcon(it[1], on ? AMBER : LBL), it[0], st),
         targets: [rnd({ kind: 'toggle', oid: oid, x: x, y: y, w: w, h: h })] };
 }
-function sceneTile(it, x, y, w, h) {
-    var icon = it[1] === 'scene.0.Fernsehabend' ? icoTV(BLUE) : icoScene(BLUE);
-    return { html: tileHtml('scene', pos(x, y, w, h), icon, it[0], 'starten'),
-        targets: [rnd({ kind: 'set', oid: it[1], value: true, x: x, y: y, w: w, h: h })] };
-}
-// Gardena valve: tap = water 10 min (write seconds to duration_value)
+// Gardena valve: tap = water 10 min (write seconds to duration_value); 'STOP' marker = stop-all tile
 function gardenaTile(it, x, y, w, h) {
+    if (it[1] === 'STOP') {
+        return { html: tileHtml('gt stop', pos(x, y, w, h), icoStop(RED), 'Stop', 'stoppen'),
+            targets: [rnd({ kind: 'set', oid: GSTOP, value: true, x: x, y: y, w: w, h: h })] };
+    }
     var base = GVALVE + it[1];
     var nm = sStr(base + '.name_value') || it[0];
     var act = sStr(base + '.activity_value') || '';
     var watering = /WATERING|MANUAL|SCHEDULED/i.test(act);
-    var st = watering ? 'läuft' : 'tippen = 10 min';
-    return { html: tileHtml(watering ? 'open' : '', pos(x, y, w, h), icoValve(watering ? BLUE : LBL), nm, st),
+    var st = watering ? 'läuft' : '10 min';
+    return { html: tileHtml('gt' + (watering ? ' open' : ''), pos(x, y, w, h), icoValve(watering ? BLUE : LBL), nm, st),
         targets: [rnd({ kind: 'set', oid: base + '.duration_value', value: WATER_SECS, x: x, y: y, w: w, h: h })] };
-}
-// "Aktionen" row: Fernsehabend scene + Garten-Stop
-function aktionTile(it, x, y, w, h) {
-    if (it[1] === 'STOP') {
-        return { html: tileHtml('stop', pos(x, y, w, h), icoStop(RED), it[0], 'stoppen'),
-            targets: [rnd({ kind: 'set', oid: GSTOP, value: true, x: x, y: y, w: w, h: h })] };
-    }
-    return sceneTile(it, x, y, w, h);
 }
 // shutter tile: name + position on top, three Auf/80%/Zu buttons below (each a write-target)
 function shutterTile(it, x, y, w, h) {
@@ -163,15 +163,23 @@ function shutterTile(it, x, y, w, h) {
     return { html: html, targets: targets };
 }
 
-// one titled section card with its tile grid; targets collected for the overlay generator
-function section(title, items, cols, render, top, rows, allTargets) {
+// one titled section card with its tile grid; targets collected for the overlay generator.
+// opts: {x, w}   card rect (default full width at PADX)
+//       {cols}   tile count per row (tile width fills the card), or
+//       {tileW}  fixed tile width (all items in one left-aligned row of squares)
+//       {rows}   row count (default 1)
+function section(title, items, top, opts, render, allTargets) {
     var CPAD = 10, HEAD = 18, HGAP = 6, TH = 68, TGAP = 8, SGAP = 8;
-    var ix = PADX + CPAD, iw = W - 2 * PADX - 2 * CPAD;
+    var sx = opts.x != null ? opts.x : PADX;
+    var sw = opts.w != null ? opts.w : W - 2 * PADX;
+    var rows = opts.rows || 1;
+    var ix = sx + CPAD, iw = sw - 2 * CPAD;
     var tilesTop = top + CPAD + HEAD + HGAP;
     var cardH = CPAD + HEAD + HGAP + rows * TH + (rows - 1) * TGAP + CPAD;
-    var html = '<div class="seccard" style="left:' + PADX + 'px;top:' + top + 'px;width:' + (W - 2 * PADX) + 'px;height:' + cardH + 'px"></div>'
+    var html = '<div class="seccard" style="left:' + sx + 'px;top:' + top + 'px;width:' + sw + 'px;height:' + cardH + 'px"></div>'
         + '<div class="card-h" style="left:' + ix + 'px;top:' + (top + CPAD) + 'px">' + title + '</div>';
-    var cw = (iw - (cols - 1) * TGAP) / cols;
+    var cols = opts.cols || items.length;
+    var cw = opts.tileW != null ? opts.tileW : (iw - (cols - 1) * TGAP) / cols;
     items.forEach(function (it, i) {
         var c = i % cols, r = Math.floor(i / cols);
         var tx = ix + c * (cw + TGAP), ty = tilesTop + r * (TH + TGAP);
@@ -184,12 +192,14 @@ function section(title, items, cols, render, top, rows, allTargets) {
 
 function build() {
     var y = 4, html = '', targets = [];
-    var GARDENA = VALVES.map(function (v) { return ['Ventil', v]; });   // names read live from name_value
-    var L = section('Lichter', LIGHTS, 6, lightTile, y, 2, targets); html += L.html; y = L.nextY;
-    var R = section('Rollläden', SHUTTERS.concat([ROLL_ALL]), 6, shutterTile, y, 1, targets); html += R.html; y = R.nextY;
-    var P = section('Steckdosen', PLUGS, 6, plugTile, y, 1, targets); html += P.html; y = P.nextY;
-    var G = section('Garten · Bewässerung', GARDENA, 6, gardenaTile, y, 1, targets); html += G.html; y = G.nextY;
-    var S = section('Aktionen', SCENES.concat([['Garten Stop', 'STOP']]), 6, aktionTile, y, 1, targets); html += S.html;
+    // valve names read live from name_value; the red stop-all tile lives with its valves
+    var GARDENA = VALVES.map(function (v) { return ['Ventil', v]; }).concat([['Stop', 'STOP']]);
+    var L = section('Lichter', LIGHTS, y, { tileW: 68 }, lightTile, targets); html += L.html; y = L.nextY;
+    var R = section('Rollläden', SHUTTERS.concat([ROLL_ALL]), y, { cols: 6 }, shutterTile, targets); html += R.html; y = R.nextY;
+    // Steckdosen (5 squares, exactly 392 wide) and Garten share the third band
+    var PW = 392;
+    var P = section('Steckdosen', PLUGS, y, { x: PADX, w: PW, tileW: 68 }, plugTile, targets); html += P.html;
+    var G = section('Garten · Bewässerung', GARDENA, y, { x: PADX + PW + 8, w: W - 2 * PADX - PW - 8, cols: 7 }, gardenaTile, targets); html += G.html; y = G.nextY;
 
     // emit the flat tap-target list once so the vis-views overlay generator can place native widgets
     if (!build._logged) { console.log('STEUERUNG_LAYOUT ' + JSON.stringify(targets)); build._logged = true; }
