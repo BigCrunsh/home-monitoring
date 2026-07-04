@@ -6,8 +6,11 @@
       and the `/home/pi/.last_nas_backup_success` marker, SLAs in conf (26 h each)
 - [x] 1.2 Telegram alert + recovery notice (reuses notifier/dedup); 4 tests.
       Deployed + verified live on the Pi (both backups evaluated fresh, sent=0)
-- [ ] 1.3 Dashboard tile "Letztes Backup" — DEFERRED (Telegram alerting already
-      delivers the visibility; tile is nice-to-have, needs a state-export path)
+- [x] 1.3 Dashboard tile "Letztes Backup" — DONE (2026-07-04, owner request): Backup card
+      on the Diagnose tab (diagnose_v2.js, mid column under System · Pi) with three rows —
+      ioBroker (backitup.0.history.json), NAS · Synology and InfluxDB-Dump (marker mtimes
+      bridged into javascript.0.backup_{nas,influx}_ts by deps/general/bin/export_backup_states.sh,
+      cron */15). Thresholds mirror the healthcheck SLA: green ≤26 h, amber ≤48 h, red beyond/never.
 
 ## 2. Consistent DB dump + improved backup script (#2, #3, #7) — DONE
 

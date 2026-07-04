@@ -4,7 +4,7 @@
 //
 //   diag_summary (4,4)   1170x72  — overall verdict + Stand
 //   diag_left    (4,84)   392x596 — DATENQUELLEN: per-source age + freshness verdict (primary)
-//   diag_mid     (408,84) 377x596 — SYSTEM · Pi: CPU / Last / RAM / Disk / Uptime
+//   diag_mid     (408,84) 377x596 — SYSTEM · Pi: CPU / Last / RAM / Disk / Uptime + BACKUP card
 //   diag_right   (797,84) 377x596 — ADAPTER: alive/connected dots
 
 var CSS_BASE = `
@@ -52,6 +52,11 @@ var CSS_BASE = `
 .mv2 .track{height:7px; border-radius:4px; background:var(--inset); overflow:hidden}
 .mv2 .fill{height:7px; border-radius:4px; min-width:3px; display:block}
 .mv2 .srow.plain{display:flex; align-items:baseline; justify-content:space-between}
+
+/* mid column stacks two cards (System · Pi fills, Backup keeps its natural height) */
+.mv2 .mcol{height:100%; display:flex; flex-direction:column; gap:8px}
+.mv2 .mcol .card{height:auto}
+.mv2 .mcol .card.grow{flex:1}
 `;
 
 var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
@@ -160,12 +165,45 @@ function buildSystem() {
     var diskCol = diskGB == null ? LBL : (diskGB > 3 ? GREEN : diskGB > 1 ? AMBER : RED);
     var upTxt = up == null ? '–' : (up < 86400 ? Math.round(up / 3600) + ' h' : Math.round(up / 86400) + ' d');
 
-    var h = '<div class="card"><div class="card-h">System · Pi</div><div class="sys">';
+    var h = '<div class="card grow"><div class="card-h">System · Pi</div><div class="sys">';
     h += '<div class="srow"><div class="top"><span class="l">CPU</span><span class="v" style="color:' + cpuCol + '">' + (cpu != null ? Math.round(cpu) : '–') + '<span class="u">%</span></span></div>' + bar((cpu || 0) / 100, cpuCol) + '</div>';
     h += '<div class="srow plain"><span class="l">Last (1 min)</span><span class="v" style="color:' + loadCol + '">' + comma(load, 2) + '</span></div>';
     h += '<div class="srow plain"><span class="l">RAM frei</span><span class="v" style="color:' + memCol + '">' + (freeGB != null ? comma(freeGB, 1) : '–') + '<span class="u">GB</span></span></div>';
     h += '<div class="srow plain"><span class="l">Disk frei</span><span class="v" style="color:' + diskCol + '">' + (diskGB != null ? comma(diskGB, 1) : '–') + '<span class="u">GB</span></span></div>';
     h += '<div class="srow plain"><span class="l">Uptime</span><span class="v">' + upTxt + '</span></div>';
+    return h + '</div></div>';
+}
+
+// ===== BACKUP =====
+// One row per backup in the chain: the backitup app backup (its own states), and the two
+// filesystem markers bridged into states by deps/general/bin/export_backup_states.sh.
+// Thresholds follow conf/healthcheck.json (SLA 1560 min): green within 26 h, amber to 48 h.
+var BK_FRESH = 26 * 3600, BK_AMBER = 48 * 3600;
+function epochAge(id) {
+    var s = getState(id);
+    var ts = s && s.val != null ? Number(s.val) : 0;    // exporter may write it as a string
+    return ts > 0 ? Math.max(0, Math.round(Date.now() / 1000 - ts)) : null;
+}
+function backupRows() {
+    var rows = [];
+    var last = null;
+    try { last = JSON.parse(getState('backitup.0.history.json').val)[0]; } catch (e) { /* no history yet */ }
+    var age = last && last.timestamp ? Math.max(0, Math.round((Date.now() - last.timestamp) / 1000)) : null;
+    var failed = !!(last && last.error && last.error !== 'none');
+    rows.push({ nm: 'ioBroker', txt: failed ? 'Fehler' : fmtAge(age), col: failed ? RED : freshCol(age, BK_FRESH, BK_AMBER) });
+    [['NAS · Synology', 'javascript.0.backup_nas_ts'], ['InfluxDB-Dump', 'javascript.0.backup_influx_ts']].forEach(function (b) {
+        var a = epochAge(b[1]);
+        rows.push({ nm: b[0], txt: a == null ? 'nie' : fmtAge(a), col: freshCol(a, BK_FRESH, BK_AMBER) });
+    });
+    return rows;
+}
+function buildBackup() {
+    var h = '<div class="card"><div class="card-h">Backup</div><div class="rows">';
+    backupRows().forEach(function (r) {
+        h += '<div class="drow">' + dot(r.col)
+            + '<span class="nm">' + esc(r.nm) + '</span>'
+            + '<span class="ag" style="color:' + r.col + '">' + r.txt + '</span></div>';
+    });
     return h + '</div></div>';
 }
 
@@ -184,13 +222,16 @@ function buildAdapters() {
 function publish() {
     setState('diag_summary', fo('sumw', 1170, 72, buildSummary()), true);
     setState('diag_left', fo('dlw', 392, 596, buildSources()), true);
-    setState('diag_mid', fo('dmw', 377, 596, buildSystem()), true);
+    setState('diag_mid', fo('dmw', 377, 596, '<div class="mcol">' + buildSystem() + buildBackup() + '</div>'), true);
     setState('diag_right', fo('drw', 377, 596, buildAdapters()), true);
 }
 
 ['diag_summary', 'diag_left', 'diag_mid', 'diag_right'].forEach(function (id) {
     createState('javascript.0.' + id, '', { type: 'string', role: 'html', desc: 'Diagnose tab ' + id });
 });
+// filesystem backup markers (epoch seconds), written by deps/general/bin/export_backup_states.sh
+createState('javascript.0.backup_nas_ts', 0, { type: 'number', role: 'value.time', desc: 'NAS-Pull Erfolgs-Marker' });
+createState('javascript.0.backup_influx_ts', 0, { type: 'number', role: 'value.time', desc: 'Influx-Dump Marker' });
 
 // freshness is time-based — refresh every minute (also catches adapter/host changes)
 setTimeout(publish, 2000);
