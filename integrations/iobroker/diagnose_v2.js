@@ -56,6 +56,7 @@ var CSS_BASE = `
 
 var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
+var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';   // Studio base station
 var GVALVE = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
 var HOST = 'system.host.raspberrypi';
 
@@ -65,6 +66,7 @@ var SOURCES = [
     ['Shelly 3EM', 'javascript.0.mqtt_shelly.total_act_power', 60, 300],
     ['SAM Heizung', 'javascript.0.sam_digital.heating_flow_temperature', 300, 900],
     ['Netatmo', NB + '.Temperature.Temperature', 900, 1800],
+    ['Netatmo Studio', NB2 + '.Temperature.Temperature', 900, 1800],
     ['Tibber Preis', 'javascript.0.tibber_states.energy_price_euro', 4200, 10800],
     ['Tankstelle', 'tankerkoenig.0.stations.1.diesel.feed', 3600, 21600],
     ['Gardena', GVALVE + '-3A1.activity_value', 21600, 86400],
