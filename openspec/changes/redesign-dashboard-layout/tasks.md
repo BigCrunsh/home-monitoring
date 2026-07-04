@@ -55,8 +55,8 @@ OD items (§12) that gate a task are noted inline.
 - [ ] 5.3 **One verdict table** (X4; gated by OD4): single implementation for Strompreis,
       net €/h, Autarkie, Eigenverbrauch, Hausverbrauch, production, valve-running; kill
       the per-tab threshold forks (matrix §8 has every file:line).
-- [ ] 5.4 **One alarm red** (X5; gated by OD1): eliminate the loser of #A00629 vs #d8536f
-      everywhere (ribbon, Tür-arm, stop tiles, dots).
+- [x] 5.4 ~~One alarm red~~ — **dropped per OD1** (2026-07-04): both reds stay exactly
+      where they are today; no color changes.
 - [ ] 5.5 **One unit/number formatter** (X6, X8): shared Metric/`.u` rendering (superscript
       rule, space rule, W↔kW adaptive under 1 kW, signed grid direction with
       Bezug/Einspeisung wording, de-DE everywhere); sweep "5w", "0,33€/kWh", "50%",
@@ -74,8 +74,8 @@ OD items (§12) that gate a task are noted inline.
       6-day rows; wall-verify each slot.
 
 ## 6. Übersicht
-- [ ] 6.1 Energy-flow bars on fixed scale + role-tint fill (U1; OD4/OD7); label header
-      "0,00€/h" as "jetzt" (U4)
+- [ ] 6.1 Label the card header "0,00€/h" as "jetzt" (U4). ~~Fixed bar scale~~ dropped
+      per OD7 — current normalization stays.
 - [ ] 6.2 Ribbon: status word under name, offline (UNREACH) visually distinct from secure,
       battery icons only when relevant if space demands (U2) — wall-verify with a real
       offline contact
@@ -91,9 +91,9 @@ OD items (§12) that gate a task are noted inline.
 ## 7. Energie
 - [ ] 7.1 Re-cut to the `.mv2` skeleton (E1/B4: 392/377/377 @ 12px, y189 columns, 12px nav
       gap, one text inset)
-- [ ] 7.2 LIVE-LEISTUNG: split PV / Akku / Netz / Haus, adaptive W/kW, fixed bar scale,
-      close the 210px dead band (E2/E3); SoC row when a data path exists (Maxxisun CCU2
-      still blocked — until then labeled ≈ estimate)
+- [ ] 7.2 LIVE-LEISTUNG: split PV / Akku / Netz / Haus, adaptive W/kW, close the 210px
+      dead band (E2/E3); SoC row when a data path exists (Maxxisun CCU2 still blocked —
+      until then labeled ≈ estimate). ~~Fixed bar scale~~ dropped per OD7.
 - [ ] 7.3 Price chart: fixed 48 h axis or honest dynamic title, right-end time label,
       min/max € anchors, unit on pill + callout (E4); repeat günstig-window as a
       STROMKOSTEN chip (E5)
@@ -148,15 +148,23 @@ OD items (§12) that gate a task are noted inline.
 - [ ] 11.4 Volume magnitude bar (or "/100"), green "spielt" state, now-playing line per
        room (M4)
 
-## 12. Owner decisions (asked before the gated tasks start)
-- [ ] 12.1 OD1 alarm red (#A00629 vs #d8536f vs new AA red)
-- [ ] 12.2 OD2 canonical token values (bless shipped 98/126 or documented 88/112; r3;
-       caption floor)
-- [ ] 12.3 OD3 section-header spec for detail tabs
-- [ ] 12.4 OD4 verdict table sign-off (incl. "aktiv"-amber → tint-frame proposal)
-- [ ] 12.5 OD5 spectrum direction rule
-- [ ] 12.6 OD6 daswetter gallery style (galeria2/3/4)
-- [ ] 12.7 OD7 fixed scales for energy bars (house/grid/PV maxima)
+## 12. Owner decisions (decided 2026-07-04 via the visual decision page; OD6 open)
+- [x] 12.1 OD1: **colors stay unchanged** — both reds remain exactly where they are today
+       (no consolidation, no re-coloring). "Two alarm reds" (X5) closed as accepted → task
+       5.4 dropped.
+- [x] 12.2 OD2: **bless the wall** — hero 98 / clock 126 become the documented tokens;
+       --r3 = 10 canonical; caption floor 12px. DESIGN_SYSTEM.md to be updated (5.2).
+- [x] 12.3 OD3: **14px + underline** on all detail tabs; overview stays headline-free.
+- [x] 12.4 OD4: **verdict table approved as proposed** (Strompreis banded everywhere;
+       Eigenverbrauch green; Autarkie ≥75/≥40/muted floor; Hausverbrauch amber ~1,5 kW,
+       red ~3 kW; Erzeugung green ≥75 W; Bewässerung läuft = green; Übersicht net-€/h
+       rule everywhere; "an/aktiv" = amber tint frame, full amber reserved for verdicts).
+- [x] 12.5 OD5: **rule confirmed** — axis = value low→high, colors follow that value's
+       verdict; write into DESIGN_SYSTEM.md, unify the component (5.7).
+- [ ] 12.6 OD6: daswetter gallery style — full 19-icon comparison of galeria2/3/4
+       delivered on the decision page; awaiting the pick.
+- [x] 12.7 OD7: **keep the current bar normalization** (relative to the largest current
+       flow) — owner accepted deliberately; no fixed scale. U1/E2 scale sub-items dropped.
 
 **MUST-KEEP (restyle only, never silently drop):** outside-temp hero, room temps + trend
 arrows, Strompreis, Stromkosten (Einkauf/Gewinn/Gespart), Autarkie, Tankpreise, multi-day
