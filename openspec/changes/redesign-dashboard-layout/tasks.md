@@ -66,7 +66,7 @@ OD items (§12) that gate a task are noted inline.
       for missing values (B5), rule for red-vs-muted "–" (Diagnose exception explicit).
 - [ ] 5.7 **Spectrum + magnitude component unification** (X9; OD5 for direction): one
       spectrum (with knob-clamp inside the track, muted end labels, optional Ø-tick) and
-      one magnitude bar (one height, fixed scales per quantity — OD7).
+      one magnitude bar (one height; scaling stays relative per OD7).
 - [ ] 5.8 **Section-header grammar** (X10; gated by OD3): apply the blessed `.card-h` spec
       on detail tabs; overview stays headline-free.
 - [ ] 5.9 **Fix B1 weather icons** (gated by OD6): `wxImg()` & friends →
