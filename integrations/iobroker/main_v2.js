@@ -352,7 +352,10 @@ function buildHero() {
 // ===== KLIMA =====
 function buildRoom(name, module) {
     var t = sNum(module + '.Temperature.Temperature'), hh = sNum(module + '.Humidity.Humidity'),
-        c = sNum(module + '.CO2.CO2'), bs = sNum(module + '.BatteryStatus');
+        c = sNum(module + '.CO2.CO2');
+    // base stations (Wohnzimmer, Studio) are mains-powered and have no BatteryStatus state —
+    // an unguarded getState would warn-spam the log on every publish
+    var bs = existsState(module + '.BatteryStatus') ? sNum(module + '.BatteryStatus') : null;
     var lu = getState(module + '.LastUpdate'), luv = lu && lu.val ? lu.val : null, ago = agoStr(luv);
     var luMs = ageMs(luv), stale = luMs != null && luMs > 3600000;  // >60 min = stale sensor (alarm)
     var cc = comfortCol(t);

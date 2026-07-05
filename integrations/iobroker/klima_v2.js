@@ -259,7 +259,10 @@ function buildHero() {
 // ===== ROOM (expanded) — B′ colouring =====
 function buildRoom(name, module, influxName) {
     var t = sNum(module + '.Temperature.Temperature'), hh = sNum(module + '.Humidity.Humidity'),
-        c = sNum(module + '.CO2.CO2'), bs = sNum(module + '.BatteryStatus');
+        c = sNum(module + '.CO2.CO2');
+    // base stations (Wohnzimmer, Studio) are mains-powered and have no BatteryStatus state —
+    // an unguarded getState would warn-spam the log on every publish
+    var bs = existsState(module + '.BatteryStatus') ? sNum(module + '.BatteryStatus') : null;
     var tmin = sNum(module + '.Temperature.TemperatureMin'), tmax = sNum(module + '.Temperature.TemperatureMax');
     var tr = sStr(module + '.Temperature.TemperatureTrend');
     var lu = getState(module + '.LastUpdate'), luv = lu && lu.val ? lu.val : null, ago = agoStr(luv);
