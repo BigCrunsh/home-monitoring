@@ -98,6 +98,7 @@ function icoBattery(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"
 function icoBlind(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round"><rect x="4" y="3" width="16" height="16" rx="1"/><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="16" x2="20" y2="16"/></g></svg>'; }
 function icoValve(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3 C12 3 6 10 6 14.5 a6 6 0 0 0 12 0 C18 10 12 3 12 3 Z" fill="' + c + '"/><ellipse cx="9.8" cy="14.5" rx="1.5" ry="2.2" fill="#ffffff" opacity=".35"/></svg>'; }
 function icoStop(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
+function icoPower(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.8" fill="none" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/></g></svg>'; }
 // per-plug icon (reuse the overview's device icons where they match)
 function plugIcon(serial, c) {
     if (serial === '0001DD89A46CAD') return icoCouch(c);
@@ -142,6 +143,20 @@ function gardenaTile(it, x, y, w, h) {
     var st = watering ? 'läuft' : '10 min';
     return { html: tileHtml('gt' + (watering ? ' open' : ''), pos(x, y, w, h), icoValve(watering ? BLUE : LBL), nm, st),
         targets: [rnd({ kind: 'set', oid: base + '.duration_value', value: WATER_SECS, x: x, y: y, w: w, h: h })] };
+}
+// SYSTEM: CCU reboot via the hm-rega script channel, guarded by a two-tap confirm
+// (first tap arms for 6 s, second tap reboots — a wall panel needs the guard).
+var CCU_ARM_MS = 6000, CCU_REBOOT_MS = 180000;
+var ccuArmUntil = 0, ccuRebootUntil = 0;
+function systemTile(it, x, y, w, h) {
+    var now = Date.now();
+    var conn = sBool('hm-rpc.1.info.connection');
+    var cls = '', st = 'neu starten', col = LBL;
+    if (now < ccuRebootUntil) { cls = 'stop'; st = 'startet neu…'; col = RED; }
+    else if (now < ccuArmUntil) { cls = 'stop'; st = 'sicher? nochmal tippen'; col = RED; }
+    else if (!conn) { cls = 'stop'; st = 'offline'; col = RED; }
+    return { html: tileHtml(cls, pos(x, y, w, h), icoPower(col), 'CCU', st),
+        targets: [rnd({ kind: 'cmd', oid: 'javascript.0.ccu_restart_cmd', value: 'go', x: x, y: y, w: w, h: h })] };
 }
 // shutter tile: name + position on top, three Auf/80%/Zu buttons below (each a write-target)
 function shutterTile(it, x, y, w, h) {
@@ -194,7 +209,10 @@ function build() {
     var y = 4, html = '', targets = [];
     // valve names read live from name_value; the red stop-all tile lives with its valves
     var GARDENA = VALVES.map(function (v) { return ['Ventil', v]; }).concat([['Stop', 'STOP']]);
-    var L = section('Lichter', LIGHTS, y, { tileW: 68 }, lightTile, targets); html += L.html; y = L.nextY;
+    // Lichter narrows to exactly its 12 squares (904px inner); the freed right end hosts SYSTEM
+    var LW = 924;
+    var L = section('Lichter', LIGHTS, y, { x: PADX, w: LW, tileW: 68 }, lightTile, targets); html += L.html;
+    var S = section('System', [['CCU', 'CCU']], y, { x: PADX + LW + 8, w: W - 2 * PADX - LW - 8, cols: 1 }, systemTile, targets); html += S.html; y = L.nextY;
     var R = section('Rollläden', SHUTTERS.concat([ROLL_ALL]), y, { cols: 6 }, shutterTile, targets); html += R.html; y = R.nextY;
     // Steckdosen (5 squares, exactly 392 wide) and Garten share the third band
     var PW = 392;
@@ -219,6 +237,35 @@ on({ id: 'javascript.0.roll_all_cmd', change: 'any' }, function (obj) {
     var v = obj && obj.state ? obj.state.val : null;
     if (typeof v !== 'number') return;
     SHUTTERS.forEach(function (s) { setState('hm-rpc.1.' + s[1] + '.4.LEVEL', v); });
+});
+
+// CCU reboot (two-tap): first tap arms for 6 s, second tap sends ReGa system.Exec("reboot")
+createState('javascript.0.ccu_restart_cmd', '', { type: 'string', role: 'text', desc: 'CCU Neustart (2-Tap-Bestätigung)' });
+on({ id: 'javascript.0.ccu_restart_cmd', change: 'any' }, function () {
+    var now = Date.now();
+    if (now < ccuRebootUntil) return;                          // reboot already under way
+    if (now < ccuArmUntil) {                                   // second tap → fire
+        ccuArmUntil = 0; ccuRebootUntil = now + CCU_REBOOT_MS; publish();
+        sendTo('hm-rega.0', 'script', 'system.Exec("reboot");', function (res) {
+            console.log('[Steuerung v2] CCU reboot sent: ' + JSON.stringify(res));
+        });
+        setTimeout(function () { ccuRebootUntil = 0; publish(); }, CCU_REBOOT_MS);
+        return;
+    }
+    ccuArmUntil = now + CCU_ARM_MS; publish();                 // first tap → arm
+    setTimeout(function () { if (Date.now() >= ccuArmUntil) publish(); }, CCU_ARM_MS + 300);
+});
+// CCU back online ends the reboot hold early; also keeps the tile's offline state honest
+on({ id: 'hm-rpc.1.info.connection', change: 'ne' }, function (obj) {
+    if (obj && obj.state && obj.state.val === true) ccuRebootUntil = 0;
+    publish();
+});
+// diagnostics: write anything to ccu_rega_ping to prove the ReGa script channel end-to-end
+createState('javascript.0.ccu_rega_ping', '', { type: 'string', role: 'text', desc: 'ReGa channel test' });
+on({ id: 'javascript.0.ccu_rega_ping', change: 'any' }, function () {
+    sendTo('hm-rega.0', 'script', 'WriteLine(system.Date("%F %T"));', function (res) {
+        console.log('[Steuerung v2] rega ping: ' + JSON.stringify(res));
+    });
 });
 
 // re-render on any control state change
