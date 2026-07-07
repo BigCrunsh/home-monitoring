@@ -87,20 +87,21 @@ var CSS_BASE = `
 .mv2 .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r2); padding:var(--s3) var(--s4); display:flex; flex-direction:column; gap:var(--s2); min-height:0; overflow:hidden}
 .mv2 .card-body{flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--s2)}
 
-/* KLIMA */
-.mv2 .klima .rooms{flex:1; display:grid; grid-template-rows:repeat(4,1fr); gap:var(--s2)}
-/* the Room component: name (primary) → operational (last-update + battery) → environmental
-   (humidity / CO₂ stacked) on the left; big temperature on the right. */
-.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto; column-gap:var(--s3); row-gap:2px; align-items:center; background:var(--bg); border-radius:var(--r3); padding:var(--s2) var(--s4)}
-.mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center}
-.mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:26px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .room .op{grid-column:2; grid-row:2; margin-top:-5px; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted); white-space:nowrap}
-.mv2 .room .op .batt{display:flex; align-items:center; gap:3px}
-.mv2 .room .env{grid-column:2; display:flex; align-items:center; gap:var(--s1); font-size:var(--t-label); white-space:nowrap}
-.mv2 .room .env.hum{grid-row:3} .mv2 .room .env.co2{grid-row:4}
-.mv2 .room .env svg{flex:none}
-.mv2 .room .env .un{color:var(--muted); font-weight:500}
-.mv2 .room .temp{grid-column:3; grid-row:2 / 5; align-self:center; justify-self:end; font-size:54px; font-weight:600; line-height:.9; white-space:nowrap}
+/* KLIMA — 2×3 tile grid (5 rooms + a free slot); compact vertical tile, temp stays the biggest thing.
+   Tile: header (thermo disc + name) → temperature → operational (age · battery) → hum · CO₂ */
+.mv2 .klima .rooms{flex:1; display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(3,1fr); gap:var(--s2)}
+.mv2 .ktile{background:var(--bg); border-radius:var(--r3); padding:10px 12px; display:flex; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden}
+.mv2 .ktile.ghost{background:transparent; border:1px dashed var(--border); align-items:center; justify-content:center}
+.mv2 .ktile .gh{font-size:12px; color:var(--mute)}
+.mv2 .ktile .kh{display:flex; align-items:center; gap:8px; min-width:0}
+.mv2 .ktile .th2{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none}
+.mv2 .ktile .th2 svg{width:16px; height:16px}
+.mv2 .ktile .nm{font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.mv2 .ktile .tv{font-size:37px; font-weight:600; line-height:1; margin:3px 0 2px}
+.mv2 .ktile .tv .u{font-size:15px}
+.mv2 .ktile .op2{font-size:11px; color:var(--muted); white-space:nowrap}
+.mv2 .ktile .env2{display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; margin-top:1px}
+.mv2 .ktile .env2 .un{color:var(--muted); font-weight:500}
 
 /* WOCHE */
 .mv2 .woche .days{flex:1; display:flex; flex-direction:column; min-height:0}
@@ -219,15 +220,19 @@ function priceSuper(v) {
 
 // ===== state IDs =====
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
+// second base station (NAMain "Studio", mains-powered — no BatteryStatus state)
+var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
 var OUTDOOR = NB + '.02-00-00-32-ae-a4';
 var FCMIN = 'daswetter.0.NextDays.Location_1.Day_1.Minimale_Temperatur_value';
 var FCMAX = 'daswetter.0.NextDays.Location_1.Day_1.Maximale_Temperatur_value';
-// Klima: Außen lives in the hero now; 4 rooms here.
+// Klima: Außen lives in the hero now; 5 rooms in a 2×3 tile grid (6th slot free).
+// Kids' rooms use short labels — the half-width tile can't fit "Carlottas Zimmer".
 var ROOMS = [
     ['Wohnzimmer', NB],
-    ['Carlottas Zimmer', NB + '.03-00-00-0e-16-36'],
-    ['Claras Zimmer', NB + '.03-00-00-0f-01-6e'],
-    ['Cleas Zimmer', NB + '.03-00-00-10-e5-42']
+    ['Carlotta', NB + '.03-00-00-0e-16-36'],
+    ['Clara', NB + '.03-00-00-0f-01-6e'],
+    ['Clea', NB + '.03-00-00-10-e5-42'],
+    ['Studio', NB2]
 ];
 // Steuerung — the proven control set ("what we had before"), restyled. Lights = Hue .on / plug .STATE
 // (boolean). Maxxisun = guarded plug. Garten = Gardena valves (start = write seconds; tap interactivity
@@ -347,28 +352,30 @@ function buildHero() {
 // ===== KLIMA =====
 function buildRoom(name, module) {
     var t = sNum(module + '.Temperature.Temperature'), hh = sNum(module + '.Humidity.Humidity'),
-        c = sNum(module + '.CO2.CO2'), bs = sNum(module + '.BatteryStatus');
+        c = sNum(module + '.CO2.CO2');
+    // base stations (Wohnzimmer, Studio) are mains-powered and have no BatteryStatus state —
+    // an unguarded getState would warn-spam the log on every publish
+    var bs = existsState(module + '.BatteryStatus') ? sNum(module + '.BatteryStatus') : null;
     var lu = getState(module + '.LastUpdate'), luv = lu && lu.val ? lu.val : null, ago = agoStr(luv);
     var luMs = ageMs(luv), stale = luMs != null && luMs > 3600000;  // >60 min = stale sensor (alarm)
     var cc = comfortCol(t);
-    var h = '<div class="room">';
-    h += '<div class="thermo" style="background:' + comfortTint(t) + '">' + icoThermo(cc) + '</div>';
-    h += '<div class="name">' + esc(name) + '</div>';
-    // operational: last-update (red when stale) + battery (red <20, amber <30)
-    h += '<div class="op"><span' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–') + '</span>';
-    if (bs != null) { var bcol = bs < 20 ? RED : (bs < 30 ? AMBER : LBL); h += '<span class="batt" style="color:' + bcol + '">' + icoBatt(bs, bcol) + Math.round(bs) + '%</span>'; }
-    h += '</div>';
-    // environmental: humidity + CO2, stacked on their own lines
-    h += '<div class="env hum">' + icoDrop('#5080AC', 14) + '<span style="color:' + humCol(hh) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></div>';
-    h += '<div class="env co2">' + (c != null
-        ? '<span style="color:' + co2Col(c) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
-        : '<span class="un">–</span>') + '</div>';
-    h += '<div class="temp num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
+    var h = '<div class="ktile">';
+    h += '<div class="kh"><span class="th2" style="background:' + comfortTint(t) + '">' + icoThermo(cc) + '</span><span class="nm">' + esc(name) + '</span></div>';
+    h += '<div class="tv num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
+    // operational: last-update (red when stale) · battery % (base stations have none)
+    h += '<div class="op2"' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–')
+        + (bs != null ? ' · ' + Math.round(bs) + '%' : '') + '</div>';
+    // environmental: humidity · CO2 on one line
+    h += '<div class="env2">' + icoDrop('#5080AC', 13) + '<span style="color:' + humCol(hh) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
+        + '<span class="un">·</span>' + (c != null
+            ? '<span style="color:' + co2Col(c) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
+            : '<span class="un">–</span>') + '</div>';
     return h + '</div>';
 }
 function buildKlima() {
     var h = '<div class="card klima"><div class="card-body"><div class="rooms">';
     ROOMS.forEach(function (r) { h += buildRoom(r[0], r[1]); });
+    h += '<div class="ktile ghost"><span class="gh">frei</span></div>';   // 6th slot, reserved
     return h + '</div></div></div>';
 }
 
