@@ -584,6 +584,8 @@ var RIBBON_CSS = `
 .mv2r .nm{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
 .mv2r .bat{margin-left:auto;align-self:center;display:flex;flex:none;padding-left:6px}
 .mv2r .bat svg{width:22px;height:auto;display:block}
+.mv2r .bat.sm{padding-left:4px}
+.mv2r .bat.sm svg{width:16px}
 `;
 // HmIP maintenance read. An unreachable battery sensor has stopped communicating, so its STATE and
 // LOW_BAT freeze at their last values — a dead-battery contact then reads a stale "closed" (false green)
@@ -601,12 +603,15 @@ function maint(batOid) {
 // `.mv2r .bat svg` (22 px) so it isn't squashed in the 40 px row.
 function lowbatIco(batOid) {
     var low = maint(batOid).low;
-    return '<span class="bat">' + icoBatt(low ? 12 : 100, low ? 'var(--red-ind)' : 'var(--muted)') + '</span>';
+    if (_ribCompact && !low) return '';   // compact mode: healthy batteries yield their 28 px to the name
+    return '<span class="bat' + (_ribCompact ? ' sm' : '') + '">'
+        + icoBatt(low ? 12 : 100, low ? 'var(--red-ind)' : 'var(--muted)') + '</span>';
 }
 // At 40 px × 5-across the dot colour alone carries the verdict (green=secure / red=alarm / grey=unknown),
 // so each row is just dot + name + battery — no status word, which kept truncating long names.
 function indDot(name, col, batOid) {
-    return '<div class="rind"><span class="dot" style="background:' + col + '"></span><span class="nm">' + esc(name) + '</span>'
+    return '<div class="rind"' + (_ribCompact ? ' style="padding:0 6px;gap:6px"' : '') + '>'
+        + '<span class="dot" style="background:' + col + '"></span><span class="nm">' + esc(name) + '</span>'
         + (batOid ? lowbatIco(batOid) : '') + '</div>';
 }
 function contactInd(name, oid, batOid) {
@@ -615,7 +620,29 @@ function contactInd(name, oid, batOid) {
     var col = v == null ? 'var(--muted)' : (v === 1 ? 'var(--red-ind)' : 'var(--green)');
     return indDot(name, col, batOid);
 }
+// Alarm-grade sensors (Rauchmelder / Wassersensor / Sirene) join the ribbon ONLY when they demand
+// attention: red chip on alarm, muted chip on fault (offline / low battery / degraded smoke chamber) —
+// a dead safety sensor must not be silently green-by-absence. Healthy + quiet = no chip, so the
+// everyday ribbon keeps its readable 5 columns; routine health lives on the Diagnose Geräte card.
+var SMOKE = 'hm-rpc.1.000A5D89B45113', WATER = 'hm-rpc.1.00189D899BEABF', SIREN = 'hm-rpc.1.00245D898FEEF1';
+function sTrue(id) { var s = getState(id); return !!(s && s.val === true); }
+// compact mode (>5 chips): tighter chip chrome + battery icon only when it is actually low,
+// so the extra alarm chips don't crush every name to one letter.
+var _ribCompact = false;
 function buildRibbon() {
+    // decide the conditional alarm chips FIRST so chip chrome can adapt to the final count
+    var extras = [];
+    function extra(name, dev, alarmed, fault) {
+        var m = maint(dev + '.0.LOW_BAT');
+        if (alarmed) extras.push({ name: name, col: 'var(--red-ind)', bat: dev + '.0.LOW_BAT' });
+        else if (m.unreach || m.low || fault) extras.push({ name: name, col: 'var(--muted)', bat: dev + '.0.LOW_BAT' });
+    }
+    extra('Rauch', SMOKE, (sNum(SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS') || 0) > 0,   // 0=IDLE_OFF
+        sTrue(SMOKE + '.1.ERROR_DEGRADED_CHAMBER'));
+    extra('Wasser', WATER, sTrue(WATER + '.1.MOISTURE_DETECTED') || sTrue(WATER + '.1.WATERLEVEL_DETECTED'), false);
+    extra('Sirene', SIREN, sTrue(SIREN + '.3.ACOUSTIC_ALARM_ACTIVE') || sTrue(SIREN + '.3.OPTICAL_ALARM_ACTIVE'), false);
+    _ribCompact = extras.length > 0;
+
     var lockBat = 'hm-rpc.1.002A226996B89C.0.LOW_BAT';
     var inds = ''
         + contactInd('Terrasse', 'hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT')
@@ -627,13 +654,19 @@ function buildRibbon() {
         : (lock === 2) ? indDot('Türschloss', 'var(--red-ind)', lockBat)
         : indDot('Türschloss', 'var(--muted)', lockBat);
     inds += contactInd('Bad', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT');
-    var inner = '<div class="mv2r"><style>' + RIBBON_CSS + '</style><div class="inds">' + inds + '</div></div>';
+    extras.forEach(function (e) { inds += indDot(e.name, e.col, e.bat); });
+    var n = 5 + extras.length;
+    var inner = '<div class="mv2r"><style>' + RIBBON_CSS + '</style>'
+        + '<div class="inds" style="grid-template-columns:repeat(' + n + ',1fr)' + (_ribCompact ? ';gap:5px' : '') + '">' + inds + '</div></div>';
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 40" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
         + '<foreignObject x="0" y="0" width="766" height="40"><div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
 }
 var RIBBON_OIDS = ['hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE',
     'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT', 'hm-rpc.1.002A226996B89C.0.LOW_BAT',
-    'hm-rpc.1.0007DD8996AFD3.0.UNREACH', 'hm-rpc.1.00155D89A38D55.0.UNREACH', 'hm-rpc.1.0023DD89A5152D.0.UNREACH', 'hm-rpc.1.0007DD89B41FD4.0.UNREACH', 'hm-rpc.1.002A226996B89C.0.UNREACH'];
+    'hm-rpc.1.0007DD8996AFD3.0.UNREACH', 'hm-rpc.1.00155D89A38D55.0.UNREACH', 'hm-rpc.1.0023DD89A5152D.0.UNREACH', 'hm-rpc.1.0007DD89B41FD4.0.UNREACH', 'hm-rpc.1.002A226996B89C.0.UNREACH',
+    SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS', SMOKE + '.1.ERROR_DEGRADED_CHAMBER', SMOKE + '.0.LOW_BAT', SMOKE + '.0.UNREACH',
+    WATER + '.1.MOISTURE_DETECTED', WATER + '.1.WATERLEVEL_DETECTED', WATER + '.0.LOW_BAT', WATER + '.0.UNREACH',
+    SIREN + '.3.ACOUSTIC_ALARM_ACTIVE', SIREN + '.3.OPTICAL_ALARM_ACTIVE', SIREN + '.0.LOW_BAT', SIREN + '.0.UNREACH'];
 
 // ===== assemble — COLUMN-SPLIT: four independent widgets (hero + 3 columns), each its own
 // <svg><foreignObject> sized to its vis box and carrying the shared CSS_BASE. The mid/right
