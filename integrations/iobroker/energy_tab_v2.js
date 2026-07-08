@@ -1,27 +1,27 @@
-// Energy tab v3 — three-tier rebuild (Jetzt → Heute → Kontext), approved 2026-07-07.
+// Energy tab v4 — three-tier layout (Jetzt → Heute → Kontext), live-review refinement of v3.
 // The tab is the drill-down of the Overview's Energie card: identical entity names
 // (Netz / Haus / SolarEdge / Maxxisun), watts() formatting, enRoleCol/priceBand/spectrum/
-// energyFrame semantics — never a parallel visual story. Concept + mockup:
-// claude.ai/code/artifact/3ef9905f (session private-home-monitoring).
+// energyFrame semantics. v4 fixes (owner review of the deployed v3, 2026-07-07):
+//   Verlauf  — two totals only (Erzeugung area + Haus line, 30-min smoothing, FIXED 0-4 kW axis)
+//              + a separate slim Maxxisun ±lane below the plot (liefert ↑ / lädt ↓)
+//   Bilanz   — segmented balance bars on one shared kWh scale (Erzeugt = direkt+geladen+eingespeist;
+//              Verbraucht = Solar+aus Akku+Netz) so autarky is VISIBLE and the balance closes;
+//              + "Kosten heute · gespart" (the Tag row moved here from the Kosten card)
+//   Heizung  — one roomy line per circuit
+//   Kosten   — Monat/Jahr only, "bisher → Prognose · Vorperiode" rows
+//   Preis    — native 15-min step-LINE, tier-colored via p20/p80 (guide lines); a line is
+//              legitimate on a truncated axis — the v3 bars-from-0,20 baseline error is gone
+// Concept + mockups: claude.ai/code/artifact/3ef9905f (session private-home-monitoring).
 //
 // Widgets on the vis Energy view (page margin 4px, gutter 12px, nav at y=688):
-//   et3_flow   (4,4)     1170x194 — ENERGIEFLUSS · JETZT: Overview flow rows scaled up
-//                                   + Strompreis/spectrum + Netto €/h (energyFrame card frame)
-//   et3_curve  (4,210)    778x270 — HEUTE · VERLAUF: InfluxDB day curve; Maxxisun by ROLE
-//                                   (liefert stacks on SolarEdge, lädt stacks on Haus — the
-//                                   battery charges through the house circuit; the gap between
-//                                   supply-top and demand-top IS the grid exchange)
-//   et3_bilanz (792,210)  382x214 — HEUTE · BILANZ: kWh (in-script integration) + autark
-//   et3_heiz   (792,436)  382x116 — HEIZUNG: compact Heizkreis/Warmwasser rows
-//   et3_price  (4,492)    778x192 — STROMPREIS · VORSCHAU: hourly bars by p20/p80 tier
-//   et3_period (792,564)  382x120 — KOSTEN · NETZBEZUG: bisher · Prognose · Vorperiode
+//   et3_flow   (4,4)     1170x158   et3_curve  (4,174)    778x292   et3_bilanz (792,174) 382x252
+//   et3_heiz   (792,438)  382x110   et3_price  (4,478)    778x206   et3_period (792,564) 382x124
 //
-// Data sources: javascript.0.power_* (reconciled, solaredge_power.js), tibber_states.*,
-// sam_digital.*, InfluxDB (adapter DB `iobroker` for the self-logged power curve;
-// home_monitoring.autogen.electricity_price_forecast_euro for the forecast).
-// NOTE Haus semantics: power_consumption EXCLUDES battery charging by design
-// (solaredge_power.computeHybrid), so "Maxxisun lädt" can exceed "Haus".
-// Helpers are copied 1:1 from main_v2.js until the shared vis_card.js global exists.
+// Data: javascript.0.power_* (reconciled, solaredge_power.js), tibber_states.*, sam_digital.*,
+// InfluxDB (adapter DB `iobroker` for the self-logged power curve; home_monitoring.autogen.
+// electricity_price_forecast_euro for the 15-min forecast). NOTE Haus semantics:
+// power_consumption EXCLUDES battery charging (solaredge_power.computeHybrid) — Maxxisun lädt
+// can exceed Haus. Helpers copied 1:1 from main_v2.js until the shared vis_card.js global exists.
 
 var EN = 'javascript.0.';
 var FEEDIN_RATE = 0.1048;   // €/kWh feed-in tariff (same constant as main_v2 net €/h)
@@ -54,11 +54,11 @@ var CSS = `
 .et3 .frow .fl{width:160px;font-size:15px;color:var(--text);flex-shrink:0;white-space:nowrap}
 .et3 .frow .track{flex:1;height:8px;border-radius:4px;background:var(--inset);overflow:hidden}
 .et3 .frow .fill{display:block;height:8px;border-radius:4px;min-width:2px}
-.et3 .frow .fv{width:96px;text-align:right;font-size:22px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.et3 .frow .fv{width:96px;text-align:right;font-size:20px;font-weight:700;white-space:nowrap;flex-shrink:0}
 /* stat blocks (Tier-1 right) */
 .et3 .stat{display:flex;flex-direction:column;gap:3px;align-items:flex-end}
 .et3 .stat .sl{font-size:13px;color:var(--muted);white-space:nowrap}
-.et3 .stat .sv{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
+.et3 .stat .sv{font-size:24px;font-weight:700;line-height:1;white-space:nowrap}
 .et3 .stat .ss{font-size:12px;color:var(--muted);white-space:nowrap}
 /* spectrum (price min-max, Overview component) */
 .et3 .spec{width:150px;display:flex;flex-direction:column;gap:3px}
@@ -67,25 +67,24 @@ var CSS = `
 .et3 .spec .knob{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;
   background:var(--text);border:2px solid var(--surface);transform:translate(-50%,-50%)}
 .et3 .spec .mm{display:flex;justify-content:space-between;font-size:11px}
-/* bilanz rows */
-.et3 .brow{display:flex;flex-direction:column;gap:2px}
-.et3 .brow .top{display:flex;justify-content:space-between;align-items:baseline}
-.et3 .brow .bl{font-size:15px;color:var(--muted)}
-.et3 .brow .bv{font-size:17px;font-weight:600}
-.et3 .btrack{height:4px;border-radius:2px;background:var(--inset);overflow:hidden}
-.et3 .bfill{display:block;height:4px;border-radius:2px}
-/* heizung rows */
-.et3 .hzrow{display:flex;align-items:center;gap:12px}
-.et3 .hzrow .hl{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0}
-.et3 .hzrow .hn{font-size:15px;color:var(--text);font-weight:600}
-.et3 .hzrow .ht{font-size:13px;color:var(--muted);white-space:nowrap}
-.et3 .hzrow .hr{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;width:110px}
-.et3 .hzrow .hv{font-size:14px;font-weight:600;white-space:nowrap}
-/* perioden table */
-.et3 table.per{width:100%;border-collapse:collapse;margin-top:0}
-.et3 table.per th{text-align:right;color:var(--muted);font-size:11px;font-weight:600;padding:0 4px}
-.et3 table.per td{text-align:right;font-size:15px;font-weight:600;padding:2px 4px}
-.et3 table.per td:first-child{text-align:left;color:var(--muted);font-size:14px;font-weight:400}
+/* bilanz: segmented balance bars + chips */
+.et3 .seg{height:14px;border-radius:7px;background:var(--inset);overflow:hidden;display:flex;gap:1px}
+.et3 .seg span{display:block;height:14px}
+.et3 .chips{display:flex;gap:12px;flex-wrap:wrap}
+.et3 .chip{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
+.et3 .chip i{width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0}
+/* heizung one-line rows */
+.et3 .hz{display:flex;align-items:center;gap:10px}
+.et3 .hz .hn{width:104px;font-size:15px;color:var(--text);font-weight:600;flex-shrink:0}
+.et3 .hz .ht{flex:1;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.et3 .hz .hb{width:44px;height:5px;border-radius:3px;background:var(--inset);overflow:hidden;flex-shrink:0}
+.et3 .hz .hv{width:58px;text-align:right;font-size:15px;font-weight:600;flex-shrink:0}
+/* kosten rows */
+.et3 .kr{display:flex;align-items:baseline;gap:8px}
+.et3 .kr .kl{width:52px;font-size:15px;color:var(--muted);flex-shrink:0}
+.et3 .kr .kv{font-size:17px;font-weight:600;white-space:nowrap}
+.et3 .kr .ka{font-size:13px;color:var(--muted)}
+.et3 .kr .kp{margin-left:auto;font-size:14px;color:var(--muted);white-space:nowrap}
 `;
 
 // ===== helpers (verbatim semantics from main_v2.js — consolidate into vis_card.js later) =====
@@ -95,7 +94,7 @@ function sam(id) { return sNum(EN + 'sam_digital.' + id); }
 function comma(v, d) { return (typeof v === 'number') ? v.toFixed(d == null ? 1 : d).replace('.', ',') : '–'; }
 function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 function watts(v) { var a = Math.abs(v || 0); return a >= 1000 ? comma(a / 1000, 1) + '<span class="u"> kW</span>' : Math.round(a) + '<span class="u"> W</span>'; }
-function kwh(v) { return v == null ? '–' : comma(v, 1) + '<span class="u"> kWh</span>'; }
+function kwh1(v) { return v == null ? '–' : comma(v, 1); }
 function eur2(v) { return v == null ? '–' : comma(v, 2) + ' €'; }
 function enRoleCol(val, favourable, high) {
     var m = Math.abs(val || 0);
@@ -136,10 +135,12 @@ function spectrum(knobPct, lo, hi) {
 // Pi OS runs Europe/London; the household clock is Europe/Berlin
 function berlinNow() { return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' })); }
 function dayKeyBerlin(dt) { return (dt || new Date()).toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' }); }
-function berlinHourFrac(ts) {
+function berlinParts(ts) {
     var d = new Date(new Date(ts).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-    return d.getHours() + d.getMinutes() / 60;
+    return { h: d.getHours(), m: d.getMinutes(), frac: d.getHours() + d.getMinutes() / 60, dow: d.getDay(), date: d.getDate() };
 }
+var DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+var MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 function fo(w, h, body) {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">'
         + '<foreignObject width="' + w + '" height="' + h + '">'
@@ -150,7 +151,7 @@ function cardH(title, badge) {
     return '<div class="card-h"><span>' + title + '</span>' + (badge ? '<span class="bdg">' + badge + '</span>' : '') + '</div>';
 }
 
-// ===== TIER 1: ENERGIEFLUSS · JETZT (1170x194) =====
+// ===== TIER 1: ENERGIEFLUSS · JETZT (1170x158) =====
 function buildFlow() {
     var prod = sNum(EN + 'power_production') || 0, haus = sNum(EN + 'power_consumption') || 0;
     var pur = sNum(EN + 'power_purchased') || 0, feed = sNum(EN + 'power_feedin') || 0;
@@ -161,15 +162,14 @@ function buildFlow() {
     var se = Math.max(0, prod - Math.max(0, -maxxi));   // SolarEdge-only, like main_v2
     var grid = pur - feed;
 
-    // rows: Netz first (headline flow), then Haus / SolarEdge / Maxxisun — Overview order
     var rows = [
-        { ico: 'grid', label: 'Netz · ' + (grid >= 0 ? 'Bezug' : 'Einspeisung'), val: grid, col: enRoleCol(grid, grid < 0) },
+        { ico: 'grid', label: 'Netz' + (Math.abs(grid) >= 75 ? (grid > 0 ? ' · Bezug' : ' · Einspeisung') : ''), val: grid, col: enRoleCol(grid, grid < 0) },
         { ico: 'house', label: 'Haus', val: haus, col: stale ? LBL : enRoleCol(haus, false), approx: stale },
         { ico: 'sun', label: 'SolarEdge', val: se, col: enRoleCol(se, true) },
         { ico: 'battery', label: 'Maxxisun' + (Math.abs(maxxi) >= 75 ? (maxxi < 0 ? ' · lädt' : ' · liefert') : ''), val: maxxi, col: enRoleCol(maxxi, maxxi < 0, 500) }
     ];
     var maxV = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.val); }).concat([1]));
-    var flows = '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:2px 4px 0 4px">'
+    var flows = '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:0 4px">'
         + rows.map(function (r) {
             var frac = clamp01(Math.abs(r.val) / maxV) * 100;
             return '<div class="frow"><span class="fi">' + enIco(r.ico, r.col) + '</span>'
@@ -178,11 +178,10 @@ function buildFlow() {
                 + '<span class="fv" style="color:' + r.col + '">' + (r.approx ? '≈ ' : '') + watts(r.val) + '</span></div>';
         }).join('') + '</div>';
 
-    // right zone: Strompreis + spectrum, Netto €/h, Eigenverbrauch gespart — verbatim Overview rules
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * FEEDIN_RATE;
     var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−');
     var fc = energyFrame(net, price, p80);
-    if (grid > 50 && !(price != null && price > 0)) fc = AMBER;   // importing w/o price ≠ break-even
+    if (grid > 50 && !(price != null && price > 0)) fc = AMBER;
     var netCol = netZero ? LBL : fc;
     var gespart = (selfc / 1000) * (price || 0);
     var pb = priceBand(price, p20, p80);
@@ -206,14 +205,17 @@ function buildFlow() {
         + cardH('Energiefluss · Jetzt', stale ? '≈ Schätzwert (Cloud-Verzögerung)' : '')
         + '<div style="flex:1;display:flex;align-items:stretch;gap:14px">' + flows
         + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>' + stats + '</div></div>';
-    return fo(1170, 194, body);
+    return fo(1170, 158, body);
 }
 
-// ===== energy_today_* — trapezoid integration of the live power states, Berlin-midnight reset =====
+// ===== energy_today_* — trapezoid integration, Berlin-midnight reset =====
 var INTEGRALS = [
-    ['production', 'power_production'], ['consumption', 'power_consumption'],
-    ['purchased', 'power_purchased'], ['feedin', 'power_feedin'],
-    ['maxxicharge', null]   // derived: max(0, -power_maxxisun)
+    ['production',    function () { return sNum(EN + 'power_production') || 0; }],
+    ['consumption',   function () { return sNum(EN + 'power_consumption') || 0; }],
+    ['purchased',     function () { return sNum(EN + 'power_purchased') || 0; }],
+    ['feedin',        function () { return sNum(EN + 'power_feedin') || 0; }],
+    ['maxxicharge',   function () { return Math.max(0, -(sNum(EN + 'power_maxxisun') || 0)); }],
+    ['maxxidischarge', function () { return Math.max(0, (sNum(EN + 'power_maxxisun') || 0)); }]
 ];
 var _lastTick = null;
 function integrateTick() {
@@ -230,49 +232,76 @@ function integrateTick() {
     _lastTick = now;
     if (dtH <= 0 || dtH > 0.5) return;   // skip absurd gaps (script pause/restart)
     INTEGRALS.forEach(function (e) {
-        var w = e[1] ? (sNum(EN + e[1]) || 0) : Math.max(0, -(sNum(EN + 'power_maxxisun') || 0));
         var cur = sNum(EN + 'energy_today_' + e[0]) || 0;
-        setState(EN + 'energy_today_' + e[0], cur + w / 1000 * dtH, true);
+        setState(EN + 'energy_today_' + e[0], cur + e[1]() / 1000 * dtH, true);
     });
 }
 
-// ===== TIER 2 RIGHT: HEUTE · BILANZ (382x214) =====
+// ===== TIER 2 RIGHT: HEUTE · BILANZ (382x252) — segmented balance bars =====
 function buildBilanz() {
-    var prod = sNum(EN + 'energy_today_production'), cons = sNum(EN + 'energy_today_consumption');
-    var pur = sNum(EN + 'energy_today_purchased'), feed = sNum(EN + 'energy_today_feedin');
-    var kmax = Math.max(prod || 0, cons || 0, 0.1);
-    function brow(label, v, col) {
-        return '<div class="brow"><div class="top"><span class="bl">' + label + '</span>'
-            + '<span class="bv" style="color:' + col + '">' + kwh(v) + '</span></div>'
-            + '<div class="btrack"><span class="bfill" style="width:' + (clamp01((v || 0) / kmax) * 100).toFixed(0) + '%;background:' + col + '"></span></div></div>';
+    var prod = sNum(EN + 'energy_today_production') || 0, cons = sNum(EN + 'energy_today_consumption') || 0;
+    var pur = sNum(EN + 'energy_today_purchased') || 0, feed = sNum(EN + 'energy_today_feedin') || 0;
+    var chg = sNum(EN + 'energy_today_maxxicharge') || 0, dis = sNum(EN + 'energy_today_maxxidischarge') || 0;
+    var price = tibber('energy_price_euro');
+    // reconciled segments (clamped ≥0 so rounding noise can't create negative slivers)
+    var eDirekt = Math.max(0, prod - chg - feed);            // Erzeugung direkt genutzt
+    var vSolar = Math.max(0, cons - pur - dis);              // Verbrauch aus Solar direkt
+    var KMAX = Math.max(prod, cons, 0.1);
+    function seg(kwhL, col, op) {
+        var w = clamp01(kwhL / KMAX) * 100;
+        return w <= 0 ? '' : '<span style="width:' + w.toFixed(1) + '%;background:' + col + ';opacity:' + op + '"></span>';
     }
-    // energy-based Autarkie heute; colors = Overview thresholds (>=75 green, >=40 amber, else muted)
-    var autark = (cons != null && cons > 0.05) ? clamp01(1 - (pur || 0) / cons) : null;
-    var eigen = (prod != null && prod > 0.05) ? clamp01((prod - (feed || 0)) / prod) : null;
+    function chip(col, op, label) {
+        return '<span class="chip"><i style="background:' + col + ';opacity:' + op + '"></i>' + label + '</span>';
+    }
+    function barBlock(label, total, valCol, segs, chips) {
+        return '<div style="display:flex;flex-direction:column;gap:5px">'
+            + '<div style="display:flex;justify-content:space-between;align-items:baseline">'
+            + '<span style="font-size:15px;color:' + LBL + '">' + label + '</span>'
+            + '<span style="font-size:18px;font-weight:600;color:' + valCol + '">' + kwh1(total)
+            + '<span class="u"> kWh</span></span></div>'
+            + '<div class="seg">' + segs + '</div>'
+            + '<div class="chips">' + chips + '</div></div>';
+    }
+    var autark = cons > 0.05 ? clamp01(1 - pur / cons) : null;
     var akPct = autark != null ? Math.round(autark * 100) : null;
     var akCol = akPct == null ? LBL : (akPct >= 75 ? GREEN : (akPct >= 40 ? AMBER : LBL));
     var a7 = sNum(EN + 'rate_autarky_7d');
-    var sub = (a7 != null && a7 > 0 ? 'Ø 7 Tage: ' + Math.round(a7 * 100) + ' %' : '')
-        + (eigen != null ? (a7 ? ' · ' : '') + '<span style="color:' + BLUE + '">Eigenverbrauch ' + Math.round(eigen * 100) + ' %</span>' : '');
+    var bezahlt = tibber('cost_this_day');
+    var gespart = price != null ? Math.max(0, (cons - pur)) * price : null;
+
     var body = '<div class="card">' + cardH('Heute · Bilanz')
-        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding-top:2px">'
-        + brow('Erzeugt', prod, GREEN)
-        + brow('Verbraucht', cons, BLUE)
-        + brow('Netzbezug', pur, (pur || 0) > 0.05 ? AMBER : LBL)
-        + brow('Eingespeist', feed, GREEN)
-        + '<div style="border-top:1px solid ' + BORD + ';margin:1px 0"></div>'
-        + '<div class="brow"><div class="top"><span class="bl">autark</span>'
-        + '<span style="font-size:24px;font-weight:700;color:' + akCol + '">' + (akPct != null ? akPct : '–') + '<span class="u"> %</span></span></div>'
-        + '<div class="btrack"><span class="bfill" style="width:' + (akPct || 0) + '%;background:' + akCol + '"></span></div></div>'
-        + (sub ? '<div style="font-size:12px;color:' + LBL + ';text-align:right">' + sub + '</div>' : '')
+        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding-top:4px">'
+        + barBlock('Erzeugt', prod, GREEN,
+            seg(eDirekt, GREEN, '1') + seg(chg, GREEN, '.55') + seg(feed, GREEN, '.28'),
+            chip(GREEN, '1', 'direkt genutzt ' + kwh1(eDirekt)) + chip(GREEN, '.55', 'geladen ' + kwh1(chg)) + chip(GREEN, '.28', 'eingespeist ' + kwh1(feed)))
+        + barBlock('Verbraucht', cons, BLUE,
+            seg(vSolar, GREEN, '1') + seg(dis, BLUE, '.6') + seg(pur, AMBER, '1'),
+            chip(GREEN, '1', 'Solar ' + kwh1(vSolar)) + chip(BLUE, '.6', 'aus Akku ' + kwh1(dis)) + chip(AMBER, '1', 'Netz ' + kwh1(pur)))
+        + '<div style="border-top:1px solid ' + BORD + '"></div>'
+        + '<div style="display:flex;align-items:baseline;justify-content:space-between">'
+        + '<span style="font-size:15px;color:' + LBL + '">autark</span>'
+        + '<span style="font-size:26px;font-weight:700;color:' + akCol + '">' + (akPct != null ? akPct : '–') + '<span class="u"> %</span></span>'
+        + '<span style="font-size:12px;color:' + LBL + '">' + (a7 != null && a7 > 0 ? 'Ø 7 Tage: ' + Math.round(a7 * 100) + ' %' : '&nbsp;') + '</span></div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline">'
+        + '<span style="font-size:15px;color:' + LBL + '">Kosten heute</span>'
+        + '<span style="font-size:16px;font-weight:600;color:' + TEXT + '">' + eur2(bezahlt)
+        + (gespart != null && gespart > 0.005 ? '<span style="font-size:13px;color:' + GREEN + ';font-weight:600"> · ' + eur2(gespart) + ' gespart</span>' : '')
+        + '</span></div>'
         + '</div></div>';
-    return fo(382, 214, body);
+    return fo(382, 252, body);
 }
 
-// ===== TIER 2 LEFT: HEUTE · VERLAUF (778x270) — data from InfluxDB (adapter DB) =====
+// ===== TIER 2 LEFT: HEUTE · VERLAUF (778x292) — totals + Maxxisun lane =====
 var CURVE = { prod: [], cons: [], mx: [], ready: false };
+function rollMean(rows, win) {
+    return rows.map(function (r, i) {
+        var s = 0, n = 0;
+        for (var j = Math.max(0, i - win + 1); j <= i; j++) { s += rows[j].v; n++; }
+        return { h: r.h, v: s / n };
+    });
+}
 function queryCurve() {
-    // 26h window then filter to today (Berlin) — covers midnight from any wall-clock time
     var ids = ['javascript.0.power_production', 'javascript.0.power_consumption', 'javascript.0.power_maxxisun'];
     var out = [[], [], []], done = 0;
     ids.forEach(function (id, i) {
@@ -283,8 +312,9 @@ function queryCurve() {
                 if (++done === 3) {
                     var today = dayKeyBerlin();
                     function todays(rows) {
-                        return rows.filter(function (r) { return r.v != null && dayKeyBerlin(new Date(r.ts)) === today; })
-                            .map(function (r) { return { h: berlinHourFrac(r.ts), v: r.v }; });
+                        var t = rows.filter(function (r) { return r.v != null && dayKeyBerlin(new Date(r.ts)) === today; })
+                            .map(function (r) { return { h: berlinParts(r.ts).frac, v: r.v }; });
+                        return rollMean(t, 3);   // 30-min smoothing over the 10-min means
                     }
                     CURVE = { prod: todays(out[0]), cons: todays(out[1]), mx: todays(out[2]), ready: true };
                     setState(EN + 'et3_curve', buildCurve(), true);
@@ -293,118 +323,105 @@ function queryCurve() {
     });
 }
 function buildCurve() {
-    var W = 778, H = 270, PW = 700, PH = 164, X0 = 36, Y0 = 10;
+    var W = 778, H = 292, PW = 700, X0 = 36;
+    var MY = 8, MH = 140;              // main plot
+    var LY = MY + MH + 24, LH = 38;    // Maxxisun lane
     var prod = CURVE.prod, cons = CURVE.cons, mx = CURVE.mx;
-    var legend = '<span class="bdg" style="display:inline-flex;gap:12px;align-items:center">'
-        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + GREEN + ';border-radius:2px;display:inline-block"></span>SolarEdge</span>'
+    var legend = '<span class="bdg" style="display:inline-flex;gap:14px;align-items:center">'
+        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + GREEN + ';border-radius:2px;display:inline-block"></span>Erzeugung</span>'
         + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + BLUE + ';border-radius:2px;display:inline-block"></span>Haus</span>'
-        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + GREEN + ';opacity:.45;border-radius:2px;display:inline-block"></span>+ Maxxi liefert</span>'
-        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + BLUE + ';opacity:.55;border-radius:2px;display:inline-block"></span>+ Maxxi lädt</span>'
         + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:1px;height:10px;background:' + TEXT + ';display:inline-block"></span>jetzt</span></span>';
     var head = cardH('Heute · Verlauf').replace('</div>', legend + '</div>');
-
     if (!CURVE.ready || (prod.length < 2 && cons.length < 2)) {
         return fo(W, H, '<div class="card">' + head
             + '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:' + LBL + ';font-size:14px">'
             + (CURVE.ready ? 'Datensammlung läuft — Kurve füllt sich im Tagesverlauf' : 'Lade Verlauf…') + '</div></div>');
     }
-    // merge onto a common 10-min grid keyed by hour fraction
-    var byH = {};
-    function put(rows, k) { rows.forEach(function (r) { var key = r.h.toFixed(2); (byH[key] = byH[key] || { h: r.h })[k] = r.v; }); }
-    put(prod, 'p'); put(cons, 'c'); put(mx, 'm');
-    var S = Object.keys(byH).map(function (k) { return byH[k]; }).sort(function (a, b) { return a.h - b.h; });
-    // SolarEdge-only + role bands, same math as the live flow rows
-    S.forEach(function (s) {
-        var m = s.m || 0;
-        s.se = Math.max(0, (s.p || 0) - Math.max(0, -m));
-        s.supTop = s.se + Math.max(0, m);
-        s.demTop = (s.c || 0) + Math.max(0, -m);
-    });
-    var ymaxW = Math.max.apply(null, S.map(function (s) { return Math.max(s.supTop, s.demTop); }).concat([1000]));
-    var YMAX = Math.max(2, Math.ceil(ymaxW / 1000));
+    // fixed frame: 4 kW unless the data genuinely exceeds it
+    var dMax = Math.max.apply(null, prod.concat(cons).map(function (r) { return r.v; }).concat([1]));
+    var YMAX = Math.max(4, Math.ceil(dMax / 1000));
+    var lMax = Math.max.apply(null, mx.map(function (r) { return Math.abs(r.v); }).concat([250]));
+    var LMAX = Math.max(0.5, Math.ceil(lMax / 500) * 0.5);   // lane scale in kW, 0.5 steps
     function sx(h) { return X0 + h / 24 * PW; }
-    function sy(w) { return Y0 + PH - (w / 1000) / YMAX * PH; }
-    function pathOf(key) { return 'M' + S.map(function (s) { return sx(s.h).toFixed(1) + ',' + sy(s[key]).toFixed(1); }).join(' L'); }
-    var seP = pathOf('se');
-    var seA = seP + ' L' + sx(S[S.length - 1].h).toFixed(1) + ',' + sy(0).toFixed(1) + ' L' + sx(S[0].h).toFixed(1) + ',' + sy(0).toFixed(1) + ' Z';
-    // Maxxisun role bands: contiguous runs of liefert (m>20W) / lädt (m<-20W)
-    function bands(pred, baseK, topK, col) {
-        var svg = '', run = [];
-        function flush() {
-            if (run.length > 1) {
-                var top = 'M' + run.map(function (s) { return sx(s.h).toFixed(1) + ',' + sy(s[topK]).toFixed(1); }).join(' L');
-                var poly = top + ' L' + run.slice().reverse().map(function (s) { return sx(s.h).toFixed(1) + ',' + sy(s[baseK]).toFixed(1); }).join(' L') + ' Z';
-                svg += '<path d="' + poly + '" fill="' + col + '" opacity="0.18"/>'
-                    + '<path d="' + top + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-dasharray="4 3"/>';
-            }
-            run = [];
-        }
-        S.forEach(function (s) { if (pred(s.m || 0)) run.push(s); else flush(); });
-        flush();
-        return svg;
-    }
-    var supB = bands(function (m) { return m > 20; }, 'se', 'supTop', GREEN);
-    var demB = bands(function (m) { return m < -20; }, 'c', 'demTop', BLUE);
+    function syM(w) { return MY + MH - clamp01((w / 1000) / YMAX) * MH; }
+    function syL(w) { return LY + LH / 2 - Math.max(-1, Math.min(1, (w / 1000) / LMAX)) * (LH / 2); }
+    function path(rows, sy) { return 'M' + rows.map(function (r) { return sx(r.h).toFixed(1) + ',' + sy(r.v).toFixed(1); }).join(' L'); }
+    var prodP = path(prod, syM);
+    var prodA = prodP + ' L' + sx(prod[prod.length - 1].h).toFixed(1) + ',' + syM(0).toFixed(1)
+        + ' L' + sx(prod[0].h).toFixed(1) + ',' + syM(0).toFixed(1) + ' Z';
+    var consP = cons.length > 1 ? path(cons, syM) : '';
+    var laneP = mx.length > 1 ? path(mx, syL) : '';
+    var laneA = mx.length > 1 ? laneP + ' L' + sx(mx[mx.length - 1].h).toFixed(1) + ',' + syL(0).toFixed(1)
+        + ' L' + sx(mx[0].h).toFixed(1) + ',' + syL(0).toFixed(1) + ' Z' : '';
 
     var grid = '', k;
     for (k = 1; k <= YMAX; k++) {
-        grid += '<line x1="' + X0 + '" y1="' + sy(k * 1000).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + sy(k * 1000).toFixed(1) + '" stroke="' + INSET + '" stroke-width="1"/>'
-            + '<text x="' + (X0 - 8) + '" y="' + (sy(k * 1000) + 4).toFixed(1) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + k + (k === YMAX ? ' kW' : '') + '</text>';
+        grid += '<line x1="' + X0 + '" y1="' + syM(k * 1000).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + syM(k * 1000).toFixed(1) + '" stroke="' + INSET + '" stroke-width="1"/>'
+            + '<text x="' + (X0 - 8) + '" y="' + (syM(k * 1000) + 4).toFixed(1) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + k + (k === YMAX ? ' kW' : '') + '</text>';
     }
     var ticks = [0, 6, 12, 18, 24].map(function (t) {
-        return '<text x="' + sx(t).toFixed(0) + '" y="' + (Y0 + PH + 16) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + t).slice(-2) + '</text>';
+        return '<text x="' + sx(t).toFixed(0) + '" y="' + (LY + LH + 15) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + t).slice(-2) + '</text>';
     }).join('');
 
-    var last = S[S.length - 1], nowX = sx(last.h);
-    var liveSe = last.se, liveC = last.c || 0, liveM = last.m || 0;
-    // late in the day the labels would clip the right edge — flip them to the left of the marker
-    var flip = nowX > X0 + PW - 235;
+    var lastP = prod[prod.length - 1], lastC = cons.length ? cons[cons.length - 1] : null;
+    var lastM = mx.length ? mx[mx.length - 1] : null;
+    var nowH = Math.max(lastP.h, lastC ? lastC.h : 0), nowX = sx(nowH);
+    var flip = nowX > X0 + PW - 175;
     var tx = (flip ? nowX - 9 : nowX + 9).toFixed(1), ta = flip ? ' text-anchor="end"' : '';
-    var lbl = '<line x1="' + nowX.toFixed(1) + '" y1="' + (Y0 - 2) + '" x2="' + nowX.toFixed(1) + '" y2="' + (Y0 + PH) + '" stroke="' + TEXT + '" stroke-width="1" opacity="0.5" stroke-dasharray="3 3"/>'
-        + '<circle cx="' + nowX.toFixed(1) + '" cy="' + sy(liveSe).toFixed(1) + '" r="4" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
-        + '<circle cx="' + nowX.toFixed(1) + '" cy="' + sy(liveC).toFixed(1) + '" r="4" fill="' + BLUE + '" stroke="' + SURF + '" stroke-width="2"/>'
-        + '<text x="' + tx + '" y="' + (sy(liveSe) - 9).toFixed(1) + '" fill="' + GREEN + '" font-size="13" font-weight="600"' + ta + '>SolarEdge ' + comma(liveSe / 1000, 1) + ' kW</text>'
-        + '<text x="' + tx + '" y="' + (sy(liveC) + 17).toFixed(1) + '" fill="' + BLUE + '" font-size="13" font-weight="600"' + ta + '>Haus ' + comma(liveC / 1000, 1) + ' kW</text>';
-    if (liveM < -20) {
-        lbl += '<circle cx="' + nowX.toFixed(1) + '" cy="' + sy(last.demTop).toFixed(1) + '" r="4" fill="' + BLUE + '" stroke="' + SURF + '" stroke-width="2"/>'
-            + '<text x="' + tx + '" y="' + (sy(last.demTop) - 7).toFixed(1) + '" fill="' + BLUE + '" font-size="13" font-weight="600"' + ta + '>Σ ' + comma(last.demTop / 1000, 1) + ' kW · Haus + Maxxi lädt</text>';
-    } else if (liveM > 20) {
-        lbl += '<circle cx="' + nowX.toFixed(1) + '" cy="' + sy(last.supTop).toFixed(1) + '" r="4" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
-            + '<text x="' + tx + '" y="' + (sy(last.supTop) - 7).toFixed(1) + '" fill="' + GREEN + '" font-size="13" font-weight="600"' + ta + '>Σ ' + comma(last.supTop / 1000, 1) + ' kW · SolarEdge + Maxxi</text>';
+    // collision-safe endpoint labels (≥20 px apart)
+    var yP = syM(lastP.v) - 8, yC = lastC ? syM(lastC.v) + 16 : 0;
+    if (lastC && Math.abs(yP - yC) < 20) yC = yP + 20;
+    var lbl = '<line x1="' + nowX.toFixed(1) + '" y1="' + (MY - 2) + '" x2="' + nowX.toFixed(1) + '" y2="' + (LY + LH) + '" stroke="' + TEXT + '" stroke-width="1" opacity="0.5" stroke-dasharray="3 3"/>'
+        + '<circle cx="' + nowX.toFixed(1) + '" cy="' + syM(lastP.v).toFixed(1) + '" r="4" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
+        + '<text x="' + tx + '" y="' + yP.toFixed(1) + '" fill="' + GREEN + '" font-size="13" font-weight="600"' + ta + '>Erzeugung ' + comma(lastP.v / 1000, 1) + ' kW</text>';
+    if (lastC) {
+        lbl += '<circle cx="' + nowX.toFixed(1) + '" cy="' + syM(lastC.v).toFixed(1) + '" r="4" fill="' + BLUE + '" stroke="' + SURF + '" stroke-width="2"/>'
+            + '<text x="' + tx + '" y="' + yC.toFixed(1) + '" fill="' + BLUE + '" font-size="13" font-weight="600"' + ta + '>Haus ' + comma(lastC.v / 1000, 1) + ' kW</text>';
     }
-    var svg = '<svg width="' + (PW + X0 + 10) + '" height="' + (PH + Y0 + 24) + '" style="flex:1">'
+    // lane chrome + endpoint
+    var lane = '<line x1="' + X0 + '" y1="' + syL(0).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + syL(0).toFixed(1) + '" stroke="' + LBL + '" stroke-width="1" opacity="0.5"/>'
+        + '<text x="' + (X0 + 8) + '" y="' + (LY + 12) + '" fill="' + LBL + '" font-size="11" font-weight="600">Maxxisun</text>'
+        + '<text x="' + (X0 + PW - 8) + '" y="' + (LY + 12) + '" fill="' + LBL + '" font-size="10" text-anchor="end">liefert ↑</text>'
+        + '<text x="' + (X0 + PW - 8) + '" y="' + (LY + LH - 2) + '" fill="' + LBL + '" font-size="10" text-anchor="end">lädt ↓</text>';
+    if (mx.length > 1) {
+        lane += '<path d="' + laneA + '" fill="' + GREEN + '" opacity="0.25"/>'
+            + '<path d="' + laneP + '" fill="none" stroke="' + GREEN + '" stroke-width="1.5"/>';
+        if (lastM && Math.abs(lastM.v) >= 75) {
+            var word = lastM.v < 0 ? 'lädt' : 'liefert';
+            lane += '<circle cx="' + sx(lastM.h).toFixed(1) + '" cy="' + syL(lastM.v).toFixed(1) + '" r="3.5" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
+                + '<text x="' + tx + '" y="' + (syL(lastM.v) + 4).toFixed(1) + '" fill="' + GREEN + '" font-size="12" font-weight="600"' + ta + '>' + word + ' ' + comma(Math.abs(lastM.v) / 1000, 1) + ' kW</text>';
+        }
+    }
+    var svg = '<svg width="' + (PW + X0 + 10) + '" height="' + (LY + LH + 20) + '" style="flex:1">'
         + grid + ticks
-        + '<path d="' + seA + '" fill="' + GREEN + '" opacity="0.13"/>'
-        + '<path d="' + seP + '" fill="none" stroke="' + GREEN + '" stroke-width="2"/>'
-        + supB + demB
-        + '<path d="' + pathOf('c') + '" fill="none" stroke="' + BLUE + '" stroke-width="2"/>'
-        + lbl + '</svg>';
+        + '<path d="' + prodA + '" fill="' + GREEN + '" opacity="0.13"/>'
+        + '<path d="' + prodP + '" fill="none" stroke="' + GREEN + '" stroke-width="2.5"/>'
+        + (consP ? '<path d="' + consP + '" fill="none" stroke="' + BLUE + '" stroke-width="2.5"/>' : '')
+        + lane + lbl + '</svg>';
     return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex;align-items:stretch">' + svg + '</div></div>');
 }
 
-// ===== TIER 2 RIGHT BOTTOM: HEIZUNG (382x116) =====
+// ===== HEIZUNG (382x110) — one line per circuit =====
 function buildHeiz() {
     var hkV = sam('heating_valve_signal'), wwV = sam('hotwater_valve_signal');
     var hkF = sam('heating_flow_temperature'), hkR = sam('heating_return_temperature');
-    var wwS = sam('hotwater_storage_temperature'), wwR = sam('hotwater_return_temperature');
-    function row(name, temps, v, on) {
-        var col = on ? AMBER : LBL, pct = v != null ? Math.round(v) : 0;
-        return '<div class="hzrow"><div class="hl"><span class="hn">' + name + '</span>'
-            + '<span class="ht">' + temps + '</span></div>'
-            + '<div class="hr"><span class="hv" style="color:' + col + '">Ventil ' + (v != null ? pct : '–') + ' %' + (on ? ' · aktiv' : '') + '</span>'
-            + '<span style="width:100%;height:4px;border-radius:2px;background:' + INSET + ';overflow:hidden">'
-            + '<span style="display:block;height:4px;width:' + pct + '%;background:' + col + '"></span></span></div></div>';
+    var wwS = sam('hotwater_storage_temperature');
+    function row(name, temps, v) {
+        var on = v != null && v > 5, col = on ? AMBER : LBL, pct = v != null ? Math.round(v) : 0;
+        return '<div class="hz"><span class="hn">' + name + '</span>'
+            + '<span class="ht">' + temps + '</span>'
+            + '<span class="hb"><span style="display:block;height:5px;width:' + pct + '%;background:' + col + '"></span></span>'
+            + '<span class="hv" style="color:' + col + '">' + (v != null ? pct : '–') + ' %</span></div>';
     }
-    var body = '<div class="card">' + cardH('Heizung')
+    var body = '<div class="card">' + cardH('Heizung', 'Ventil')
         + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">'
-        + row('Heizkreis', 'Vorlauf ' + comma(hkF, 1) + '° · Rücklauf ' + comma(hkR, 1) + '°', hkV, hkV != null && hkV > 5)
-        + '<div style="border-top:1px solid ' + INSET + '"></div>'
-        + row('Warmwasser', 'Speicher ' + comma(wwS, 1) + '° · Rücklauf ' + comma(wwR, 1) + '°', wwV, wwV != null && wwV > 5)
+        + row('Heizkreis', comma(hkF, 1) + '° → ' + comma(hkR, 1) + '°', hkV)
+        + row('Warmwasser', 'Speicher ' + comma(wwS, 1) + '°', wwV)
         + '</div></div>';
-    return fo(382, 116, body);
+    return fo(382, 110, body);
 }
 
-// ===== TIER 3 LEFT: STROMPREIS · VORSCHAU (778x192) — hourly bars from the forecast =====
+// ===== STROMPREIS · VORSCHAU (778x206) — native 15-min step-line =====
 var FORECAST = { rows: [], ready: false };
 function queryForecast() {
     sendTo('influxdb.0', 'query',
@@ -417,92 +434,109 @@ function queryForecast() {
         });
 }
 function buildPrice() {
-    var W = 778, H = 192;
+    var W = 778, H = 206;
     var price = tibber('energy_price_euro'), p20 = tibber('energy_price_euro_p20'), p80 = tibber('energy_price_euro_p80');
     var badge = 'jetzt <span style="color:' + priceBand(price, p20, p80).col + ';font-weight:700">' + comma(price, 2) + ' €/kWh</span>'
-        + '&nbsp;&nbsp;·&nbsp;&nbsp;<span style="color:' + GREEN + '">■</span> günstig&nbsp;&nbsp;'
+        + '&nbsp;&nbsp;·&nbsp;&nbsp;15-min-Preise&nbsp;&nbsp;·&nbsp;&nbsp;<span style="color:' + GREEN + '">■</span> günstig&nbsp;&nbsp;'
         + '<span style="color:' + AMBER + '">■</span> mittel&nbsp;&nbsp;<span style="color:' + RED + '">■</span> teuer';
     var head = cardH('Strompreis · Vorschau', badge);
-    // group the 15-min rows into Berlin hours
-    var hours = [], cur = null;
-    FORECAST.rows.forEach(function (r) {
-        var d = new Date(new Date(r.ts).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-        var key = dayKeyBerlin(new Date(r.ts)) + ' ' + d.getHours();
-        if (!cur || cur.key !== key) { cur = { key: key, day: dayKeyBerlin(new Date(r.ts)), hour: d.getHours(), sum: 0, n: 0 }; hours.push(cur); }
-        cur.sum += r.total; cur.n++;
-    });
-    hours.forEach(function (h) { h.v = h.sum / h.n; });
-    if (hours.length < 3) {
+    var rows = FORECAST.rows;
+    if (rows.length < 8) {
         return fo(W, H, '<div class="card">' + head
             + '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:' + LBL + ';font-size:14px">'
             + (FORECAST.ready ? 'Keine Vorschau-Daten' : 'Lade Vorschau…') + '</div></div>');
     }
-    var lo = Math.min.apply(null, hours.map(function (h) { return h.v; }));
-    var hi = Math.max.apply(null, hours.map(function (h) { return h.v; }));
+    var SW = 700, SH = 96, SX0 = 36, SY0 = 8;
+    var t0 = rows[0].ts, t1 = rows[rows.length - 1].ts + 900e3;
+    var vals = rows.map(function (r) { return r.total; });
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
     var axLo = Math.floor(lo * 20) / 20, axHi = Math.ceil(hi * 20) / 20;
     if (axHi - axLo < 0.05) axHi = axLo + 0.05;
-    var BW = 700, BH = 82, BX0 = 36, BY0 = 6, bw = BW / hours.length;
-    var bars = '', ticks = '', boundary = '';
-    var DAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-    hours.forEach(function (h, i) {
-        var col = (p20 != null && h.v <= p20) ? GREEN : ((p80 != null && h.v >= p80) ? RED : AMBER);
-        var hgt = Math.max(2, (h.v - axLo) / (axHi - axLo) * BH);
-        bars += '<rect x="' + (BX0 + i * bw + 1).toFixed(1) + '" y="' + (BY0 + BH - hgt).toFixed(1) + '" width="' + Math.max(1, bw - 2).toFixed(1) + '" height="' + hgt.toFixed(1) + '" rx="2" fill="' + col + '" opacity="' + (i === 0 ? '1' : '0.72') + '"/>';
-        if (h.hour === 0) {
-            var d = new Date(h.day + 'T12:00:00');
-            boundary += '<line x1="' + (BX0 + i * bw).toFixed(0) + '" y1="' + (BY0 - 2) + '" x2="' + (BX0 + i * bw).toFixed(0) + '" y2="' + (BY0 + BH + 4) + '" stroke="' + LBL + '" stroke-width="1" stroke-dasharray="2 3"/>'
-                + '<text x="' + (BX0 + i * bw + bw / 2).toFixed(0) + '" y="' + (BY0 + BH + 15) + '" fill="' + TEXT + '" font-size="11" font-weight="600" text-anchor="middle">' + DAYS[d.getDay()] + ' ' + d.getDate() + '.</text>';
-        } else if (h.hour % 6 === 0) {
-            ticks += '<text x="' + (BX0 + i * bw + bw / 2).toFixed(0) + '" y="' + (BY0 + BH + 15) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + h.hour).slice(-2) + '</text>';
+    function qx(ts) { return SX0 + (ts - t0) / (t1 - t0) * SW; }
+    function qy(p) { return SY0 + SH - (p - axLo) / (axHi - axLo) * SH; }
+    var nowMs = Date.now();
+    // step-line: horizontal segment per quarter, vertical connector to the next; past dimmed
+    var segs = '', areaPts = [];
+    rows.forEach(function (r, i) {
+        var x0 = qx(r.ts), x1 = qx(r.ts + 900e3), y = qy(r.total);
+        var col = (p20 != null && r.total <= p20) ? GREEN : ((p80 != null && r.total >= p80) ? RED : AMBER);
+        var op = (r.ts + 900e3 <= nowMs) ? '0.4' : '1';
+        segs += '<line x1="' + x0.toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + x1.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="' + col + '" stroke-width="2.5" opacity="' + op + '"/>';
+        if (i + 1 < rows.length && Math.abs(rows[i + 1].total - r.total) > 0.0005) {
+            segs += '<line x1="' + x1.toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + x1.toFixed(1) + '" y2="' + qy(rows[i + 1].total).toFixed(1) + '" stroke="' + col + '" stroke-width="1" opacity="' + (op * 0.6 || 0.24) + '"/>';
+        }
+        areaPts.push(x0.toFixed(1) + ',' + y.toFixed(1)); areaPts.push(x1.toFixed(1) + ',' + y.toFixed(1));
+    });
+    var area = 'M' + areaPts.join(' L') + ' L' + qx(t1).toFixed(1) + ',' + qy(axLo).toFixed(1) + ' L' + qx(t0).toFixed(1) + ',' + qy(axLo).toFixed(1) + ' Z';
+    // ticks + day boundary (Berlin)
+    var ticks = '', boundary = '';
+    rows.forEach(function (r) {
+        var b = berlinParts(r.ts);
+        if (b.m !== 0) return;
+        if (b.h === 0) {
+            boundary += '<line x1="' + qx(r.ts).toFixed(0) + '" y1="' + (SY0 - 2) + '" x2="' + qx(r.ts).toFixed(0) + '" y2="' + (SY0 + SH + 4) + '" stroke="' + LBL + '" stroke-width="1" stroke-dasharray="2 3"/>'
+                + '<text x="' + (qx(r.ts) + 4).toFixed(0) + '" y="' + (SY0 + SH + 16) + '" fill="' + TEXT + '" font-size="11" font-weight="600">' + DAYS_SHORT[b.dow] + ' ' + b.date + '.</text>';
+        } else if (b.h % 6 === 0) {
+            ticks += '<text x="' + qx(r.ts).toFixed(0) + '" y="' + (SY0 + SH + 16) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + b.h).slice(-2) + '</text>';
         }
     });
-    // cheapest 4h window → green underline + label
-    var bestI = 0, bestAvg = Infinity, WIN = Math.min(4, hours.length);
-    for (var s = 0; s + WIN <= hours.length; s++) {
-        var sum = 0; for (var q = s; q < s + WIN; q++) sum += hours[q].v;
-        if (sum / WIN < bestAvg) { bestAvg = sum / WIN; bestI = s; }
+    // cheapest future 4h window (16 quarter-hours)
+    var futStart = 0;
+    while (futStart < rows.length && rows[futStart].ts + 900e3 <= nowMs) futStart++;
+    var WINQ = 16, bestI = -1, bestAvg = Infinity;
+    for (var s = futStart; s + WINQ <= rows.length; s++) {
+        var sum = 0; for (var q = s; q < s + WINQ; q++) sum += rows[q].total;
+        if (sum / WINQ < bestAvg) { bestAvg = sum / WINQ; bestI = s; }
     }
-    // window near the right edge → put the label left of the underline instead of clipping
-    var cFlip = BX0 + bestI * bw + WIN * bw + 170 > BX0 + BW;
-    var cheap = '<rect x="' + (BX0 + bestI * bw).toFixed(0) + '" y="' + (BY0 + BH + 20) + '" width="' + (WIN * bw).toFixed(0) + '" height="3" rx="1.5" fill="' + GREEN + '"/>'
-        + '<text x="' + (cFlip ? (BX0 + bestI * bw - 8).toFixed(0) : (BX0 + bestI * bw + WIN * bw + 8).toFixed(0)) + '" y="' + (BY0 + BH + 26) + '" fill="' + GREEN + '" font-size="11"' + (cFlip ? ' text-anchor="end"' : '') + '>günstig '
-        + ('0' + hours[bestI].hour).slice(-2) + '–' + ('0' + ((hours[bestI].hour + WIN) % 24)).slice(-2) + ' · Ø ' + comma(bestAvg, 2) + ' €</text>';
-    var svg = '<svg width="' + (BW + BX0 + 10) + '" height="' + (BH + BY0 + 34) + '" style="flex:1">'
-        + '<text x="' + (BX0 - 8) + '" y="' + (BY0 + 10) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + comma(axHi, 2) + '</text>'
-        + '<text x="' + (BX0 - 8) + '" y="' + (BY0 + BH) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + comma(axLo, 2) + '</text>'
-        + bars + boundary + ticks + cheap + '</svg>';
+    var cheap = '';
+    if (bestI >= 0) {
+        var cx0 = qx(rows[bestI].ts), cx1 = qx(rows[bestI].ts + WINQ * 900e3);
+        var b0 = berlinParts(rows[bestI].ts), b1 = berlinParts(rows[bestI].ts + WINQ * 900e3);
+        var cFlip = cx1 + 165 > SX0 + SW;
+        cheap = '<rect x="' + cx0.toFixed(0) + '" y="' + (SY0 + SH + 21) + '" width="' + (cx1 - cx0).toFixed(0) + '" height="3" rx="1.5" fill="' + GREEN + '"/>'
+            + '<text x="' + (cFlip ? (cx0 - 8).toFixed(0) : (cx1 + 8).toFixed(0)) + '" y="' + (SY0 + SH + 27) + '" fill="' + GREEN + '" font-size="11"' + (cFlip ? ' text-anchor="end"' : '') + '>günstig '
+            + ('0' + b0.h).slice(-2) + (b0.m ? ':' + ('0' + b0.m).slice(-2) : '') + '–'
+            + ('0' + b1.h).slice(-2) + (b1.m ? ':' + ('0' + b1.m).slice(-2) : '') + ' · Ø ' + comma(bestAvg, 2) + ' €</text>';
+    }
+    var nowX = Math.max(SX0, Math.min(SX0 + SW, qx(nowMs)));
+    var nowM = '<line x1="' + nowX.toFixed(0) + '" y1="' + (SY0 - 2) + '" x2="' + nowX.toFixed(0) + '" y2="' + (SY0 + SH) + '" stroke="' + TEXT + '" stroke-width="1.5"/>'
+        + '<text x="' + (nowX + 5).toFixed(0) + '" y="' + (SY0 + 9) + '" fill="' + TEXT + '" font-size="11" font-weight="600">jetzt</text>';
+    var guides = (p20 != null && p20 >= axLo && p20 <= axHi ? '<line x1="' + SX0 + '" y1="' + qy(p20).toFixed(1) + '" x2="' + (SX0 + SW) + '" y2="' + qy(p20).toFixed(1) + '" stroke="' + GREEN + '" stroke-width="1" opacity="0.25" stroke-dasharray="3 4"/>' : '')
+        + (p80 != null && p80 >= axLo && p80 <= axHi ? '<line x1="' + SX0 + '" y1="' + qy(p80).toFixed(1) + '" x2="' + (SX0 + SW) + '" y2="' + qy(p80).toFixed(1) + '" stroke="' + RED + '" stroke-width="1" opacity="0.25" stroke-dasharray="3 4"/>' : '');
+    var svg = '<svg width="' + (SW + SX0 + 10) + '" height="' + (SH + SY0 + 34) + '" style="flex:1">'
+        + '<text x="' + (SX0 - 8) + '" y="' + (SY0 + 10) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + comma(axHi, 2) + '</text>'
+        + '<text x="' + (SX0 - 8) + '" y="' + (SY0 + SH) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + comma(axLo, 2) + '</text>'
+        + '<path d="' + area + '" fill="' + AMBER + '" opacity="0.06"/>'
+        + guides + segs + boundary + ticks + cheap + nowM + '</svg>';
     return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex">' + svg + '</div></div>');
 }
 
-// ===== TIER 3 RIGHT: KOSTEN · NETZBEZUG (382x120) — bisher · Prognose · Vorperiode =====
+// ===== KOSTEN · NETZBEZUG (382x124) — Monat/Jahr, bisher → Prognose · Vorperiode =====
 function buildPeriod() {
     var b = berlinNow();
     var daysInMonth = new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate();
     var dayFrac = (b.getHours() + b.getMinutes() / 60) / 24;
-    var elapsed = {
-        day: dayFrac,
-        month: (b.getDate() - 1 + dayFrac) / daysInMonth,
-        year: ((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(b.getFullYear(), 0, 1)) / 86400000 + dayFrac)
-            / (((b.getFullYear() % 4 === 0 && b.getFullYear() % 100 !== 0) || b.getFullYear() % 400 === 0) ? 366 : 365)
-    };
-    function prow(label, period, frac) {
+    var mElapsed = (b.getDate() - 1 + dayFrac) / daysInMonth;
+    var yDays = ((b.getFullYear() % 4 === 0 && b.getFullYear() % 100 !== 0) || b.getFullYear() % 400 === 0) ? 366 : 365;
+    var yElapsed = ((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(b.getFullYear(), 0, 1)) / 86400000 + dayFrac) / yDays;
+    function fmtProg(v) { return v == null ? '–' : (v >= 100 ? Math.round(v) + ' €' : eur2(v)); }
+    function krow(label, period, frac, vorLabel) {
         var cur = tibber('cost_this_' + period), prev = tibber('cost_last_' + period);
-        // Prognose = linear pace; suppressed early in the period (extrapolation too noisy)
-        var prog = (cur != null && frac > 0.1) ? cur / frac : null;
+        var prog = (cur != null && frac > 0.1) ? cur / frac : null;   // suppressed early in the period
         var pCol = (prog == null || prev == null || prev <= 0.01) ? TEXT : (prog < prev ? GREEN : (prog > prev * 1.05 ? AMBER : TEXT));
-        var progStr = prog == null ? '–' : (prog >= 100 ? Math.round(prog) + ' €' : eur2(prog));
-        return '<tr><td>' + label + '</td>'
-            + '<td style="color:' + TEXT + '">' + eur2(cur) + '</td>'
-            + '<td style="color:' + pCol + '">' + progStr + '</td>'
-            + '<td style="color:' + LBL + ';font-weight:400">' + eur2(prev) + '</td></tr>';
+        return '<div class="kr"><span class="kl">' + label + '</span>'
+            + '<span class="kv" style="color:' + TEXT + '">' + eur2(cur) + '</span>'
+            + '<span class="ka">→</span>'
+            + '<span class="kv" style="color:' + pCol + '">' + fmtProg(prog) + '</span>'
+            + '<span class="kp">' + vorLabel + ' ' + (prev != null ? (prev >= 100 ? Math.round(prev) + ' €' : eur2(prev)) : '–') + '</span></div>';
     }
-    var body = '<div class="card">' + cardH('Kosten · Netzbezug', 'Prognose vs. Vorperiode')
-        + '<table class="per"><tr><th></th><th>bisher</th><th>Prognose</th><th>Vorperiode</th></tr>'
-        + prow('Tag', 'day', elapsed.day)
-        + prow('Monat', 'month', elapsed.month)
-        + prow('Jahr', 'year', elapsed.year)
-        + '</table></div>';
-    return fo(382, 120, body);
+    var prevMonth = MONTHS[(b.getMonth() + 11) % 12];
+    var body = '<div class="card">' + cardH('Kosten · Netzbezug', 'bisher → Prognose · Vorperiode')
+        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">'
+        + krow('Monat', 'month', mElapsed, prevMonth)
+        + krow('Jahr', 'year', yElapsed, (b.getFullYear() - 1) + ':')
+        + '</div></div>';
+    return fo(382, 124, body);
 }
 
 // ===== publish =====
@@ -517,7 +551,7 @@ function renderSlow() {
 
 // ===== state bootstrap =====
 ['et3_flow', 'et3_curve', 'et3_bilanz', 'et3_heiz', 'et3_price', 'et3_period'].forEach(function (id) {
-    createState(EN + id, '', { type: 'string', role: 'html', desc: 'Energie-Tab v3 ' + id });
+    createState(EN + id, '', { type: 'string', role: 'html', desc: 'Energie-Tab et3 ' + id });
 });
 INTEGRALS.forEach(function (e) {
     createState(EN + 'energy_today_' + e[0], 0, { type: 'number', role: 'value.energy', unit: 'kWh', desc: 'Tages-kWh ' + e[0] + ' (Trapez-Integration)' });
@@ -536,11 +570,11 @@ createState(EN + 'energy_today_day', '', { type: 'string', role: 'value', desc: 
  'sam_digital.heating_flow_temperature', 'sam_digital.hotwater_storage_temperature'].forEach(function (s) {
     on({ id: EN + s, change: 'ne' }, function () { setState(EN + 'et3_heiz', buildHeiz(), true); });
 });
-['cost_this_hour', 'cost_this_day', 'cost_this_month', 'cost_this_year',
- 'cost_last_day', 'cost_last_month', 'cost_last_year'].forEach(function (s) {
+['cost_this_day', 'cost_this_month', 'cost_this_year',
+ 'cost_last_month', 'cost_last_year'].forEach(function (s) {
     on({ id: EN + 'tibber_states.' + s, change: 'ne' }, renderSlow);
 });
 schedule('* * * * *', function () { integrateTick(); renderSlow(); });
 schedule('*/5 * * * *', function () { queryCurve(); queryForecast(); });
 schedule('*/30 * * * * *', renderFast);
-console.log('[Energie v3] initialized');
+console.log('[Energie v4] initialized');
