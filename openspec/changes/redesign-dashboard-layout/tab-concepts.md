@@ -136,6 +136,12 @@ Alarm/security status (red tiles in old Main) → Review: are these the ribbon s
 **Style:** same i-vis-universal tile approach as Overview Steuerung, OR HTML/CSS tiles like Overview right column.
 Decision needed: native vis tiles (simpler, proven) vs. HTML/CSS (consistent with new design system).
 
+**Update (2026-07-04):** the interim Musik tab was merged into Steuerung as its bottom band
+(musik_v2.js renders `musik_grid` at 4,364; 4×2 compact room cards + group presets in the header row),
+restoring the 5-tab structure above. Lichter/Steckdosen became 68×68 square tiles (one Lichter row),
+Steckdosen∥Garten share a band, Garten gained the red Stop tile, and the Aktionen section was removed
+(Fernsehabend lives on the Overview as `wov_tv`).
+
 ---
 
 ## Diagnostics (replaces current Advanced view content)

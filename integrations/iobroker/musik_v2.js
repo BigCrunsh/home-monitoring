@@ -1,8 +1,10 @@
-// ioBroker JavaScript: Musik (Sonos) tab — driven by the Sonos HTTP API (jishi,
+// ioBroker JavaScript: Musik band (Sonos) — driven by the Sonos HTTP API (jishi,
 // node-sonos-http-api on localhost:5005), because the native iobroker.sonos adapter can't group
 // this (S2) system (HTTP 500). jishi gives correct live room names, state, and working grouping.
 //
-// 8 room cards (now-playing + play/pause + volume ±) + preset group buttons (Alle/Wohnen/Einzeln).
+// Rendered as the bottom band of the Steuerung view (widget at 4,364 — the standalone Musik tab
+// is gone): compact 4×2 room-card grid (now-playing + play/pause + volume ±) with the preset
+// group buttons (Alle/Wohnen/Einzeln) in the header row.
 // HTML/CSS is display-only → native i-vis-universal overlays write to javascript.0.musik_cmd; this
 // script polls /zones for state and turns commands into jishi HTTP calls.
 
@@ -14,7 +16,7 @@ function jget(path, cb) {
     }).on('error', function (e) { cb && cb(e); }).on('timeout', function () { cb && cb(new Error('timeout')); });
 }
 
-var W = 1170, H = 680, PADX = 4;
+var W = 1170, H = 320, PADX = 4;
 
 var CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
@@ -32,22 +34,22 @@ var CSS = `
 .mv2 .wrap{position:relative; width:${W}px; height:${H}px}
 .mv2 .seccard{position:absolute; background:var(--surface); border:1px solid var(--border); border-radius:var(--r2)}
 .mv2 .card-h{position:absolute; font-size:14px; font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase}
-.mv2 .gbtn{position:absolute; background:var(--bg); border:1px solid var(--border); border-radius:var(--r3); display:flex; align-items:center; justify-content:center; gap:8px; font-size:16px; font-weight:600}
-.mv2 .room{position:absolute; background:var(--bg); border:1px solid var(--border); border-radius:var(--r3); padding:12px 14px; display:flex; align-items:center; gap:12px; overflow:hidden}
+.mv2 .gbtn{position:absolute; background:var(--bg); border:1px solid var(--border); border-radius:var(--r3); display:flex; align-items:center; justify-content:center; gap:8px; font-size:15px; font-weight:600}
+/* compact room card (278×122): head row + now-playing lines + absolute control row at the bottom */
+.mv2 .room{position:absolute; background:var(--bg); border:1px solid var(--border); border-radius:var(--r3); padding:10px 12px; overflow:hidden}
 .mv2 .room.playing{border-color:rgba(181,251,91,.4)}
-.mv2 .room .disc{width:54px; height:54px; border-radius:50%; background:var(--inset); flex:none; display:flex; align-items:center; justify-content:center}
+.mv2 .rhead{display:flex; align-items:center; gap:8px}
+.mv2 .room .disc{width:30px; height:30px; border-radius:50%; background:var(--inset); flex:none; display:flex; align-items:center; justify-content:center}
 .mv2 .room.playing .disc{background:var(--green-16)}
-.mv2 .room .mid{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px}
-.mv2 .room .nm{font-size:17px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .room .ti{font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .room .ar{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .room .grp{font-size:11px; color:var(--blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .room .ctl{flex:none; display:flex; align-items:center; gap:8px}
-.mv2 .room .pp{width:48px; height:48px; border-radius:50%; background:var(--inset); display:flex; align-items:center; justify-content:center}
+.mv2 .room .nm{font-size:15px; font-weight:600; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mv2 .room .ti{margin-top:5px; font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mv2 .room .ar{margin-top:2px; font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mv2 .room .grp{color:var(--blue)}
+.mv2 .room .pp{position:absolute; width:38px; height:38px; border-radius:50%; background:var(--inset); display:flex; align-items:center; justify-content:center}
 .mv2 .room .pp.ghost{background:transparent}
 .mv2 .room.playing .pp{background:var(--green-16)}
-.mv2 .room .vb{width:42px; height:42px; border-radius:10px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; color:var(--text)}
-.mv2 .room .vol{font-size:14px; color:var(--text); font-weight:600; width:40px; text-align:center}
+.mv2 .room .vb{position:absolute; width:42px; height:34px; border-radius:10px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:var(--text)}
+.mv2 .room .vol{position:absolute; width:36px; height:34px; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--text); font-weight:600}
 `;
 
 var GREEN = '#b5fb5b', BLUE = '#5080AC', LBL = '#8A8A8A';
@@ -66,7 +68,7 @@ function rnd(o) { return { kind: o.kind, oid: o.oid, value: o.value, x: Math.rou
 
 function icoPlay(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 4 L19 12 L7 20 Z" fill="' + c + '"/></svg>'; }
 function icoPause(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="' + c + '"/><rect x="14" y="4" width="4" height="16" rx="1" fill="' + c + '"/></svg>'; }
-function icoSpeaker(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="15" r="3.4"/><circle cx="12" cy="6.5" r="1"/></g></svg>'; }
+function icoSpeaker(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="15" r="3.4"/><circle cx="12" cy="6.5" r="1"/></g></svg>'; }
 function icoStop(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
 function icoLink(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round"><path d="M9 12 h6"/><path d="M8 8 H6 a4 4 0 0 0 0 8 h2"/><path d="M16 8 h2 a4 4 0 0 1 0 8 h-2"/></g></svg>'; }
 
@@ -77,53 +79,53 @@ function roomCard(room, x, y, w, h) {
     var vol = (typeof z.vol === 'number') ? z.vol : null;
     var grouped = z.coord && z.coord !== room;
     var idle = isTV ? 'TV' : (z.coord ? (z.stopped ? 'gestoppt' : 'pausiert') : '–');
+    var grp = grouped ? '<span class="grp">↪ ' + esc(z.coord) + '</span>' : '';
+    var ti = playing ? clip(z.title, 34) : esc(idle);
+    var ar = playing && z.artist ? clip(z.artist, 28) + (grouped ? ' &#160;' + grp : '') : grp;
+    // control row pinned to the card bottom; positions are relative to the (absolute) card
+    var vbY = h - 10 - 34, ppY = h - 10 - 38, ppX = w - 12 - 38;
     var html = '<div class="room' + (playing ? ' playing' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px">'
-        + '<div class="disc">' + icoSpeaker(playing ? GREEN : LBL) + '</div>'
-        + '<div class="mid"><div class="nm">' + esc(room) + '</div>'
-        + (playing
-            ? '<div class="ti">' + clip(z.title, 36) + '</div><div class="ar">' + clip(z.artist, 36) + '</div>'
-            : '<div class="ar">' + idle + '</div>')
-        + (grouped ? '<div class="grp">↪ ' + esc(z.coord) + '</div>' : '')
-        + '</div>'
-        + '<div class="ctl">'
-        + '<span class="vb">–</span><span class="vol">' + (vol != null ? vol : '–') + '</span><span class="vb">+</span>'
-        // TV rooms keep an invisible play slot so the volume buttons stay aligned with their existing
-        // overlays; the play tap is simply ignored by the command handler (no standalone transport)
-        + '<span class="pp' + (isTV ? ' ghost' : '') + '">' + (isTV ? '' : (playing ? icoPause(GREEN) : icoPlay(LBL))) + '</span>'
-        + '</div></div>';
-    var pad = 14, ppW = 48, vbW = 42, volW = 40, g = 8, th = 48;
-    var ppX = x + w - pad - ppW;
-    var volPX = ppX - g - vbW;
-    var volNX = volPX - g - volW - g - vbW;
-    var cy = y + (h - th) / 2;
+        + '<div class="rhead"><div class="disc">' + icoSpeaker(playing ? GREEN : LBL) + '</div><span class="nm">' + esc(room) + '</span></div>'
+        + '<div class="ti">' + ti + '</div>'
+        + '<div class="ar">' + (ar || '&#160;') + '</div>'
+        + '<span class="vb" style="left:12px;top:' + vbY + 'px">–</span>'
+        + '<span class="vol" style="left:60px;top:' + vbY + 'px">' + (vol != null ? vol : '–') + '</span>'
+        + '<span class="vb" style="left:102px;top:' + vbY + 'px">+</span>'
+        // TV rooms keep an invisible play slot so the layout (and its overlay) stays uniform;
+        // the play tap is simply ignored by the command handler (no standalone transport)
+        + '<span class="pp' + (isTV ? ' ghost' : '') + '" style="left:' + ppX + 'px;top:' + ppY + 'px">' + (isTV ? '' : (playing ? icoPause(GREEN) : icoPlay(LBL))) + '</span>'
+        + '</div>';
+    // tap targets slightly larger than the visuals (finger-friendly), non-overlapping
     var targets = [
-        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':vol:down', x: volNX, y: cy, w: vbW, h: th }),
-        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':vol:up', x: volPX, y: cy, w: vbW, h: th }),
-        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':playpause', x: ppX, y: cy, w: ppW, h: th })
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':vol:down', x: x + 6, y: y + vbY - 7, w: 52, h: 48 }),
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':vol:up', x: x + 98, y: y + vbY - 7, w: 52, h: 48 }),
+        rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: room + ':playpause', x: x + ppX - 6, y: y + ppY - 6, w: 50, h: 50 })
     ];
     return { html: html, targets: targets };
 }
 
 function build() {
     var html = '', targets = [];
-    var gTop = 4, gH = 84;
-    html += '<div class="seccard" style="left:' + PADX + 'px;top:' + gTop + 'px;width:' + (W - 2 * PADX) + 'px;height:' + gH + 'px"></div>'
-        + '<div class="card-h" style="left:' + (PADX + 14) + 'px;top:' + (gTop + 12) + 'px">Gruppen</div>';
+    var cTop = 4, cH = H - 8;   // one section card fills the band
+    html += '<div class="seccard" style="left:' + PADX + 'px;top:' + cTop + 'px;width:' + (W - 2 * PADX) + 'px;height:' + cH + 'px"></div>'
+        + '<div class="card-h" style="left:' + (PADX + 14) + 'px;top:' + (cTop + 12) + 'px">Musik</div>';
+    // preset group pills, right-aligned in the header row
     var presets = [['Alle', 'group:alle', icoLink(GREEN)], ['Wohnen', 'group:wohnen', icoLink(BLUE)], ['Einzeln', 'group:einzeln', icoStop(LBL)]];
-    var pbY = gTop + 36, pbH = 38, pbGap = 10, pbW = (W - 2 * PADX - 28 - (presets.length - 1) * pbGap) / presets.length, pbX0 = PADX + 14;
+    var pbW = 150, pbH = 32, pbGap = 8, pbY = cTop + 8;
+    var pbX0 = PADX + (W - 2 * PADX) - 14 - presets.length * pbW - (presets.length - 1) * pbGap;
     presets.forEach(function (p, i) {
         var px = pbX0 + i * (pbW + pbGap);
         html += '<div class="gbtn" style="left:' + px + 'px;top:' + pbY + 'px;width:' + pbW + 'px;height:' + pbH + 'px"><span>' + p[2] + '</span>' + p[0] + '</div>';
-        targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: p[1], x: px, y: pbY, w: pbW, h: pbH }));
+        targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: p[1], x: px, y: pbY - 6, w: pbW, h: pbH + 12 }));
     });
 
-    var top = gTop + gH + 10, cols = 2, gap = 10;
-    var cw = (W - 2 * PADX - (cols - 1) * gap) / cols;
-    var ch = Math.floor((H - top - 4 - 3 * gap) / 4);
+    // 4×2 compact room cards inside the card (10px inner padding)
+    var top = pbY + pbH + 10, cols = 4, gap = 10, rgap = 8, ch = 122;
+    var ix = PADX + 10;
+    var cw = (W - 2 * PADX - 20 - (cols - 1) * gap) / cols;
     ROOMS.forEach(function (room, i) {
         var c = i % cols, r = Math.floor(i / cols);
-        var x = PADX + c * (cw + gap), y = top + r * (ch + gap);
-        var res = roomCard(room, x, y, cw, ch);
+        var res = roomCard(room, ix + c * (cw + gap), top + r * (ch + rgap), cw, ch);
         html += res.html; res.targets.forEach(function (t) { targets.push(t); });
     });
 

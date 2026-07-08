@@ -5,7 +5,7 @@
 //   diag_summary (4,4)   1170x72  — overall verdict + Stand
 //   diag_left    (4,84)   392x596 — DATENQUELLEN: per-source age + freshness verdict (primary)
 //   diag_mid     (408,84) 377x596 — SYSTEM · Pi: CPU / Last / RAM / Disk / Uptime + BACKUP card
-//   diag_right   (797,84) 377x596 — ADAPTER: alive/connected dots
+//   diag_right   (797,84) 377x596 — ADAPTER: alive/connected dots + GERÄTE · HomeMatic health sweep
 
 var CSS_BASE = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
@@ -38,7 +38,7 @@ var CSS_BASE = `
 
 /* DATENQUELLEN + ADAPTER rows */
 .mv2 .rows{flex:1; display:flex; flex-direction:column; gap:6px}
-.mv2 .drow{display:grid; grid-template-columns:auto 1fr auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:9px var(--s3)}
+.mv2 .drow{display:grid; grid-template-columns:auto 1fr auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3)}
 .mv2 .drow .dot{width:10px; height:10px; border-radius:50%; flex:none}
 .mv2 .drow .nm{font-size:var(--t-sub); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .drow .ag{font-size:var(--t-label); font-weight:600; white-space:nowrap}
@@ -61,6 +61,7 @@ var CSS_BASE = `
 
 var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
+var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';   // Studio base station
 var GVALVE = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
 var HOST = 'system.host.raspberrypi';
 
@@ -70,6 +71,7 @@ var SOURCES = [
     ['Shelly 3EM', 'javascript.0.mqtt_shelly.total_act_power', 60, 300],
     ['SAM Heizung', 'javascript.0.sam_digital.heating_flow_temperature', 300, 900],
     ['Netatmo', NB + '.Temperature.Temperature', 900, 1800],
+    ['Netatmo Studio', NB2 + '.Temperature.Temperature', 900, 1800],
     ['Tibber Preis', 'javascript.0.tibber_states.energy_price_euro', 4200, 10800],
     ['Tankstelle', 'tankerkoenig.0.stations.1.diesel.feed', 3600, 21600],
     ['Gardena', GVALVE + '-3A1.activity_value', 21600, 86400],
@@ -219,11 +221,66 @@ function buildAdapters() {
     return h + '</div></div>';
 }
 
+// ===== GERÄTE · HomeMatic =====
+// Health sweep over every hm-rpc device (incl. the 6 wall buttons that have no other display
+// presence): UNREACH = offline (red), LOW_BAT = battery (amber), smoke-chamber degradation (amber).
+// Calm when clean — one green count row; offenders get their own rows (worst first, capped).
+// The device list is enumerated once at init ($ selector on channel-0 UNREACH); a device added on
+// the CCU appears after the next script restart, which is fine for a hardware change.
+var HM_DEVICES = [];
+function enumerateHmDevices() {
+    HM_DEVICES = [];
+    $('state[id=hm-rpc.*.0.UNREACH]').each(function (id) {
+        var dev = id.replace(/\.0\.UNREACH$/, '');
+        var obj = getObject(dev);
+        var name = (obj && obj.common && obj.common.name) || dev.split('.').pop();
+        HM_DEVICES.push({ dev: dev, name: String(name) });
+    });
+    HM_DEVICES.sort(function (a, b) { return a.name.localeCompare(b.name); });
+}
+function sTrue(id) { var s = getState(id); return !!(s && s.val === true); }
+function deviceIssues() {
+    var issues = [];
+    HM_DEVICES.forEach(function (d) {
+        if (sTrue(d.dev + '.0.UNREACH')) issues.push({ nm: d.name, txt: 'offline', col: RED, rank: 0 });
+        else if (sTrue(d.dev + '.0.LOW_BAT')) issues.push({ nm: d.name, txt: 'Batterie schwach', col: AMBER, rank: 1 });
+    });
+    // smoke detector chamber degradation — a silent safety fault, not covered by UNREACH/LOW_BAT
+    if (sTrue('hm-rpc.1.000A5D89B45113.1.ERROR_DEGRADED_CHAMBER'))
+        issues.push({ nm: 'Rauchmelder', txt: 'Kammer prüfen', col: AMBER, rank: 1 });
+    issues.sort(function (a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); });
+    return issues;
+}
+// the right column shares 596 px with the 9 Adapter rows — the card gets at most 3 rows:
+// all issues when they fit, otherwise the 2 worst + a "+n weitere" pointer to the CCU.
+var DEV_MAX_ROWS = 3;
+function buildDevices() {
+    var issues = deviceIssues();
+    var h = '<div class="card"><div class="card-h">Geräte · HomeMatic</div><div class="rows">';
+    if (!issues.length) {
+        h += '<div class="drow">' + dot(GREEN)
+            + '<span class="nm">' + HM_DEVICES.length + ' Geräte</span>'
+            + '<span class="ag sub" style="color:var(--mute)">alle ok</span></div>';
+    } else {
+        var shown = issues.length <= DEV_MAX_ROWS ? issues : issues.slice(0, DEV_MAX_ROWS - 1);
+        shown.forEach(function (i) {
+            h += '<div class="drow">' + dot(i.col)
+                + '<span class="nm">' + esc(i.nm) + '</span>'
+                + '<span class="ag" style="color:' + i.col + '">' + i.txt + '</span></div>';
+        });
+        if (issues.length > DEV_MAX_ROWS)
+            h += '<div class="drow">' + dot(AMBER) + '<span class="nm">+ ' + (issues.length - shown.length)
+                + ' weitere</span><span class="ag sub" style="color:var(--mute)">siehe CCU</span></div>';
+    }
+    return h + '</div></div>';
+}
+
 function publish() {
     setState('diag_summary', fo('sumw', 1170, 72, buildSummary()), true);
     setState('diag_left', fo('dlw', 392, 596, buildSources()), true);
     setState('diag_mid', fo('dmw', 377, 596, '<div class="mcol">' + buildSystem() + buildBackup() + '</div>'), true);
-    setState('diag_right', fo('drw', 377, 596, buildAdapters()), true);
+    setState('diag_right', fo('drw', 377, 596, '<div class="mcol">'
+        + buildAdapters().replace('"card"', '"card grow"') + buildDevices() + '</div>'), true);
 }
 
 ['diag_summary', 'diag_left', 'diag_mid', 'diag_right'].forEach(function (id) {
@@ -234,6 +291,7 @@ createState('javascript.0.backup_nas_ts', 0, { type: 'number', role: 'value.time
 createState('javascript.0.backup_influx_ts', 0, { type: 'number', role: 'value.time', desc: 'Influx-Dump Marker' });
 
 // freshness is time-based — refresh every minute (also catches adapter/host changes)
+enumerateHmDevices();
 setTimeout(publish, 2000);
 schedule('* * * * *', publish);
 console.log('[Diagnose v2] initialized');
