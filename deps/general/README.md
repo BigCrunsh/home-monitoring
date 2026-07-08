@@ -14,7 +14,7 @@ The backup script for the Raspberry PI is running on a Synology Diskstation.
    (`~/.last_nas_backup_success`, `~/influx_backup`) into ioBroker states so the
    Diagnose tab's Backup card can show their age. Schedule it on the Pi:
 
-       */15 * * * * /home/pi/home-monitoring/deps/general/bin/export_backup_states.sh
+       */15 * * * * /home/pi/src/github.com/BigCrunsh/home-monitoring/deps/general/bin/export_backup_states.sh
 
    Deploy `diagnose_v2.js` first — it creates the two states the script writes to.
 
