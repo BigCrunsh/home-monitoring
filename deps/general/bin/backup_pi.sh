@@ -59,11 +59,18 @@ rsync \
     "$DEST.partial" >> "$LOGFILE" 2>&1
 
 error_code=$?
-if [ "$error_code" -ne 0 ]; then
+# 24 = source files vanished during the transfer, 23 = partial transfer (a few
+# attr/read errors) — both are normal when pulling a LIVE rootfs and still leave
+# a usable snapshot. Only harder failures discard the night's work.
+if [ "$error_code" -ne 0 ] && [ "$error_code" -ne 23 ] && [ "$error_code" -ne 24 ]; then
     log "$error_code: rsync failed; keeping existing snapshots"
     rm -rf "$DEST.partial"
+    # leave the exit code on the Pi so the failure is debuggable from there
+    ssh -p 22 "$USER@$RASPBERRY_PI" "echo $error_code > /home/pi/.last_nas_backup_error" \
+        >> "$LOGFILE" 2>&1 || true
     exit 1
 fi
+[ "$error_code" -ne 0 ] && log "warning: rsync exit $error_code (tolerated, snapshot kept)"
 
 # Promote the partial snapshot atomically and repoint 'latest'
 rm -rf "$DEST"
@@ -80,7 +87,7 @@ ls -1d "$SERVERDIR"/20*-*-* 2>/dev/null | sort | head -n "-$KEEP" | while read -
 done
 
 # Touch a success marker on the Pi for the freshness healthcheck
-ssh -p 22 "$USER@$RASPBERRY_PI" 'touch /home/pi/.last_nas_backup_success' \
+ssh -p 22 "$USER@$RASPBERRY_PI" 'touch /home/pi/.last_nas_backup_success && rm -f /home/pi/.last_nas_backup_error' \
     >> "$LOGFILE" 2>&1 || log "warning: could not touch success marker on Pi"
 
 log "Done"
