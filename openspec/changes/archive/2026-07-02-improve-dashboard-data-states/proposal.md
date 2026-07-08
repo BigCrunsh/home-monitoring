@@ -1,5 +1,14 @@
 # Dashboard tiles distinguish live, stale, and unavailable data
 
+> **ARCHIVED 2026-07-02 — superseded by the `.mv2` redesign + holistic review.**
+> This change was scoped against the old vis-widget dashboard (per-tile age bindings,
+> ~46 color bindings, wind/rain tiles), which no longer exists. Its surviving intent is
+> folded into `redesign-dashboard-layout` as the **data-state honesty lens** of
+> `holistic-review-2026-07.md`, and its open concerns trace to that change's task list:
+> staleness/"–" pattern on every sensor tile (cross-tab rule), de-DE precision table,
+> and the #A00629-contrast question (owner decision — palette hues are ground truth).
+> Wind tile: already gone in the redesign. Gardena: kept (revived 2026-06-13).
+
 ## Why
 
 The vis-2 dashboard renders failures as if they were live data: `NaN km/h` for a wind

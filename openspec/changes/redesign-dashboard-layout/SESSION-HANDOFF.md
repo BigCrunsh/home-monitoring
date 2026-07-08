@@ -1,5 +1,22 @@
 # Session Handoff — Dashboard work (as of 2026-06-19 evening)
 
+> 📋 **CURRENT (2026-07-02): HOLISTIC REVIEW DONE — read `holistic-review-2026-07.md` +
+> the refreshed `tasks.md` first; everything below this banner is history.**
+> All six tabs are live on `.mv2`-style HTML/CSS and pushed. A four-lens review (spacing
+> edge-scan, CSS consistency matrix, dataviz, smart-home UX) ran on live wall state,
+> rendered locally (`review-2026-07/*.png`; harness recipe: capture the 20
+> `javascript.0.*` HTML states + vis-views.json from the Pi, place at exact vis geometry,
+> headless-Chrome screenshot). Core diagnosis: one design system, seven hand-copied CSS
+> implementations — see `consistency-matrix-2026-07.md`. Work queue: tasks.md §5 (shared
+> layer first) → per-tab re-cuts → polish; §12 owner decisions gate several items.
+> Confirmed live bugs: Klima soil-card bottom row clips, Main Diesel/E5 labels 4px from
+> edge, Energie view on the legacy 386/6px grid touching the nav, Wohnzimmer battery slot
+> dropped. (A fifth "weather icons show wind arrows" finding was **RETRACTED 2026-07-04**
+> — artifact of the local render harness fetching the viento-wind gallery; the wall was
+> always correct. Owner decisions OD1–OD7 all settled; see tasks.md §12.) `spacing-alignment-concept.md` is rewritten (v2)
+> as the `.mv2` geometric contract. `improve-dashboard-data-states` archived (intent
+> folded in as the data-state lens).
+
 > ✅ **DELIVERED 2026-06-24 — COLUMN-SPLIT refactor of the Neu card; deployed live, ready to commit.**
 > The single full-width `main_v2_card` is split into **four independent widgets** so the calendar
 > (middle) + Energie (right) gain height: only the LEFT column sits above the nav; MIDDLE+RIGHT extend

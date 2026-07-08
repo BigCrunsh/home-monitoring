@@ -1,92 +1,101 @@
-# Spacing & Alignment Concept
+# Spacing & Alignment Concept — `.mv2` system (v2, 2026-07-02)
 
-The single set of rules every card/text/tile on the dashboard follows. Derived from
-measuring the live Main view (so it fits what's there), it confirms the good bones and
-fixes the drift. Tokens already live in `vis/main/vis-user.css`; this is the contract.
+The single set of rules every view, card, and text block on the dashboard follows.
+Rewritten for the `.mv2` HTML/CSS system (Figtree, foreignObject widgets); the v1 of this
+document described the pre-rebuild vis-widget Main (RobotoCondensed, 386px/6px grid) and is
+superseded. Tokens live in each script's `CSS_BASE` per `integrations/iobroker/DESIGN_SYSTEM.md`;
+this file is the geometric contract. Measured ground truth: vis-views.json as of 2026-07-02.
 
-## 1. Grid (measured, kept)
+## 1. View skeleton (the one grid)
 
-- **3 columns × 386px**, left edges at **x = 4 / 396 / 788**.
-- **Horizontal gutter = 6px** (`--space-sm`), **page margin = 4px** (`--space-xs`).
-  `4 + 386 + 6 + 386 + 6 + 386 + 4 = 1178`.
-- **Half-column** (inside a column): `190 + 6 + 190 = 386` — i.e. 190px halves with a 6px
-  gutter. (Today they're 191 + 4px — normalize.)
-- **Vertical gutter == horizontal gutter = 6px.** Stacked cards in a column share it.
-  (Today vertical gaps drift 3–5px — normalize.)
+Canvas 1178px wide; content spans **x = 4 … 1174** (4px outer margin both sides).
 
-## 2. Spacing tokens — one value per role
+- **Hero band** (views with a hero): (4, 4) 1170×178.
+- **Columns** start at **y = 189** (hero bottom 182 + 7px hero gap — deliberately tighter
+  than the 12px gutter, owner-approved):
+  - LEFT x 4…396 (392 wide — shares both edges with the nav)
+  - MID x 408…785 (377 wide)
+  - RIGHT x 797…1174 (377 wide)
+  - **Column gutter = 12px** (396→408, 785→797), horizontal == vertical.
+- **Nav** `(4, 688) 392×87` — never moves, identical object on every view.
+- Widgets beside/below the nav (ribbon row): top 735 (12px gap above), bottom 775.
+- LEFT column bottom 676 → 12px gap to the nav. MID/RIGHT may run to 723 (past the nav top).
+- **Full-bleed views** (single grid widget, no hero): (4, 4) 1170×680; internal layout still
+  follows §2. Bottom gap to nav = 4px (the widget's internal bottom padding supplies the
+  optical 12px).
+
+Measured drift to fix (2026-07-02):
+- **Energy** is on the **legacy grid**: 3×386px columns at x4/396/788 with **6px gutters**,
+  columns from y120. → Re-cut to the skeleton above.
+- **Diagnose** uses the right column widths but **8px vertical gaps** (summary 76→84,
+  columns 680→688). → Normalize to 12px gutters / 7px only under a hero band.
+
+## 2. Spacing tokens — one value per role (4px grid)
 
 | Role | Token | Value |
 |------|-------|-------|
-| Gutter (H == V) | `--space-sm` | 6px |
-| Page margin | `--space-xs` | 4px |
-| Card padding (text inset) | `--panel-pad` | 12px |
-| Tile pitch | `--tile-size` + `--space-md` | 66 + 9 = 75px |
+| Micro gap (icon↔text, stacked caption) | `--s1` | 4px |
+| Small gap (within a component) | `--s2` | 8px |
+| Card padding (text inset) | `--s3 --s4` | 12px vertical / 16px horizontal |
+| Gap between cards/sections inside a widget | `--s3` | 12px |
+| Section padding / large inset | `--s4` | 16px |
+| Column gutter (H == V, between widgets) | — | 12px |
+| Page margin | — | 4px |
+| Hero → columns | — | 7px |
+
+No pixel values off the 4px grid inside layout CSS; one-off nudges (5px, 9px, 17px…) are
+drift unless they carry an explicit comment naming the optical reason.
 
 ## 3. Card padding & clearance — the anti-clipping rule
 
-- **No text, number, or unit sits closer than the card padding (12px) to any card edge.**
-  (The `€/l` clip was text at ~5px from a rounded corner.)
+- **No text, number, or unit sits closer than 12px (`--s3`) to any card edge.**
 - **Secondary / reference values right-align to that same 12px inset** — one consistent
-  right edge per card (e.g. the fuel max/min column).
+  right edge per card.
 - **Clearance over tight fit.** Never size text to within a few px of its box; size against
-  the *longest possible* value. My screenshot tool renders the font narrower than the iPad,
-  so a pixel-tight fit that looks clean in capture clips on the device — margins absorb that.
+  the *longest possible* value (e.g. "-10,5", "100 %", "entriegelt", three-digit watts).
+  Local captures render fonts slightly narrower than the wall tablet — a pixel-tight fit
+  that looks clean in a screenshot clips on the device; margins absorb that.
+- Rounded corners (r=14 cards, r=10 insets): content must clear the corner radius, not just
+  the straight edge.
 
 ## 4. Alignment
 
-- **Card internal order:** title (top-left) → metadata (last-update) → primary metric →
-  secondary / reference.
-- **Equivalent data shares exactly one font token and one alignment** across all cards.
-- Labels and their values keep a fixed relationship (label dim/muted, value full weight).
+- **Card internal order:** section header (top-left, muted caps) → content; metric rows =
+  label left / value right, one shared baseline per row.
+- **Equivalent data shares exactly one type role and one alignment** across all tabs — a
+  room temperature, a last-update age, a €-value, a % value each look the same everywhere.
+- **Metric pattern** (`.metric`): value carries the verdict colour; unit small, muted,
+  top-aligned to the value cap; label small, muted, baseline-aligned. Inline `.u` units are
+  the lightweight variant. One min/max arrangement wherever min/max appears.
+- Numbers in columns/tables: `tabular-nums`, right-aligned on the decimal comma.
 
-## 5. Type scale
+## 5. Type roles (from DESIGN_SYSTEM.md — one size per role)
 
-- The `--fs-*` scale applies **only where the box and its companion labels/icons
-  demonstrably fit it** — verified, not assumed (the font-pass lesson). Where a box can't
-  take the token size, keep the working size and note it; don't force the token.
-- Convert leftover keyword sizes (`small`/`x-small`/`xx-large`) to px **only when the fit is
-  verified** on the device.
+`--t-clock:112 · --t-hero:88 · --t-metric:27 · --t-sub:18 · --t-label:14 · --t-cap:12`,
+Figtree, display weight 600, body 500. A size not on this scale is drift unless the box
+demonstrably cannot take the token size — then keep the working size **and note it** in the
+script next to the rule. Never force a token size into a box where the longest value clips
+(§3); never invent a new size silently.
 
 ## 6. Verification (non-negotiable)
 
-After every block: deploy → screenshot → **confirm on the iPad**. Never report "fixed" from
-the capture alone. Tight cases get an explicit device check.
+After every deployed change: **force the wall tablet to reload** (a file write does not push
+to connected vis clients) and confirm the change on the live screen — never report "fixed"
+from a local capture alone (memory: `verify-before-claiming-fixed`). Tight fits get an
+explicit device check. Local render harness (capture states → render → headless-Chrome
+screenshot) is the review/measure tool, not the sign-off.
 
-## 6b. Presentation consistency (deep audit, 2026-06-17)
+## 7. Cross-view consistency rules
 
-Same concept must look the same everywhere. The Main **vis widgets** are actually uniform
-(RobotoCondensed-Regular, all `--color-font` #CCCCCC). The divergence is between those and the
-**SVG-rendered cards** + a few HTML states:
-
-| Aspect | vis widgets | SVG cards (Energiefluss/Maxxisun) | tankstelle HTML | → canonical |
-|---|---|---|---|---|
-| **Font** | RobotoCondensed | **Arial** | inherits Roboto | **RobotoCondensed everywhere** (kill Arial) |
-| **Value colour** | #CCCCCC | **#fff** | #CCCCCC | `--color-font` **#CCCCCC** |
-| **Label/muted colour** | #CCCCCC (no hierarchy!) | **#7f8a99 / #cfd6e0** | #8A8A8A | `--color-text-muted` **#8A8A8A** |
-
-So one "muted label" role is rendered **four** different ways (#7f8a99, #cfd6e0, #8A8A8A, and an
-undifferentiated #CCCCCC). And the **same concept is arranged differently** — min/max appears as:
-hero (big value + small °C + "min" stacked), Tankpreis ("max 2,10⁹" muted-label prefix), Strompreis
-(two bare values, no labels).
-
-**Canonical rules:**
-1. **One font** — RobotoCondensed-Regular, vis + SVG cards alike.
-2. **Two text greys = a 2-tier hierarchy.** VALUE = `--color-font` #CCCCCC (or its data-ladder colour);
-   LABEL / caption / unit / min-max prefix = `--color-text-muted` #8A8A8A. Nothing else. (Replaces
-   #fff, #7f8a99, #cfd6e0 and the flat-#CCCCCC labels — labels should *recede*, values *pop*.)
-3. **One min/max pattern** wherever it appears (hero, Strompreis, Tankpreis): muted `min`/`max` (or
-   arrow) + value + muted unit, same arrangement.
-4. Data-ladder colours (green/blue/amber/red) are the separate value-colour layer, unchanged.
-
-**Applies first to the Energiefluss hub** (built RobotoCondensed + 2-tier greys from the start), then
-retro-fitted to the existing Main blocks (hero min/max, Strompreis range, cost-breakdown labels,
-last-update captions → muted).
-
-## 7. Current drift — the 4.2 work list
-
-1. **Gutters:** 6px (main) / 4px (half-col) / 7px (room sub-col) / 3–5px (vertical) → unify to 6px.
-2. **Card padding:** ranges 12px … 0; enforce 12px inset everywhere + right-align reference values.
-3. **Vertical rhythm:** card tops/heights ad hoc → align stacked cards to the 6px gutter.
-4. **Keyword font sizes** still on many widgets → convert to px where the box fits (rule 5).
-5. **Fuel price max/min** visual treatment (placeholder) → redesign here, not ad hoc.
+Same concept ⇒ same rendering, on every tab:
+1. **One font pipeline** — a single Figtree import (one weight set) and one `font-family`
+   stack, shared by all six scripts; nav labels included (today the nav still renders
+   RobotoCondensed 12px — align when the nav is next touched).
+2. **Two text greys = the hierarchy.** Value = `--text` (or its verdict colour); label /
+   caption / unit = the one muted grey. No per-tab grey variants.
+3. **One section-header treatment** (size, caps, letter-spacing, divider) on every card.
+4. **One staleness pattern** — "vor X min" + battery/quality icon, same position, same
+   muting, same "–" for missing data, on every tile that shows a sensor value.
+5. **Shared components are the only implementation** — spectrum bar, magnitude bar, Metric,
+   tile, indicator dot. A tab needing a variant extends the component (new modifier class),
+   never re-implements it.
