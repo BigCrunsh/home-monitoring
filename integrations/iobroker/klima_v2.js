@@ -416,12 +416,16 @@ function buildGarden() {
             var bcol = batt < 20 ? RED : (batt < 30 ? AMBER : LBL);
             battChip = '<span class="batt" style="color:' + bcol + '">' + icoBatt(batt, bcol) + Math.round(batt) + '%</span>';
         }
-        var info = '<div class="sinfo"><div class="sn">' + esc(s[0]) + '</div>'
-            + '<div class="smeta"><span>' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</span>' + battChip + '</div></div>';
-        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–", never a false dry-verdict.
+        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–", never a
+        // false dry-verdict. §8.2 escalation: flag the age amber (offline = attention, not a red
+        // alarm — a garden probe going quiet isn't urgent) and dim the whole row so a long-dead
+        // sensor recedes instead of masquerading as live telemetry.
         var stale = ageMs(ts) == null || ageMs(ts) > 86400000;
+        var ageStyle = stale ? ' style="color:' + AMBER + '"' : '';
+        var info = '<div class="sinfo"><div class="sn">' + esc(s[0]) + '</div>'
+            + '<div class="smeta"><span' + ageStyle + '>' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</span>' + battChip + '</div></div>';
         if (stale) {
-            h += '<div class="srow">' + info
+            h += '<div class="srow" style="opacity:.5">' + info
                 + '<div class="sv" style="color:var(--mute)">–</div>'
                 + '<div class="sv" style="color:var(--mute)">–</div>'
                 + '</div>';
