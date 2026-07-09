@@ -26,9 +26,9 @@
 var EN = 'javascript.0.';
 var FEEDIN_RATE = 0.1048;   // €/kWh feed-in tariff (same constant as main_v2 net €/h)
 
-// ===== palette / tokens (ground truth, identical to main_v2) =====
-var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629';
-var TEXT = '#CCCCCC', LBL = '#8A8A8A', SURF = '#15161c', INSET = '#1c1f28', BORD = '#262a33';
+// ===== palette — derived from the shared canonical VC_PAL (vis_card.js). One source, board-wide. =====
+var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm;
+var TEXT = VC_PAL.text, LBL = VC_PAL.muted, SURF = VC_PAL.surf, INSET = VC_PAL.inset, BORD = VC_PAL.border;
 
 var CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
@@ -91,7 +91,7 @@ var CSS = `
 // The pure formatters are direct aliases; the colour/verdict helpers are thin wrappers that bind
 // this tab's hex PALette to the global's semantic classifiers, so the thresholds live in ONE place
 // (VC.*) and can no longer drift from the Overview. Only stateful reads stay local. =====
-var PAL = { good: GREEN, warn: AMBER, alarm: RED, cold: BLUE, muted: LBL, text: TEXT };
+var PAL = VC_PAL;
 var DAYS_SHORT = VC_DAYS_SHORT, MONTHS = VC_MONTHS;
 
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }

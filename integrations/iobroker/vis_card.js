@@ -14,6 +14,22 @@
 //     representation stays each script's own.
 //  3. Thresholds are named constants on VC.* so a rule change is one line, board-wide.
 
+// Canonical palette (ground truth). The ONE place data-driven colour values live. Per
+// DESIGN_SYSTEM.md's two-layer rule, data-driven colour is hex in JS (not a CSS var — vis
+// bindings can't read those, and hex is browser-agnostic on the wall); the CSS custom
+// properties in each widget's <style> are the SEPARATE static-chrome layer, defined from the
+// same values. Every tab derives its GREEN/AMBER/… constants from this so they can't diverge.
+var VC_PAL = {
+    good: '#b5fb5b',   // lime — PV/supply/saving, cheap tier
+    warn: '#F1BE3D',   // amber — attention/mid tier, import (not alarm)
+    alarm: '#A00629',  // red — ALARM ONLY / top tier
+    cold: '#5080AC',   // blue — grid-import & cold & consumption series
+    muted: '#8A8A8A',  // grey — unknown / low / caption
+    mute: '#7F8A99',   // secondary grey
+    text: '#CCCCCC',
+    surf: '#15161c', inset: '#1c1f28', border: '#262a33', bg: '#0d0e12'
+};
+
 var VC = {
     // role/consumption ladder (enRoleCol): favourable ≥75 W = good; consumption ≥150 W = warn,
     // ≥2 kW = alarm; otherwise muted. Battery high-threshold overridable per call.

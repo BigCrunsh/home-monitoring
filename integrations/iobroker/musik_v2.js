@@ -52,7 +52,7 @@ var CSS = `
 .mv2 .room .vol{position:absolute; width:36px; height:34px; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--text); font-weight:600}
 `;
 
-var GREEN = '#b5fb5b', BLUE = '#5080AC', LBL = '#8A8A8A';
+var GREEN = VC_PAL.good, BLUE = VC_PAL.cold, LBL = VC_PAL.muted;
 // live Sonos room names (from jishi /zones), fixed order for a stable layout
 var ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zimmer', 'Carlottas Zimmer', 'Studio'];
 var COORD = 'Wohnzimmer';                         // preset group coordinator
@@ -62,7 +62,7 @@ var ZONES = {};                                   // roomName -> {vol, play, tit
 // only, no play button. Seeded with the known one; auto-learned if any other room rejects play too.
 var TV = { 'Fernsehzimmer': true };
 
-function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+var esc = vcEsc;
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
 function rnd(o) { return { kind: o.kind, oid: o.oid, value: o.value, x: Math.round(o.x), y: Math.round(o.y), w: Math.round(o.w), h: Math.round(o.h) }; }
 

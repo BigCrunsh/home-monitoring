@@ -112,7 +112,7 @@ var CSS_BASE = `
 `;
 
 // ===== palette constants =====
-var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
+var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm, LBL = VC_PAL.muted, TEXT = VC_PAL.text;
 
 // ===== state refs =====
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
@@ -148,9 +148,9 @@ var DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 // ===== helpers =====
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
 function sStr(id) { var s = getState(id); return (s && s.val != null) ? String(s.val) : null; }
-function comma(v, d) { return (typeof v === 'number') ? v.toFixed(d == null ? 1 : d).replace('.', ',') : '–'; }
-function clamp01(x) { return Math.max(0, Math.min(1, x)); }
-function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+var comma = vcComma;
+var clamp01 = vcClamp01;
+var esc = vcEsc;
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
 function ageMs(v) { if (!v) return null; var t = new Date(v).getTime(); return isNaN(t) ? null : Date.now() - t; }
 function agoStr(v) {
