@@ -129,7 +129,7 @@ var CSS_BASE = `
 
 /* TANKEN — Diesel & E5 side by side (split by a vertical divider); per fuel: name + price on one row,
    shared spectrum bar below (same component as Strompreis). */
-.mv2 .tanken{padding-top:var(--s2); padding-bottom:var(--s2)}
+.mv2 .tanken{padding-top:var(--s2); padding-bottom:var(--s4)}
 .mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s3); align-items:stretch}
 .mv2 .fuel{display:flex; flex-direction:column; gap:var(--s2)}
 .mv2 .fuel + .fuel{border-left:1px solid var(--border); padding-left:var(--s3)}
