@@ -399,7 +399,7 @@ function queryForecast() {
         });
 }
 function buildPrice() {
-    var W = 778, H = 206;
+    var W = 778, H = 198;
     var price = tibber('energy_price_euro'), p20 = tibber('energy_price_euro_p20'), p80 = tibber('energy_price_euro_p80');
     var badge = 'jetzt <span style="color:' + priceBand(price, p20, p80).col + ';font-weight:700">' + comma(price, 2) + ' €/kWh</span>'
         + '&nbsp;&nbsp;·&nbsp;&nbsp;15-min-Preise&nbsp;&nbsp;·&nbsp;&nbsp;<span style="color:' + GREEN + '">■</span> günstig&nbsp;&nbsp;'
@@ -501,7 +501,7 @@ function buildPeriod() {
         + krow('Monat', 'month', mElapsed, prevMonth)
         + krow('Jahr', 'year', yElapsed, (b.getFullYear() - 1) + ':')
         + '</div></div>';
-    return fo(382, 124, body);
+    return fo(382, 112, body);
 }
 
 // ===== publish =====
