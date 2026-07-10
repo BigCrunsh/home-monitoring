@@ -96,12 +96,12 @@ var CSS_BASE = `
 .mv2 .hdiv{height:1px; background:var(--border); margin:10px 0 8px; flex:none}
 
 /* GARTEN — valves + soil, bubble rows */
-.mv2 .gsec{font-size:var(--t-cap); font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin:var(--s1) 0 2px}
-.mv2 .vrow{display:grid; grid-template-columns:1fr auto; gap:var(--s2); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
+.mv2 .gsec{font-size:var(--t-cap); font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin:2px 0 2px}
+.mv2 .vrow{display:grid; grid-template-columns:1fr auto; gap:var(--s2); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:4px}
 .mv2 .vrow .vn{font-size:var(--t-label); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .vrow .vs{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; text-align:right}
 .mv2 .vrow .badge{font-size:var(--t-cap); font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap}
-.mv2 .srow{display:grid; grid-template-columns:1fr auto auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
+.mv2 .srow{display:grid; grid-template-columns:1fr auto auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:4px}
 .mv2 .srow .sinfo{min-width:0}
 .mv2 .srow .sn{font-size:var(--t-label); font-weight:600}
 .mv2 .srow .smeta{display:flex; align-items:center; gap:6px; font-size:var(--t-cap); font-weight:500; color:var(--muted); margin-top:1px}
