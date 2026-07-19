@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Collect data from Tankerkoenig API."""
+
 import argparse
 import asyncio
 import sys

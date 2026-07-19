@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Collect data from SolarEdge API."""
+
 import asyncio
 import sys
 from datetime import UTC, datetime, timedelta

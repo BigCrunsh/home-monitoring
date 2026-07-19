@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Collect data from Netatmo weather station."""
+
 import asyncio
 import sys
 

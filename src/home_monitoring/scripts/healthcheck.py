@@ -5,6 +5,7 @@ Runs one pass: every measurement's newest data point is compared against its
 freshness SLA (conf/healthcheck.json); stale measurements alert once per
 24h, recoveries notify once. Intended to run hourly from cron.
 """
+
 import argparse
 import asyncio
 import sys

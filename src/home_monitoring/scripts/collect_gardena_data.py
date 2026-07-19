@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Script to collect data from Gardena smart system."""
+
 import asyncio
 import signal
 import sys

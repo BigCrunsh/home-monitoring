@@ -5,6 +5,7 @@ This script collects:
 - Current electricity prices
 - Consumption and cost data for last hour, yesterday, and last 24h
 """
+
 import argparse
 import asyncio
 import sys
