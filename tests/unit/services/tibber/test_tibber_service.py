@@ -107,6 +107,30 @@ async def test_collect_and_store_api_error(
 
 
 @pytest.mark.asyncio(scope="function")
+async def test_collect_and_store_connection_construction_error(
+    mocker: MockerFixture,
+    mock_influxdb: AsyncMock,
+    mock_settings: Settings,
+) -> None:
+    """Unhappy path: constructing the Tibber connection itself raises.
+
+    Regression test: ``connection`` is only assigned inside the ``try`` block,
+    but ``finally`` unconditionally called ``connection.close_connection()``.
+    If construction fails, ``connection`` is never bound, so ``finally`` used
+    to raise ``UnboundLocalError`` and mask the original error. The original
+    error (wrapped as ``APIError``) must propagate instead.
+    """
+    with patch("tibber.Tibber", side_effect=ValueError("boom")):
+        service = TibberService(settings=mock_settings, repository=mock_influxdb)
+
+        # Act & Assert
+        with pytest.raises(APIError, match="Tibber API request failed"):
+            await service.collect_and_store()
+
+        assert not mock_influxdb.write_measurements.called
+
+
+@pytest.mark.asyncio(scope="function")
 async def test_collect_and_store_database_error(
     mocker: MockerFixture,
     mock_influxdb: AsyncMock,

@@ -162,4 +162,5 @@ class TibberService(BaseService):
             )
             raise APIError("Tibber API request failed") from exc
         finally:
-            await connection.close_connection()
+            if "connection" in locals():
+                await connection.close_connection()
