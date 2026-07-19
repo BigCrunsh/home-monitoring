@@ -131,10 +131,13 @@ function plugTile(it, x, y, w, h) {
         targets: [rnd({ kind: 'toggle', oid: oid, x: x, y: y, w: w, h: h })] };
 }
 // Gardena valve: tap = water 10 min (write seconds to duration_value); 'STOP' marker = stop-all tile
+// (two-tap via garten_stop_cmd: a stray tap must not kill a running watering cycle)
+var stopArmUntil = 0;
 function gardenaTile(it, x, y, w, h) {
     if (it[1] === 'STOP') {
-        return { html: tileHtml('gt stop', pos(x, y, w, h), icoStop(RED), 'Stop', 'stoppen'),
-            targets: [rnd({ kind: 'set', oid: GSTOP, value: 'STOP_UNTIL_NEXT_TASK', x: x, y: y, w: w, h: h })] };
+        var stopArmed = Date.now() < stopArmUntil;
+        return { html: tileHtml('gt stop', pos(x, y, w, h), icoStop(RED), 'Stop', stopArmed ? 'sicher? tippen' : 'stoppen'),
+            targets: [rnd({ kind: 'cmd', oid: 'javascript.0.garten_stop_cmd', value: 'go', x: x, y: y, w: w, h: h })] };
     }
     var base = GVALVE + it[1];
     var nm = sStr(base + '.name_value') || it[0];
@@ -158,22 +161,27 @@ function systemTile(it, x, y, w, h) {
     return { html: tileHtml(cls, pos(x, y, w, h), icoPower(col), 'CCU', st),
         targets: [rnd({ kind: 'cmd', oid: 'javascript.0.ccu_restart_cmd', value: 'go', x: x, y: y, w: w, h: h })] };
 }
-// shutter tile: name + position on top, three Auf/80%/Zu buttons below (each a write-target)
+// shutter tile: name + position on top, three Auf/80%/Zu buttons below (each a write-target).
+// "Alle" moves every shutter in the house, so it gets the two-tap guard (arm → confirm).
+var rollArmUntil = 0;
 function shutterTile(it, x, y, w, h) {
     var isAlle = it[0] === 'Alle';
     var oidBase = isAlle ? 'javascript.0.roll_all_cmd' : 'hm-rpc.1.' + it[1] + '.4.LEVEL';
     var lvl = isAlle ? null : sNum(oidBase);
-    var posTxt = isAlle ? 'alle' : (lvl != null ? Math.round(lvl) + ' %' : '–');
+    var armed = isAlle && Date.now() < rollArmUntil;
+    var posTxt = isAlle ? (armed ? 'sicher?' : 'alle') : (lvl != null ? Math.round(lvl) + ' %' : '–');
     var open = isAlle || (lvl != null && lvl > 5);
-    var html = '<div class="tile stile' + (open ? ' open' : '') + '" ' + pos(x, y, w, h) + '>'
-        + '<div class="shead">' + icoBlind(open ? BLUE : LBL) + '<span class="cap">' + esc(it[0]) + '</span><span class="st">' + posTxt + '</span></div></div>';
+    var html = '<div class="tile stile' + (armed ? ' stop' : (open ? ' open' : '')) + '" ' + pos(x, y, w, h) + '>'
+        + '<div class="shead">' + icoBlind(armed ? RED : (open ? BLUE : LBL)) + '<span class="cap">' + esc(it[0]) + '</span><span class="st">' + posTxt + '</span></div></div>';
     var pad = 7, gap = 6, byH = 26, bw = (w - 2 * pad - 2 * gap) / 3, by = y + h - pad - byH;
     var labels = [['Auf', 100], ['50%', 50], ['Zu', 0]];
     var targets = [];
     labels.forEach(function (lb, i) {
         var bx = x + pad + i * (bw + gap);
         html += '<div class="sbtn" style="left:' + bx + 'px;top:' + by + 'px;width:' + bw + 'px;height:' + byH + 'px">' + lb[0] + '</div>';
-        targets.push(rnd({ kind: 'set', oid: oidBase, value: lb[1], x: bx, y: by, w: bw, h: byH }));
+        // tap target is taller than the visual button (finger rule, like Musik): 7px up into the
+        // head gap + 7px down to the tile edge = 40px effective height on a 26px button
+        targets.push(rnd({ kind: 'set', oid: oidBase, value: lb[1], x: bx, y: by - 7, w: bw, h: byH + 14 }));
     });
     return { html: html, targets: targets };
 }
@@ -236,7 +244,27 @@ createState('javascript.0.roll_all_cmd', 0, { type: 'number', role: 'level', des
 on({ id: 'javascript.0.roll_all_cmd', change: 'any' }, function (obj) {
     var v = obj && obj.state ? obj.state.val : null;
     if (typeof v !== 'number') return;
+    var now = Date.now();
+    if (now >= rollArmUntil) {                                 // first tap → arm only, move nothing
+        rollArmUntil = now + CCU_ARM_MS; publish();
+        setTimeout(function () { if (Date.now() >= rollArmUntil) publish(); }, CCU_ARM_MS + 300);
+        return;
+    }
+    rollArmUntil = 0; publish();                               // second tap → fan out the tapped value
     SHUTTERS.forEach(function (s) { setState('hm-rpc.1.' + s[1] + '.4.LEVEL', v); });
+});
+
+// Garten-Stop (two-tap): first tap arms for 6 s, second tap stops all valves
+createState('javascript.0.garten_stop_cmd', '', { type: 'string', role: 'text', desc: 'Garten Stop (2-Tap-Bestätigung)' });
+on({ id: 'javascript.0.garten_stop_cmd', change: 'any' }, function () {
+    var now = Date.now();
+    if (now < stopArmUntil) {                                  // second tap → stop
+        stopArmUntil = 0; publish();
+        setState(GSTOP, 'STOP_UNTIL_NEXT_TASK');
+        return;
+    }
+    stopArmUntil = now + CCU_ARM_MS; publish();                // first tap → arm
+    setTimeout(function () { if (Date.now() >= stopArmUntil) publish(); }, CCU_ARM_MS + 300);
 });
 
 // CCU reboot (two-tap): first tap arms for 6 s, second tap sends ReGa system.Exec("reboot")
