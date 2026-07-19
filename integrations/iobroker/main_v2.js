@@ -630,7 +630,9 @@ function buildRibbon() {
     extra('Rauch', SMOKE, (sNum(SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS') || 0) > 0,   // 0=IDLE_OFF
         sTrue(SMOKE + '.1.ERROR_DEGRADED_CHAMBER'));
     extra('Wasser', WATER, sTrue(WATER + '.1.MOISTURE_DETECTED') || sTrue(WATER + '.1.WATERLEVEL_DETECTED'), false);
-    _ribCompact = extras.length > 0;
+    // six permanent chips since the Sirene joined — always use the tight chrome
+    // (battery icons only when low), otherwise names like Türschloss truncate
+    _ribCompact = true;
 
     var lockBat = 'hm-rpc.1.002A226996B89C.0.LOW_BAT';
     var inds = ''
