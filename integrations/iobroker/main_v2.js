@@ -596,7 +596,7 @@ function lowbatIco(batOid) {
     return '<span class="bat' + (_ribCompact ? ' sm' : '') + '">'
         + icoBatt(low ? 12 : 100, low ? 'var(--red-ind)' : 'var(--muted)') + '</span>';
 }
-// At 40 px × 5-across the dot colour alone carries the verdict (green=secure / red=alarm / grey=unknown),
+// At 40 px × 6-across the dot colour alone carries the verdict (green=secure / red=alarm / grey=unknown),
 // so each row is just dot + name + battery — no status word, which kept truncating long names.
 function indDot(name, col, batOid) {
     return '<div class="rind"' + (_ribCompact ? ' style="padding:0 6px;gap:6px"' : '') + '>'
@@ -609,10 +609,11 @@ function contactInd(name, oid, batOid) {
     var col = v == null ? 'var(--muted)' : (v === 1 ? 'var(--red-ind)' : 'var(--green)');
     return indDot(name, col, batOid);
 }
-// Alarm-grade sensors (Rauchmelder / Wassersensor / Sirene) join the ribbon ONLY when they demand
+// Alarm-grade sensors: Rauchmelder / Wassersensor join the ribbon ONLY when they demand
 // attention: red chip on alarm, muted chip on fault (offline / low battery / degraded smoke chamber) —
-// a dead safety sensor must not be silently green-by-absence. Healthy + quiet = no chip, so the
-// everyday ribbon keeps its readable 5 columns; routine health lives on the Diagnose Geräte card.
+// a dead safety sensor must not be silently green-by-absence. The Sirene is different (owner call
+// 2026-07-19): the house alarm's health is permanently interesting, so it holds a fixed 6th chip —
+// green = connected & quiet, red = firing, muted = offline. Routine health lives on Diagnose.
 var SMOKE = 'hm-rpc.1.000A5D89B45113', WATER = 'hm-rpc.1.00189D899BEABF', SIREN = 'hm-rpc.1.00245D898FEEF1';
 function sTrue(id) { var s = getState(id); return !!(s && s.val === true); }
 // compact mode (>5 chips): tighter chip chrome + battery icon only when it is actually low,
@@ -629,7 +630,6 @@ function buildRibbon() {
     extra('Rauch', SMOKE, (sNum(SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS') || 0) > 0,   // 0=IDLE_OFF
         sTrue(SMOKE + '.1.ERROR_DEGRADED_CHAMBER'));
     extra('Wasser', WATER, sTrue(WATER + '.1.MOISTURE_DETECTED') || sTrue(WATER + '.1.WATERLEVEL_DETECTED'), false);
-    extra('Sirene', SIREN, sTrue(SIREN + '.3.ACOUSTIC_ALARM_ACTIVE') || sTrue(SIREN + '.3.OPTICAL_ALARM_ACTIVE'), false);
     _ribCompact = extras.length > 0;
 
     var lockBat = 'hm-rpc.1.002A226996B89C.0.LOW_BAT';
@@ -643,8 +643,11 @@ function buildRibbon() {
         : (lock === 2) ? indDot('Türschloss', 'var(--red-ind)', lockBat)
         : indDot('Türschloss', 'var(--muted)', lockBat);
     inds += contactInd('Bad', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT');
+    var sirenAlarm = sTrue(SIREN + '.3.ACOUSTIC_ALARM_ACTIVE') || sTrue(SIREN + '.3.OPTICAL_ALARM_ACTIVE');
+    inds += maint(SIREN + '.0.LOW_BAT').unreach ? indDot('Sirene', 'var(--muted)', SIREN + '.0.LOW_BAT')
+        : indDot('Sirene', sirenAlarm ? 'var(--red-ind)' : 'var(--green)', SIREN + '.0.LOW_BAT');
     extras.forEach(function (e) { inds += indDot(e.name, e.col, e.bat); });
-    var n = 5 + extras.length;
+    var n = 6 + extras.length;
     var inner = '<div class="mv2r"><style>' + RIBBON_CSS + '</style>'
         + '<div class="inds" style="grid-template-columns:repeat(' + n + ',1fr)' + (_ribCompact ? ';gap:5px' : '') + '">' + inds + '</div></div>';
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 40" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
