@@ -55,9 +55,9 @@ var CSS_BASE = `
 .mv2 .h-line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted)}
 .mv2 .h-line b{color:var(--text); font-weight:600; font-size:var(--t-sub)}
 
-/* ROOMS (expanded) — main_v2's Room component, compacted to fit 5 rooms since Studio joined:
+/* ROOMS (expanded) — main_v2's Room component, compacted to fit 6 rooms (Studio, then Dachterrasse joined):
    humidity+CO2 share one line, the heute-min/max strip rides in the sparkline row */
-.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(5,1fr); gap:6px}
+.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(6,1fr); gap:6px}
 .mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto; column-gap:var(--s3); row-gap:1px; align-items:center; background:var(--bg); border-radius:var(--r3); padding:5px var(--s4)}
 .mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center}
 .mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:19px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -130,7 +130,9 @@ var ROOMS = [
     ['Claras Zimmer', NB + '.03-00-00-0f-01-6e', 'Kinderzimmer Clara'],
     ['Cleas Zimmer', NB + '.03-00-00-10-e5-42', 'Kinderzimmer Clea'],
     // the Studio base module still carries Netatmo's default name, hence the influx tag
-    ['Studio', NB2, 'Weather Station']
+    ['Studio', NB2, 'Weather Station'],
+    // outdoor module on the Studio base (no CO₂ — env line shows –)
+    ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c', 'Dachterrasse']
 ];
 var INFLUX = 'influxdb.0';
 var SPARK = {};   // module_name -> [hourly mean temps over the last 24h]

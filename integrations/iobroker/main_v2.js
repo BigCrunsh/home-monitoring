@@ -87,12 +87,10 @@ var CSS_BASE = `
 .mv2 .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r2); padding:var(--s3) var(--s4); display:flex; flex-direction:column; gap:var(--s2); min-height:0; overflow:hidden}
 .mv2 .card-body{flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--s2)}
 
-/* KLIMA — 2×3 tile grid (5 rooms + a free slot); compact vertical tile, temp stays the biggest thing.
+/* KLIMA — 2×3 tile grid (6 rooms); compact vertical tile, temp stays the biggest thing.
    Tile: header (thermo disc + name) → temperature → operational (age · battery) → hum · CO₂ */
 .mv2 .klima .rooms{flex:1; display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(3,1fr); gap:var(--s2)}
 .mv2 .ktile{background:var(--bg); border-radius:var(--r3); padding:10px 12px; display:flex; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden}
-.mv2 .ktile.ghost{background:transparent; border:1px dashed var(--border); align-items:center; justify-content:center}
-.mv2 .ktile .gh{font-size:12px; color:var(--mute)}
 .mv2 .ktile .kh{display:flex; align-items:center; gap:8px; min-width:0}
 .mv2 .ktile .th2{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none}
 .mv2 .ktile .th2 svg{width:16px; height:16px}
@@ -225,14 +223,16 @@ var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
 var OUTDOOR = NB + '.02-00-00-32-ae-a4';
 var FCMIN = 'daswetter.0.NextDays.Location_1.Day_1.Minimale_Temperatur_value';
 var FCMAX = 'daswetter.0.NextDays.Location_1.Day_1.Maximale_Temperatur_value';
-// Klima: Außen lives in the hero now; 5 rooms in a 2×3 tile grid (6th slot free).
+// Klima: Außen lives in the hero now; 6 rooms fill the 2×3 tile grid.
 // Kids' rooms use short labels — the half-width tile can't fit "Carlottas Zimmer".
+// Dachterrasse is the outdoor module on the Studio base station (no CO₂ — env line shows –).
 var ROOMS = [
     ['Wohnzimmer', NB],
     ['Carlotta', NB + '.03-00-00-0e-16-36'],
     ['Clara', NB + '.03-00-00-0f-01-6e'],
     ['Clea', NB + '.03-00-00-10-e5-42'],
-    ['Studio', NB2]
+    ['Studio', NB2],
+    ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c']
 ];
 // Steuerung — the proven control set ("what we had before"), restyled. Lights = Hue .on / plug .STATE
 // (boolean). Maxxisun = guarded plug. Garten = Gardena valves (start = write seconds; tap interactivity
@@ -375,7 +375,6 @@ function buildRoom(name, module) {
 function buildKlima() {
     var h = '<div class="card klima"><div class="card-body"><div class="rooms">';
     ROOMS.forEach(function (r) { h += buildRoom(r[0], r[1]); });
-    h += '<div class="ktile ghost"><span class="gh">frei</span></div>';   // 6th slot, reserved
     return h + '</div></div></div>';
 }
 
