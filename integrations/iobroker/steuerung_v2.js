@@ -134,7 +134,7 @@ function plugTile(it, x, y, w, h) {
 function gardenaTile(it, x, y, w, h) {
     if (it[1] === 'STOP') {
         return { html: tileHtml('gt stop', pos(x, y, w, h), icoStop(RED), 'Stop', 'stoppen'),
-            targets: [rnd({ kind: 'set', oid: GSTOP, value: true, x: x, y: y, w: w, h: h })] };
+            targets: [rnd({ kind: 'set', oid: GSTOP, value: 'STOP_UNTIL_NEXT_TASK', x: x, y: y, w: w, h: h })] };
     }
     var base = GVALVE + it[1];
     var nm = sStr(base + '.name_value') || it[0];
