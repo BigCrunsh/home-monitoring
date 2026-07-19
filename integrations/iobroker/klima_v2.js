@@ -393,7 +393,12 @@ function buildGarden() {
         var left = sNum(base + '.duration_leftover_i');
         var ats = sStr(base + '.activity_timestamp');
         if (ats && (!anyTs || new Date(ats) > new Date(anyTs))) anyTs = ats;
-        var watering = /WATERING|MANUAL|SCHEDULED/i.test(act);
+        // trust "läuft" only with fresh evidence: the adapter can leave activity_value frozen on a
+        // past run (Vorgarten sat on SCHEDULED_WATERING for days) — require remaining duration or a
+        // recent activity timestamp, otherwise show the valve as closed.
+        var actAge = ageMs(ats);
+        var watering = /WATERING|MANUAL|SCHEDULED/i.test(act)
+            && ((left != null && left > 0) || (actAge != null && actAge < 3 * 3600e3));
         // the status text already says open/closed — no redundant badge
         var statusTxt = watering
             ? '<span style="color:' + GREEN + ';font-weight:700">läuft' + (left != null ? ' · ' + Math.round(left / 60) + ' min' : '') + '</span>'
