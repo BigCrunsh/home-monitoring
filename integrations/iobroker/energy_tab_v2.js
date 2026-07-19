@@ -73,18 +73,26 @@ var CSS = `
 .et3 .chips{display:flex;gap:12px;flex-wrap:wrap}
 .et3 .chip{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
 .et3 .chip i{width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0}
-/* heizung one-line rows */
+/* heizung one-line rows — temps sit in fixed value|arrow|value columns so both lines align */
 .et3 .hz{display:flex;align-items:center;gap:10px}
 .et3 .hz .hn{width:104px;font-size:15px;color:var(--text);font-weight:600;flex-shrink:0}
-.et3 .hz .ht{flex:1;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.et3 .hz .ht{flex:1;display:flex;align-items:baseline;justify-content:flex-end;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.et3 .hz .ht .t1{width:58px;text-align:right}
+.et3 .hz .ht .ta{width:18px;text-align:center}
+.et3 .hz .ht .t2{width:58px;text-align:right}
 .et3 .hz .hb{width:44px;height:5px;border-radius:3px;background:var(--inset);overflow:hidden;flex-shrink:0}
 .et3 .hz .hv{width:58px;text-align:right;font-size:15px;font-weight:600;flex-shrink:0}
-/* kosten rows */
+/* kosten rows — fixed right-aligned value columns: label | bisher | → | Prognose | Vorperiode */
 .et3 .kr{display:flex;align-items:baseline;gap:8px}
 .et3 .kr .kl{width:52px;font-size:15px;color:var(--muted);flex-shrink:0}
-.et3 .kr .kv{font-size:17px;font-weight:600;white-space:nowrap}
-.et3 .kr .ka{font-size:13px;color:var(--muted)}
+.et3 .kr .kv{width:72px;text-align:right;font-size:17px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.et3 .kr .ka{width:16px;text-align:center;font-size:13px;color:var(--muted);flex-shrink:0}
 .et3 .kr .kp{margin-left:auto;font-size:14px;color:var(--muted);white-space:nowrap}
+/* bilanz bottom rows — label | value | note columns, same table grammar as the other right cards */
+.et3 .brow{display:flex;align-items:baseline;gap:8px}
+.et3 .brow .bl{width:104px;font-size:15px;color:var(--muted);flex-shrink:0}
+.et3 .brow .bv{width:84px;text-align:right;white-space:nowrap;flex-shrink:0}
+.et3 .brow .bn{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
 `;
 
 // ===== helpers (verbatim semantics from main_v2.js — consolidate into vis_card.js later) =====
@@ -279,15 +287,12 @@ function buildBilanz() {
             seg(vSolar, GREEN, '1') + seg(dis, BLUE, '.6') + seg(pur, AMBER, '1'),
             chip(GREEN, '1', 'Solar ' + kwh1(vSolar)) + chip(BLUE, '.6', 'aus Akku ' + kwh1(dis)) + chip(AMBER, '1', 'Netz ' + kwh1(pur)))
         + '<div style="border-top:1px solid ' + BORD + '"></div>'
-        + '<div style="display:flex;align-items:baseline;justify-content:space-between">'
-        + '<span style="font-size:15px;color:' + LBL + '">autark</span>'
-        + '<span style="font-size:26px;font-weight:700;color:' + akCol + '">' + (akPct != null ? akPct : '–') + '<span class="u"> %</span></span>'
-        + '<span style="font-size:12px;color:' + LBL + '">' + (a7 != null && a7 > 0 ? 'Ø 7 Tage: ' + Math.round(a7 * 100) + ' %' : '&nbsp;') + '</span></div>'
-        + '<div style="display:flex;justify-content:space-between;align-items:baseline">'
-        + '<span style="font-size:15px;color:' + LBL + '">Kosten heute</span>'
-        + '<span style="font-size:16px;font-weight:600;color:' + TEXT + '">' + eur2(bezahlt)
-        + (gespart != null && gespart > 0.005 ? '<span style="font-size:13px;color:' + GREEN + ';font-weight:600"> · ' + eur2(gespart) + ' gespart</span>' : '')
-        + '</span></div>'
+        + '<div class="brow"><span class="bl">autark</span>'
+        + '<span class="bv" style="font-size:26px;font-weight:700;color:' + akCol + '">' + (akPct != null ? akPct : '–') + '<span class="u"> %</span></span>'
+        + '<span class="bn">' + (a7 != null && a7 > 0 ? 'Ø 7 Tage: ' + Math.round(a7 * 100) + ' %' : '&nbsp;') + '</span></div>'
+        + '<div class="brow"><span class="bl">Kosten heute</span>'
+        + '<span class="bv" style="font-size:16px;font-weight:600;color:' + TEXT + '">' + eur2(bezahlt) + '</span>'
+        + '<span class="bn">' + (gespart != null && gespart > 0.005 ? '<span style="color:' + GREEN + ';font-weight:600">' + eur2(gespart) + ' gespart</span>' : '&nbsp;') + '</span></div>'
         + '</div></div>';
     return fo(382, 252, body);
 }
@@ -424,8 +429,8 @@ function buildHeiz() {
     }
     var body = '<div class="card">' + cardH('Heizung', 'Ventil')
         + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">'
-        + row('Heizkreis', comma(hkF, 1) + '° → ' + comma(hkR, 1) + '°', hkV)
-        + row('Warmwasser', 'Speicher ' + comma(wwS, 1) + '°', wwV)
+        + row('Heizkreis', '<span class="t1">' + comma(hkF, 1) + '°</span><span class="ta">→</span><span class="t2">' + comma(hkR, 1) + '°</span>', hkV)
+        + row('Warmwasser', '<span class="t1">Speicher</span><span class="ta"></span><span class="t2">' + comma(wwS, 1) + '°</span>', wwV)
         + '</div></div>';
     return fo(382, 110, body);
 }
