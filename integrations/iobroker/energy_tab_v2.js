@@ -2,7 +2,7 @@
 // The tab is the drill-down of the Overview's Energie card: identical entity names
 // (Netz / Haus / SolarEdge / Maxxisun), watts() formatting, enRoleCol/priceBand/spectrum/
 // energyFrame semantics. v4 fixes (owner review of the deployed v3, 2026-07-07):
-//   Verlauf  — two totals only (Erzeugung area + Haus line, 30-min smoothing, FIXED 0-4 kW axis)
+//   Verlauf  — rolling 24h window, two totals only (Erzeugung area + Haus line, 30-min smoothing, FIXED 0-4 kW axis)
 //              + a separate slim Maxxisun ±lane below the plot (liefert ↑ / lädt ↓)
 //   Bilanz   — segmented balance bars on one shared kWh scale (Erzeugt = direkt+geladen+eingespeist;
 //              Verbraucht = Solar+aus Akku+Netz) so autarky is VISIBLE and the balance closes;
@@ -292,8 +292,8 @@ function buildBilanz() {
     return fo(382, 252, body);
 }
 
-// ===== TIER 2 LEFT: HEUTE · VERLAUF (778x292) — totals + Maxxisun lane =====
-var CURVE = { prod: [], cons: [], mx: [], ready: false };
+// ===== TIER 2 LEFT: VERLAUF · 24 H (778x292) — totals + Maxxisun lane, rolling window =====
+var CURVE = { t0: null, prod: [], cons: [], mx: [], ready: false };
 function rollMean(rows, win) {
     return rows.map(function (r, i) {
         var s = 0, n = 0;
@@ -310,13 +310,13 @@ function queryCurve() {
             function (result) {
                 if (!result.error && result.result && result.result[0]) out[i] = result.result[0];
                 if (++done === 3) {
-                    var today = dayKeyBerlin();
-                    function todays(rows) {
-                        var t = rows.filter(function (r) { return r.v != null && dayKeyBerlin(new Date(r.ts)) === today; })
-                            .map(function (r) { return { h: berlinParts(r.ts).frac, v: r.v }; });
-                        return rollMean(t, 3);   // 30-min smoothing over the 10-min means
+                    var t0 = Date.now() - 24 * 3600e3;   // rolling 24h window — the plot is always full
+                    function windowed(rows) {
+                        var w = rows.filter(function (r) { return r.v != null && r.ts >= t0; })
+                            .map(function (r) { return { h: (r.ts - t0) / 3600e3, v: r.v }; });
+                        return rollMean(w, 3);   // 30-min smoothing over the 10-min means
                     }
-                    CURVE = { prod: todays(out[0]), cons: todays(out[1]), mx: todays(out[2]), ready: true };
+                    CURVE = { t0: t0, prod: windowed(out[0]), cons: windowed(out[1]), mx: windowed(out[2]), ready: true };
                     setState(EN + 'et3_curve', buildCurve(), true);
                 }
             });
@@ -331,11 +331,11 @@ function buildCurve() {
         + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + GREEN + ';border-radius:2px;display:inline-block"></span>Erzeugung</span>'
         + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + BLUE + ';border-radius:2px;display:inline-block"></span>Haus</span>'
         + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:1px;height:10px;background:' + TEXT + ';display:inline-block"></span>jetzt</span></span>';
-    var head = cardH('Heute · Verlauf').replace('</div>', legend + '</div>');
+    var head = cardH('Verlauf · 24 h').replace('</div>', legend + '</div>');
     if (!CURVE.ready || (prod.length < 2 && cons.length < 2)) {
         return fo(W, H, '<div class="card">' + head
             + '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:' + LBL + ';font-size:14px">'
-            + (CURVE.ready ? 'Datensammlung läuft — Kurve füllt sich im Tagesverlauf' : 'Lade Verlauf…') + '</div></div>');
+            + (CURVE.ready ? 'Warte auf Verlaufsdaten…' : 'Lade Verlauf…') + '</div></div>');
     }
     // fixed frame: 4 kW unless the data genuinely exceeds it
     var dMax = Math.max.apply(null, prod.concat(cons).map(function (r) { return r.v; }).concat([1]));
@@ -359,9 +359,18 @@ function buildCurve() {
         grid += '<line x1="' + X0 + '" y1="' + syM(k * 1000).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + syM(k * 1000).toFixed(1) + '" stroke="' + INSET + '" stroke-width="1"/>'
             + '<text x="' + (X0 - 8) + '" y="' + (syM(k * 1000) + 4).toFixed(1) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + k + (k === YMAX ? ' kW' : '') + '</text>';
     }
-    var ticks = [0, 6, 12, 18, 24].map(function (t) {
-        return '<text x="' + sx(t).toFixed(0) + '" y="' + (LY + LH + 15) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + t).slice(-2) + '</text>';
-    }).join('');
+    // clock ticks at real Berlin hours divisible by 6; midnight gets the price chart's
+    // dashed day-boundary treatment so both time axes speak the same language.
+    var ticks = '', tw0 = CURVE.t0 || (Date.now() - 24 * 3600e3);
+    for (var tm = Math.ceil(tw0 / 3600e3) * 3600e3; tm <= tw0 + 24 * 3600e3; tm += 3600e3) {
+        var bp = berlinParts(tm);
+        if (bp.h % 6 !== 0) continue;
+        var bx = sx((tm - tw0) / 3600e3);
+        if (bp.h === 0) {
+            ticks += '<line x1="' + bx.toFixed(0) + '" y1="' + MY + '" x2="' + bx.toFixed(0) + '" y2="' + (LY + LH + 4) + '" stroke="' + LBL + '" stroke-width="1" stroke-dasharray="2 3"/>';
+        }
+        ticks += '<text x="' + bx.toFixed(0) + '" y="' + (LY + LH + 15) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + bp.h).slice(-2) + '</text>';
+    }
 
     var lastP = prod[prod.length - 1], lastC = cons.length ? cons[cons.length - 1] : null;
     var lastM = mx.length ? mx[mx.length - 1] : null;
