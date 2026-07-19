@@ -57,19 +57,19 @@ var CSS_BASE = `
 
 /* ROOMS (expanded) — main_v2's Room component, compacted to fit 6 rooms (Studio, then Dachterrasse joined):
    humidity+CO2 share one line, the heute-min/max strip rides in the sparkline row */
-.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(6,1fr); gap:6px}
-.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto; column-gap:var(--s3); row-gap:1px; align-items:center; background:var(--bg); border-radius:var(--r3); padding:5px var(--s4)}
-.mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center}
-.mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:19px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(6,1fr); gap:5px}
+.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto; column-gap:var(--s3); row-gap:0; align-items:center; background:var(--bg); border-radius:var(--r3); padding:3px var(--s3); min-height:0; overflow:hidden}
+.mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center}
+.mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:17px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .room .op{grid-column:2; grid-row:2; margin-top:-3px; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted); white-space:nowrap}
 .mv2 .room .op .batt{display:flex; align-items:center; gap:3px}
 .mv2 .room .env{grid-column:2; grid-row:3; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); white-space:nowrap}
 .mv2 .room .env .un{color:var(--muted); font-weight:500}
-.mv2 .room .temp{grid-column:3; grid-row:2 / 4; align-self:center; justify-self:end; font-size:32px; font-weight:600; line-height:.9; white-space:nowrap}
+.mv2 .room .temp{grid-column:3; grid-row:2 / 4; align-self:center; justify-self:end; font-size:29px; font-weight:600; line-height:.9; white-space:nowrap}
 .mv2 .room .mmx{display:flex; align-items:center; gap:6px; font-size:var(--t-cap); color:var(--muted); white-space:nowrap; margin-left:auto}
 .mv2 .room .mmx b{color:var(--text); font-weight:600}
 /* 24h temperature sparkline — what makes the Klima room out-earn the overview card */
-.mv2 .room .spark{grid-column:1 / 4; grid-row:4; display:flex; align-items:center; gap:var(--s2); margin-top:3px; padding-top:3px; border-top:1px solid var(--border)}
+.mv2 .room .spark{grid-column:1 / 4; grid-row:4; display:flex; align-items:center; gap:var(--s2); margin-top:2px; padding-top:2px; border-top:1px solid var(--border)}
 .mv2 .room .spark .lab{font-size:var(--t-cap); color:var(--mute); flex:none}
 
 /* 6-TAGE VORHERSAGE */
