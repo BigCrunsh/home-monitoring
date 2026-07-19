@@ -43,6 +43,8 @@ var CSS_BASE = `
 .mv2 .drow .nm{font-size:var(--t-sub); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .drow .ag{font-size:var(--t-label); font-weight:600; white-space:nowrap}
 .mv2 .drow .sub{font-size:var(--t-cap); color:var(--mute)}
+.mv2 .rows.dense{gap:4px}
+.mv2 .rows.dense .drow{padding:5px var(--s3)}
 
 /* SYSTEM bars */
 .mv2 .sys{flex:1; display:flex; flex-direction:column; justify-content:space-evenly}
@@ -223,7 +225,8 @@ function buildAdapters() {
 
 // ===== GERÄTE · HomeMatic =====
 // Health sweep over every hm-rpc device (incl. the 6 wall buttons that have no other display
-// presence): UNREACH = offline (red), LOW_BAT = battery (amber), smoke-chamber degradation (amber).
+// presence): UNREACH = offline (red), >36h silent = still (amber), LOW_BAT = battery (amber),
+// smoke-chamber degradation (amber).
 // Calm when clean — one green count row; offenders get their own rows (worst first, capped).
 // The device list is enumerated once at init ($ selector on channel-0 UNREACH); a device added on
 // the CCU appears after the next script restart, which is fine for a hardware change.
@@ -239,11 +242,27 @@ function enumerateHmDevices() {
     HM_DEVICES.sort(function (a, b) { return a.name.localeCompare(b.name); });
 }
 function sTrue(id) { var s = getState(id); return !!(s && s.val === true); }
+// a device silent for >36h is effectively offline even before the CCU flags UNREACH (dead
+// battery, radio loss) — the newest ts/lc across the channel-0 housekeeping states is the
+// best "last heard" proxy hm-rpc offers. 36h clears the slowest cyclic-report intervals.
+var SILENT_MS = 129600000;
+function lastHeardMs(dev) {
+    var newest = null;
+    ['.0.RSSI_DEVICE', '.0.UNREACH', '.0.LOW_BAT'].forEach(function (suf) {
+        if (!existsState(dev + suf)) return;
+        var s = getState(dev + suf), t = s ? Math.max(s.ts || 0, s.lc || 0) : 0;
+        if (t && (!newest || t > newest)) newest = t;
+    });
+    return newest ? Date.now() - newest : null;
+}
+function agoShort(ms) { return ms >= 172800000 ? Math.round(ms / 86400000) + ' Tg' : Math.round(ms / 3600000) + ' h'; }
 function deviceIssues() {
     var issues = [];
     HM_DEVICES.forEach(function (d) {
+        var silent = lastHeardMs(d.dev);
         if (sTrue(d.dev + '.0.UNREACH')) issues.push({ nm: d.name, txt: 'offline', col: RED, rank: 0 });
-        else if (sTrue(d.dev + '.0.LOW_BAT')) issues.push({ nm: d.name, txt: 'Batterie schwach', col: AMBER, rank: 1 });
+        else if (silent != null && silent > SILENT_MS) issues.push({ nm: d.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
+        else if (sTrue(d.dev + '.0.LOW_BAT')) issues.push({ nm: d.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
     });
     // smoke detector chamber degradation — a silent safety fault, not covered by UNREACH/LOW_BAT
     if (sTrue('hm-rpc.1.000A5D89B45113.1.ERROR_DEGRADED_CHAMBER'))
@@ -251,12 +270,12 @@ function deviceIssues() {
     issues.sort(function (a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); });
     return issues;
 }
-// the right column shares 596 px with the 9 Adapter rows — the card gets at most 3 rows:
-// all issues when they fit, otherwise the 2 worst + a "+n weitere" pointer to the CCU.
-var DEV_MAX_ROWS = 3;
+// the right column shares 596 px with the 9 Adapter rows — dense rows buy a 4th slot:
+// all issues when they fit, otherwise the 3 worst + a "+n weitere" pointer to the CCU.
+var DEV_MAX_ROWS = 4;
 function buildDevices() {
     var issues = deviceIssues();
-    var h = '<div class="card"><div class="card-h">Geräte · HomeMatic</div><div class="rows">';
+    var h = '<div class="card"><div class="card-h">Geräte · HomeMatic</div><div class="rows dense">';
     if (!issues.length) {
         h += '<div class="drow">' + dot(GREEN)
             + '<span class="nm">' + HM_DEVICES.length + ' Geräte</span>'
