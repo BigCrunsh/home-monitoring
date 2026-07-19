@@ -269,17 +269,20 @@ function buildRoom(name, module, influxName) {
     var tr = sStr(module + '.Temperature.TemperatureTrend');
     var lu = getState(module + '.LastUpdate'), luv = lu && lu.val ? lu.val : null, ago = agoStr(luv);
     var luMs = ageMs(luv), stale = luMs != null && luMs > 3600000;
-    var cc = comfortCol(t);   // colour rule A: the value carries the verdict
+    // >6 h without an update (typically a dead battery): grey the whole row — stale readings
+    // must not wear fresh comfort colours (mirrors the overview tile).
+    var dead = luMs == null || luMs > 21600000;
+    var cc = dead ? LBL : comfortCol(t);   // colour rule A: the value carries the verdict
 
     var h = '<div class="room">';
-    h += '<div class="thermo" style="background:' + comfortTint(t) + '">' + icoThermo(cc) + '</div>';
+    h += '<div class="thermo" style="background:' + (dead ? 'rgba(138,138,138,.14)' : comfortTint(t)) + '">' + icoThermo(cc) + '</div>';
     h += '<div class="name">' + esc(name) + '</div>';
     h += '<div class="op"><span' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–') + '</span>';
     if (bs != null) { var bcol = bs < 20 ? RED : (bs < 30 ? AMBER : LBL); h += '<span class="batt" style="color:' + bcol + '">' + icoBatt(bs, bcol) + Math.round(bs) + '%</span>'; }
     h += '</div>';
-    h += '<div class="env">' + icoDrop(BLUE, 14) + '<span style="color:' + humCol(hh) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
+    h += '<div class="env">' + icoDrop(BLUE, 14) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
         + '<span class="un">·</span>' + (c != null
-            ? '<span style="color:' + co2Col(c) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
+            ? '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
             : '<span class="un">–</span>') + '</div>';
     h += '<div class="temp num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
     // bottom strip: 24h sparkline (from home_monitoring InfluxDB) + today min/max + trend

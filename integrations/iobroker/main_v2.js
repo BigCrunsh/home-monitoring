@@ -358,17 +358,20 @@ function buildRoom(name, module) {
     var bs = existsState(module + '.BatteryStatus') ? sNum(module + '.BatteryStatus') : null;
     var lu = getState(module + '.LastUpdate'), luv = lu && lu.val ? lu.val : null, ago = agoStr(luv);
     var luMs = ageMs(luv), stale = luMs != null && luMs > 3600000;  // >60 min = stale sensor (alarm)
-    var cc = comfortCol(t);
+    // >6 h without an update (typically a dead battery): the readings are history, not truth —
+    // grey the whole tile instead of presenting stale values in fresh comfort colours.
+    var dead = luMs == null || luMs > 21600000;
+    var cc = dead ? LBL : comfortCol(t);
     var h = '<div class="ktile">';
-    h += '<div class="kh"><span class="th2" style="background:' + comfortTint(t) + '">' + icoThermo(cc) + '</span><span class="nm">' + esc(name) + '</span></div>';
+    h += '<div class="kh"><span class="th2" style="background:' + (dead ? 'rgba(138,138,138,.14)' : comfortTint(t)) + '">' + icoThermo(cc) + '</span><span class="nm">' + esc(name) + '</span></div>';
     h += '<div class="tv num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
     // operational: last-update (red when stale) · battery % (base stations have none)
     h += '<div class="op2"' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–')
         + (bs != null ? ' · ' + Math.round(bs) + '%' : '') + '</div>';
     // environmental: humidity · CO2 on one line
-    h += '<div class="env2">' + icoDrop('#5080AC', 13) + '<span style="color:' + humCol(hh) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
+    h += '<div class="env2">' + icoDrop('#5080AC', 13) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
         + '<span class="un">·</span>' + (c != null
-            ? '<span style="color:' + co2Col(c) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
+            ? '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
             : '<span class="un">–</span>') + '</div>';
     return h + '</div>';
 }
