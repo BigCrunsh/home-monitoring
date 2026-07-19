@@ -221,7 +221,9 @@ The wall-tablet dashboard (ioBroker vis-2, served from the Pi) has two layers:
 
 - **Logic** — the ioBroker JavaScript scripts that compute every displayed value
   (e.g. `solaredge_power.js` for the real-time energy states, `tibber_states.js` for
-  price/cost statistics). **Fully version-controlled** in
+  price/cost statistics, the `*_v2.js` tab renderers, and the shared `vis_card.js`
+  **global script** — the single palette/helper source for all tabs).
+  **Fully version-controlled** in
   [`integrations/iobroker/`](integrations/iobroker/) — the repo is the source of
   truth; never edit scripts in the admin UI first.
 - **Layout** — the vis-2 widget arrangement, versioned in
@@ -233,25 +235,37 @@ The wall-tablet dashboard (ioBroker vis-2, served from the Pi) has two layers:
 ### Development cycle for dashboard logic
 
 ```
-edit on the workstation → commit → push → pull on the Pi → deploy → verify
+drift-check → edit on the workstation → commit → deploy from the workstation → verify
 ```
 
 ```bash
-# 1. edit integrations/iobroker/<name>.js in the repo, commit, push
+# 0. BEFORE deploying, confirm the live scripts still match the repo — live-side
+#    edits happen (the whole vis_card layer existed only on the Pi until it was
+#    synced back on 2026-07-19):
+./integrations/iobroker/tools/check_drift.sh            # run on the Pi
 
-# 2. on the Pi:
-cd ~/src/github.com/BigCrunsh/home-monitoring
-git pull
-./integrations/iobroker/tools/deploy_script.sh <name>   # auto-restarts the script
+# 1. edit integrations/iobroker/<name>.js in the repo, commit
 
-# 3. verify
-./integrations/iobroker/tools/check_drift.sh   # deployed == repo for all scripts
+# 2. deploy straight from the workstation (the Pi's git checkout is not kept current):
+scp integrations/iobroker/<name>.js pi@raspberrypi:/tmp/
+ssh pi@raspberrypi 'SRC="$(cat /tmp/<name>.js)"; \
+  iobroker object set script.js.common.<name> common.source="$SRC"'   # auto-restarts
+
+# 3. verify: the script's published view states re-render within seconds
 ```
 
-Rollback = check out any earlier version of the script and run `deploy_script.sh`
-again. If a script was edited in the admin UI in a pinch, `check_drift.sh` flags it;
-export with `tools/export_scripts.sh` and commit, or redeploy from the repo to
-overwrite. Details and the full script inventory:
+Global scripts (shared helpers like `vis_card.js`) live under `script.js.global.<name>`
+rather than `script.js.common.<name>` — same deploy command, different object id. The
+vis-2 layout deploys with `iobroker file write /tmp/vis-views.json
+/vis-2.0/main/vis-views.json` followed by a client reload
+(`iobroker state set vis-2.0.control.command refresh`). Custom nav icons are versioned
+in `integrations/iobroker/vis/icons/` and copied to
+`/opt/iobroker/iobroker-data/files/vis-icontwo/Custom/` on the Pi.
+
+Rollback = check out any earlier version of the script and redeploy. If a script was
+edited in the admin UI in a pinch, `check_drift.sh` flags it; export with
+`tools/export_scripts.sh` and commit, or redeploy from the repo to overwrite. Details
+and the full script inventory:
 [`integrations/iobroker/README.md`](integrations/iobroker/README.md).
 
 ## Development
@@ -430,6 +444,13 @@ InfluxQL mode) or ioBroker, if you choose to use them.
 3. Make your changes
 4. Run tests and linting (`make test`)
 5. Submit a pull request
+
+## Acknowledgements
+
+- [myprojectclone-typescript](https://github.com/steinmann321/myprojectclone-typescript) —
+  its strict quality-gate policy (pre-commit secret scanning, dependency-vulnerability
+  scanning, "fix the code, never lower the threshold") informs this repo's CI
+  hardening. The TypeScript stack itself is not used here.
 
 ## License
 

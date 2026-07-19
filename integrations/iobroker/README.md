@@ -45,6 +45,22 @@ the admin UI in a pinch; export and commit such edits promptly.
 
 ## Script inventory
 
+**Dashboard layer** (the wall-tablet tabs; HTML/CSS-in-foreignObject on the `.mv2`
+design system, see `DESIGN_SYSTEM.md`):
+
+| Script | Purpose |
+|---|---|
+| `vis_card.js` | **Global script** (`script.js.global.vis_card`): the shared VC_PAL palette tokens and `vcEsc`/`vcComma` helpers every tab derives from |
+| `main_v2.js` | Übersicht: hero, Klima tile grid, Woche, Tanken, Energie hub, Steuerung card, ribbon |
+| `klima_v2.js` | Klima: outdoor hero, six expanded room rows, forecast, Garten/Bewässerung |
+| `energy_tab_v2.js` | Energie: three-tier layout (Jetzt → 24h-Verlauf/Bilanz → Kontext) |
+| `steuerung_v2.js` | Steuerung tile grid (STAGE 1 display; the native tap-overlays in `vis/main/vis-views.json` are STAGE 2 and must be updated together with target changes) |
+| `musik_v2.js` | Musik band: Sonos rooms via jishi node-sonos-http-api |
+| `diagnose_v2.js` | Diagnose: source freshness, Pi system, backups, adapters, HomeMatic device health |
+| `steuerung.js` | Türöffner two-tap confirm guard (`tuer_arm`) |
+
+**Data/state layer:**
+
 | Script | Purpose |
 |---|---|
 | `tibber_states.js` | Tibber price/consumption/cost states from InfluxDB (details below) |
