@@ -219,9 +219,11 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
             }
         });
     } else if (parts[1] === 'vol') {
-        if (typeof z.vol === 'number') { z.vol = Math.max(0, Math.min(100, z.vol + (parts[2] === 'up' ? 1 : -1))); }
+        // ±5 per tap — the native overlays can't do press-and-hold, and ±1 meant 15+ taps
+        // for an audible change on the wall panel
+        if (typeof z.vol === 'number') { z.vol = Math.max(0, Math.min(100, z.vol + (parts[2] === 'up' ? 5 : -5))); }
         z.holdUntil = Date.now() + HOLD; publish();
-        jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+1' : '-1'));
+        jget('/' + room + '/volume/' + (parts[2] === 'up' ? '+5' : '-5'));
     }
     setTimeout(refresh, HOLD + 300);        // reconcile just after the hold expires (state has settled)
 });
