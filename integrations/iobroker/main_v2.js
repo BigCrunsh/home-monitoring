@@ -127,7 +127,7 @@ var CSS_BASE = `
 
 /* TANKEN — Diesel & E5 side by side (split by a vertical divider); per fuel: name + price on one row,
    shared spectrum bar below (same component as Strompreis). */
-.mv2 .tanken{padding-top:var(--s2); padding-bottom:var(--s2)}
+.mv2 .tanken{padding-top:var(--s2); padding-bottom:var(--s4)}
 .mv2 .tanken .fuels{flex:1; display:grid; grid-template-columns:1fr 1fr; gap:var(--s3); align-items:stretch}
 .mv2 .fuel{display:flex; flex-direction:column; gap:var(--s2)}
 .mv2 .fuel + .fuel{border-left:1px solid var(--border); padding-left:var(--s3)}
@@ -168,19 +168,24 @@ var CSS_BASE = `
 .mv2 .tile.arm{border-color:rgba(216,83,111,.6)} .mv2 .tile.arm .cap{color:var(--text)} .mv2 .tile.arm .st{color:#d8536f}
 `;
 
-// ===== colour tokens (data-driven colour = scoped CSS var names) =====
-var GREEN = 'var(--green)', AMBER = 'var(--amber)', BLUE = 'var(--blue)', RED = 'var(--red)',
-    LBL = 'var(--muted)';
+// ===== colour tokens — data-driven colour = hex from the shared canonical VC_PAL (vis_card.js).
+// Per DESIGN_SYSTEM.md's two-layer rule these are hex (not CSS vars): one source, board-wide,
+// works in vis bindings + any wall browser. The static-chrome CSS --green/… tokens (defined in
+// CSS_BASE above) are the separate layer, set from the same values. PAL maps sem→colour. =====
+var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm,
+    LBL = VC_PAL.muted;
+var PAL = VC_PAL;
 
-// ===== data helpers =====
+// ===== data helpers — pure formatters + Berlin time now come from the shared global vis_card.js;
+// only stateful reads and markup/CSS-coupled helpers stay local. =====
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
 function sStr(id) { var s = getState(id); return (s && s.val != null) ? String(s.val) : null; }
 function sBool(id) { var s = getState(id); return !!(s && s.val); }
-function comma(v, d) { return (typeof v === 'number') ? v.toFixed(d == null ? 1 : d).replace('.', ',') : '–'; }
+var comma = vcComma;
 function pad2(n) { return ('0' + n).slice(-2); }
 function hhmmBerlin(dt) { return dt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' }); }
-function berlinNow() { return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' })); }
-function dayKey(dt) { return dt.toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' }); }
+var berlinNow = vcBerlinNow;
+function dayKey(dt) { return vcDayKey(dt); }
 function ageMs(luVal) { if (!luVal) return null; var t = new Date(luVal).getTime(); return isNaN(t) ? null : (Date.now() - t); }
 function agoStr(luVal) {
     var ms = ageMs(luVal); if (ms == null) return null;
@@ -204,7 +209,7 @@ function calSym(s) {
         .split('[Müllabfuhr]').join('👷').split('Abholung').join('👷')
         .split('[Carlotta]').join('🩵').split('[Clara]').join('💜').split('[Clea]').join('🧡');
 }
-function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+var clamp01 = vcClamp01;
 function watts(v) { var a = Math.abs(v || 0); return a >= 1000 ? comma(a / 1000, 1) + '<span class="u">kW</span>' : Math.round(a) + '<span class="u">W</span>'; }
 
 // fuel price 1,65 with the raised 3rd decimal (⁹) and the €/l unit stacked beneath it, left-aligned —
@@ -293,11 +298,11 @@ function enIco(kind, col) {
 }
 
 // ===== shared components =====
-// price-position classifier shared by Tanken + Strompreis. Missing data → muted "–" (no false verdict).
+// price-position classifier shared by Tanken + Strompreis — logic now in vis_card (vcPriceSem);
+// this wrapper binds our palette. Missing data → muted "–" (no false verdict).
 function priceBand(price, p20, p80) {
-    if (price == null || p20 == null || p80 == null) return { band: -1, col: LBL, word: '–' };
-    var band = price <= p20 ? 0 : (price >= p80 ? 2 : 1);
-    return { band: band, col: [GREEN, AMBER, RED][band], word: ['günstig', 'mittel', 'teuer'][band] };
+    var s = vcPriceSem(price, p20, p80);
+    return { band: s.band, col: vcSemColor(PAL, s.sem), word: s.word };
 }
 function spectrum(knobPct, loStr, hiStr) {
     return '<div class="spectrum"><div class="bar"><div class="knob" style="left:' + knobPct.toFixed(0) + '%"></div></div>'
@@ -449,30 +454,11 @@ function buildTanken() {
         + '</div></div></div>';
 }
 
-// ===== ENERGIE =====
-function enRoleCol(val, favourable, high) {
-    var m = Math.abs(val || 0);
-    if (favourable) return m < 75 ? LBL : GREEN;
-    if (m < 150) return LBL;
-    return m < (high || 2000) ? AMBER : RED;
-}
-// Energie card frame colour by net rate (€/h). Owner scale:
-//   einspeisung (income) > 0,05 €/h -> green; |net| <= 0,05 €/h -> grey (near break-even);
-//   verbrauch (cost) > 0,05 €/h -> red when the price is "teuer" (>= 7-day p80), else yellow.
-// net>0 = importing (cost), net<0 = exporting (income). We hold a 7-day price quantile (p80) but no
-// €/h-cost quantile, so the red tier rides the existing price band rather than a made-up number.
-var COST_NEUTRAL = 0.05;
-function energyFrame(net, price, p80) {
-    if (-net > COST_NEUTRAL) return GREEN;
-    if (Math.abs(net) <= COST_NEUTRAL) return LBL;
-    return (price != null && p80 != null && price >= p80) ? RED : AMBER;
-}
-function frameStyle(c) {
-    if (c === GREEN) return 'border-color:rgba(181,251,91,.55);box-shadow:0 0 0 1px var(--green-16)';
-    if (c === AMBER) return 'border-color:rgba(241,190,61,.6);box-shadow:0 0 0 1px var(--amber-16)';
-    if (c === RED) return 'border-color:rgba(160,6,41,.85);box-shadow:0 0 0 1px var(--red-16)';
-    return 'border-color:var(--border)';  // grey / neutral = the standard card frame
-}
+// ===== ENERGIE — verdict logic now lives in vis_card (single source; thresholds in VC.*).
+// enRoleCol/energyFrame/frameStyle are thin wrappers binding our palette; the owner's €/h frame
+// scale (income>0,05 → green; |net|≤0,05 → grey; cost → red when price≥p80 else amber) is
+// vcEnergyFrameSem. buildEnergie computes the sem once (see below). =====
+function enRoleCol(val, favourable, high) { return vcSemColor(PAL, vcRoleSem(val, favourable, high)); }
 function buildEnergie() {
     var prodTotal = sNum(EN + 'power_production'), maxxi = sNum(EN + 'power_maxxisun'),
         feedin = sNum(EN + 'power_feedin'), purchased = sNum(EN + 'power_purchased'),
@@ -492,13 +478,14 @@ function buildEnergie() {
     var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−');
     var pb = priceBand(price, p20, p80), priceCol = pb.col;
     var hasPrice = price != null && price > 0;
-    var fc = energyFrame(net, price, p80);
+    var fcSem = vcEnergyFrameSem(net, price, p80);
     // importing with no price → net coerces to 0; don't paint the grey "break-even" frame (there IS a cost).
-    if (grid > 50 && !hasPrice) fc = AMBER;
+    if (grid > 50 && !hasPrice) fcSem = 'warn';
+    var fc = vcSemColor(PAL, fcSem);
     // €/h headline shares the card-frame colour, so the two always agree (same cost/income verdict).
     var netCol = netZero ? LBL : fc;
 
-    var h = '<div class="card energie" style="' + frameStyle(fc) + '"><div class="card-body">';
+    var h = '<div class="card energie" style="' + vcFrameStyle(fcSem) + '"><div class="card-body">';
     // price head + spectrum bar — only when a real price exists. The price colour (green/amber/red)
     // + the spectrum-bar position carry the günstig/mittel/teuer verdict, so the word is dropped (owner).
     if (hasPrice) {

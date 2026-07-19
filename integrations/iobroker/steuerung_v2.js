@@ -51,7 +51,7 @@ var CSS_BASE = `
 .mv2 .sbtn{position:absolute; background:var(--inset); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:var(--text)}
 `;
 
-var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
+var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm, LBL = VC_PAL.muted, TEXT = VC_PAL.text;
 
 // [label, hue on-state] — long one-word labels carry a soft hyphen (­) so the 2-line
 // square-tile clamp can break them cleanly if the device font runs wider than the preview
@@ -86,7 +86,7 @@ var WATER_SECS = 600;   // tap a valve = water 10 min
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
 function sStr(id) { var s = getState(id); return (s && s.val != null) ? String(s.val) : null; }
 function sBool(id) { var s = getState(id); return s ? !!s.val : false; }
-function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+var esc = vcEsc;
 
 // 24px state-coloured icons (same visual language as main_v2's Steuerung tiles)
 function icoBulb(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/></g></svg>'; }

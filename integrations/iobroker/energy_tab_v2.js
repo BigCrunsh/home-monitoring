@@ -26,9 +26,9 @@
 var EN = 'javascript.0.';
 var FEEDIN_RATE = 0.1048;   // €/kWh feed-in tariff (same constant as main_v2 net €/h)
 
-// ===== palette / tokens (ground truth, identical to main_v2) =====
-var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629';
-var TEXT = '#CCCCCC', LBL = '#8A8A8A', SURF = '#15161c', INSET = '#1c1f28', BORD = '#262a33';
+// ===== palette — derived from the shared canonical VC_PAL (vis_card.js). One source, board-wide. =====
+var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm;
+var TEXT = VC_PAL.text, LBL = VC_PAL.muted, SURF = VC_PAL.surf, INSET = VC_PAL.inset, BORD = VC_PAL.border;
 
 var CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
@@ -95,60 +95,24 @@ var CSS = `
 .et3 .brow .bn{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
 `;
 
-// ===== helpers (verbatim semantics from main_v2.js — consolidate into vis_card.js later) =====
+// ===== helpers — now sourced from the shared global vis_card.js (script.js.global.vis_card).
+// The pure formatters are direct aliases; the colour/verdict helpers are thin wrappers that bind
+// this tab's hex PALette to the global's semantic classifiers, so the thresholds live in ONE place
+// (VC.*) and can no longer drift from the Overview. Only stateful reads stay local. =====
+var PAL = VC_PAL;
+var DAYS_SHORT = VC_DAYS_SHORT, MONTHS = VC_MONTHS;
+
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
 function tibber(id) { return sNum(EN + 'tibber_states.' + id); }
 function sam(id) { return sNum(EN + 'sam_digital.' + id); }
-function comma(v, d) { return (typeof v === 'number') ? v.toFixed(d == null ? 1 : d).replace('.', ',') : '–'; }
-function clamp01(x) { return Math.max(0, Math.min(1, x)); }
-function watts(v) { var a = Math.abs(v || 0); return a >= 1000 ? comma(a / 1000, 1) + '<span class="u"> kW</span>' : Math.round(a) + '<span class="u"> W</span>'; }
-function kwh1(v) { return v == null ? '–' : comma(v, 1); }
-function eur2(v) { return v == null ? '–' : comma(v, 2) + ' €'; }
-function enRoleCol(val, favourable, high) {
-    var m = Math.abs(val || 0);
-    if (favourable) return m < 75 ? LBL : GREEN;
-    if (m < 150) return LBL;
-    return m < (high || 2000) ? AMBER : RED;
-}
-function priceBand(price, p20, p80) {
-    if (price == null || p20 == null || p80 == null) return { band: -1, col: LBL };
-    var band = price <= p20 ? 0 : (price >= p80 ? 2 : 1);
-    return { band: band, col: [GREEN, AMBER, RED][band] };
-}
-var COST_NEUTRAL = 0.05;
-function energyFrame(net, price, p80) {
-    if (-net > COST_NEUTRAL) return GREEN;
-    if (Math.abs(net) <= COST_NEUTRAL) return LBL;
-    return (price != null && p80 != null && price >= p80) ? RED : AMBER;
-}
-function frameStyle(c) {
-    if (c === GREEN) return 'border-color:rgba(181,251,91,.55);box-shadow:0 0 0 1px rgba(181,251,91,.16)';
-    if (c === AMBER) return 'border-color:rgba(241,190,61,.6);box-shadow:0 0 0 1px rgba(241,190,61,.16)';
-    if (c === RED) return 'border-color:rgba(160,6,41,.85);box-shadow:0 0 0 1px rgba(160,6,41,.22)';
-    return '';
-}
-function enIco(kind, col, sz) {
-    sz = sz || 22;
-    var g = '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 18 18"><g stroke="' + col + '" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">';
-    if (kind === 'sun') g += '<circle cx="9" cy="9" r="3.4"/><line x1="9" y1="1.5" x2="9" y2="3.4"/><line x1="9" y1="14.6" x2="9" y2="16.5"/><line x1="1.5" y1="9" x2="3.4" y2="9"/><line x1="14.6" y1="9" x2="16.5" y2="9"/><line x1="4" y1="4" x2="5.3" y2="5.3"/><line x1="12.7" y1="12.7" x2="14" y2="14"/><line x1="14" y1="4" x2="12.7" y2="5.3"/><line x1="5.3" y1="12.7" x2="4" y2="14"/>';
-    else if (kind === 'battery') g += '<rect x="2" y="5" width="13" height="8" rx="1.6"/><line x1="15.5" y1="7.5" x2="15.5" y2="10.5" stroke-width="2.4"/>';
-    else if (kind === 'grid') g += '<line x1="3" y1="15" x2="6" y2="3"/><line x1="15" y1="15" x2="12" y2="3"/><line x1="6" y1="3" x2="12" y2="3"/><line x1="4.5" y1="9" x2="13.5" y2="9"/>';
-    else if (kind === 'house') g += '<path d="M2 8 L9 2 L16 8"/><rect x="4.5" y="8" width="9" height="7" rx="1"/>';
-    return g + '</g></svg>';
-}
-function spectrum(knobPct, lo, hi) {
-    return '<div class="spec"><div class="bar"><div class="knob" style="left:' + knobPct.toFixed(0) + '%"></div></div>'
-        + '<div class="mm"><span style="color:' + GREEN + '">' + lo + '</span><span style="color:' + RED + '">' + hi + '</span></div></div>';
-}
-// Pi OS runs Europe/London; the household clock is Europe/Berlin
-function berlinNow() { return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Berlin' })); }
-function dayKeyBerlin(dt) { return (dt || new Date()).toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' }); }
-function berlinParts(ts) {
-    var d = new Date(new Date(ts).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-    return { h: d.getHours(), m: d.getMinutes(), frac: d.getHours() + d.getMinutes() / 60, dow: d.getDay(), date: d.getDate() };
-}
-var DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-var MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+var comma = vcComma, clamp01 = vcClamp01, watts = vcWatts, kwh1 = vcKwh1, eur2 = vcEur2;
+var enIco = vcEnIco;
+var berlinNow = vcBerlinNow, dayKeyBerlin = vcDayKey, berlinParts = vcBerlinParts;
+function enRoleCol(val, favourable, high) { return vcSemColor(PAL, vcRoleSem(val, favourable, high)); }
+function priceBand(price, p20, p80) { var s = vcPriceSem(price, p20, p80); return { band: s.band, col: vcSemColor(PAL, s.sem), word: s.word }; }
+function energyFrame(net, price, p80) { return vcSemColor(PAL, vcEnergyFrameSem(net, price, p80)); }
+function frameStyle(sem) { return vcFrameStyle(sem); }   // takes a sem token now (see buildFlow)
+function spectrum(knobPct, lo, hi) { return vcSpectrum(PAL, knobPct, lo, hi); }
 function fo(w, h, body) {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">'
         + '<foreignObject width="' + w + '" height="' + h + '">'
@@ -188,8 +152,9 @@ function buildFlow() {
 
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * FEEDIN_RATE;
     var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−');
-    var fc = energyFrame(net, price, p80);
-    if (grid > 50 && !(price != null && price > 0)) fc = AMBER;
+    var fcSem = vcEnergyFrameSem(net, price, p80);
+    if (grid > 50 && !(price != null && price > 0)) fcSem = 'warn';   // importing w/o price ≠ break-even
+    var fc = vcSemColor(PAL, fcSem);
     var netCol = netZero ? LBL : fc;
     var gespart = (selfc / 1000) * (price || 0);
     var pb = priceBand(price, p20, p80);
@@ -209,7 +174,7 @@ function buildFlow() {
         + stat('Eigenverbrauch gespart', comma(gespart, 2), '€/h', 'vs. Netzbezug', gespart > 0.01 ? GREEN : LBL)
         + '</div>';
 
-    var body = '<div class="card" style="' + frameStyle(fc) + '">'
+    var body = '<div class="card" style="' + frameStyle(fcSem) + '">'
         + cardH('Energiefluss · Jetzt', stale ? '≈ Schätzwert (Cloud-Verzögerung)' : '')
         + '<div style="flex:1;display:flex;align-items:stretch;gap:14px">' + flows
         + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>' + stats + '</div></div>';
@@ -448,7 +413,7 @@ function queryForecast() {
         });
 }
 function buildPrice() {
-    var W = 778, H = 206;
+    var W = 778, H = 198;
     var price = tibber('energy_price_euro'), p20 = tibber('energy_price_euro_p20'), p80 = tibber('energy_price_euro_p80');
     var badge = 'jetzt <span style="color:' + priceBand(price, p20, p80).col + ';font-weight:700">' + comma(price, 2) + ' €/kWh</span>'
         + '&nbsp;&nbsp;·&nbsp;&nbsp;15-min-Preise&nbsp;&nbsp;·&nbsp;&nbsp;<span style="color:' + GREEN + '">■</span> günstig&nbsp;&nbsp;'
@@ -550,7 +515,7 @@ function buildPeriod() {
         + krow('Monat', 'month', mElapsed, prevMonth)
         + krow('Jahr', 'year', yElapsed, (b.getFullYear() - 1) + ':')
         + '</div></div>';
-    return fo(382, 124, body);
+    return fo(382, 112, body);
 }
 
 // ===== publish =====

@@ -61,7 +61,7 @@ var CSS_BASE = `
 .mv2 .mcol .card.grow{flex:1}
 `;
 
-var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
+var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm, LBL = VC_PAL.muted, TEXT = VC_PAL.text;
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
 var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';   // Studio base station
 var GVALVE = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
@@ -102,8 +102,8 @@ function adapterHealth(inst) {
     return { col: GREEN, st: 'ok' };
 }
 function ageOf(id) { var s = getState(id); if (!s || !s.ts) return null; return Math.max(0, Math.round((Date.now() - s.ts) / 1000)); }
-function comma(v, d) { return (typeof v === 'number') ? v.toFixed(d == null ? 1 : d).replace('.', ',') : '–'; }
-function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+var comma = vcComma;
+var esc = vcEsc;
 function fmtAge(sec) {
     if (sec == null) return '–';
     if (sec < 60) return sec + ' s';

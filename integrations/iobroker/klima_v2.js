@@ -96,12 +96,12 @@ var CSS_BASE = `
 .mv2 .hdiv{height:1px; background:var(--border); margin:10px 0 8px; flex:none}
 
 /* GARTEN — valves + soil, bubble rows */
-.mv2 .gsec{font-size:var(--t-cap); font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin:var(--s1) 0 2px}
-.mv2 .vrow{display:grid; grid-template-columns:1fr auto; gap:var(--s2); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
+.mv2 .gsec{font-size:var(--t-cap); font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin:2px 0 2px}
+.mv2 .vrow{display:grid; grid-template-columns:1fr auto; gap:var(--s2); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:4px}
 .mv2 .vrow .vn{font-size:var(--t-label); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .vrow .vs{font-size:var(--t-cap); color:var(--muted); white-space:nowrap; text-align:right}
 .mv2 .vrow .badge{font-size:var(--t-cap); font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap}
-.mv2 .srow{display:grid; grid-template-columns:1fr auto auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:6px}
+.mv2 .srow{display:grid; grid-template-columns:1fr auto auto; gap:var(--s3); align-items:center; background:var(--bg); border-radius:var(--r3); padding:7px var(--s3); margin-bottom:4px}
 .mv2 .srow .sinfo{min-width:0}
 .mv2 .srow .sn{font-size:var(--t-label); font-weight:600}
 .mv2 .srow .smeta{display:flex; align-items:center; gap:6px; font-size:var(--t-cap); font-weight:500; color:var(--muted); margin-top:1px}
@@ -112,7 +112,7 @@ var CSS_BASE = `
 `;
 
 // ===== palette constants =====
-var GREEN = '#b5fb5b', AMBER = '#F1BE3D', BLUE = '#5080AC', RED = '#A00629', LBL = '#8A8A8A', TEXT = '#CCCCCC';
+var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm, LBL = VC_PAL.muted, TEXT = VC_PAL.text;
 
 // ===== state refs =====
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
@@ -150,9 +150,9 @@ var DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 // ===== helpers =====
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
 function sStr(id) { var s = getState(id); return (s && s.val != null) ? String(s.val) : null; }
-function comma(v, d) { return (typeof v === 'number') ? v.toFixed(d == null ? 1 : d).replace('.', ',') : '–'; }
-function clamp01(x) { return Math.max(0, Math.min(1, x)); }
-function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+var comma = vcComma;
+var clamp01 = vcClamp01;
+var esc = vcEsc;
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
 function ageMs(v) { if (!v) return null; var t = new Date(v).getTime(); return isNaN(t) ? null : Date.now() - t; }
 function agoStr(v) {
@@ -426,12 +426,16 @@ function buildGarden() {
             var bcol = batt < 20 ? RED : (batt < 30 ? AMBER : LBL);
             battChip = '<span class="batt" style="color:' + bcol + '">' + icoBatt(batt, bcol) + Math.round(batt) + '%</span>';
         }
-        var info = '<div class="sinfo"><div class="sn">' + esc(s[0]) + '</div>'
-            + '<div class="smeta"><span>' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</span>' + battChip + '</div></div>';
-        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–", never a false dry-verdict.
+        // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–", never a
+        // false dry-verdict. §8.2 escalation: flag the age amber (offline = attention, not a red
+        // alarm — a garden probe going quiet isn't urgent) and dim the whole row so a long-dead
+        // sensor recedes instead of masquerading as live telemetry.
         var stale = ageMs(ts) == null || ageMs(ts) > 86400000;
+        var ageStyle = stale ? ' style="color:' + AMBER + '"' : '';
+        var info = '<div class="sinfo"><div class="sn">' + esc(s[0]) + '</div>'
+            + '<div class="smeta"><span' + ageStyle + '>' + (agoStr(ts) ? 'vor ' + agoStr(ts) : 'offline') + '</span>' + battChip + '</div></div>';
         if (stale) {
-            h += '<div class="srow">' + info
+            h += '<div class="srow" style="opacity:.5">' + info
                 + '<div class="sv" style="color:var(--mute)">–</div>'
                 + '<div class="sv" style="color:var(--mute)">–</div>'
                 + '</div>';
