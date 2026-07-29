@@ -10,6 +10,7 @@ help:
 	@echo "  test         to run tests and check code quality"
 	@echo "  test-unit    to run unit tests only"
 	@echo "  test-integration to run integration tests only"
+	@echo "  check-iobroker to parse the ioBroker scripts and test the vis_card helpers"
 	@echo "  lint         to run code linting"
 	@echo "  format       to format code with black"
 	@echo "  type-check   to run type checking with mypy"
@@ -51,8 +52,17 @@ lint: check type-check
 
 # read-only quality gate (CI-safe): never modifies files
 .PHONY: check
-check: ruff
+check: ruff check-iobroker
 	$(PYTHON) -m black --check $(SRC_DIR) $(TESTS_DIR)
+
+# ioBroker dashboard scripts: they are deployed as script objects, not imported, so a syntax
+# error only ever surfaces on the Pi. Parse every one, then unit-test the pure helpers in the
+# vis_card global (thresholds and the Maxxisun sign convention) — the parts a typo can silently
+# invert. Needs only node, which node --check already requires.
+.PHONY: check-iobroker
+check-iobroker:
+	@for f in integrations/iobroker/*.js; do node --check "$$f" || exit 1; done
+	node --test $(TESTS_DIR)/iobroker/*.test.js
 
 .PHONY: format
 format:

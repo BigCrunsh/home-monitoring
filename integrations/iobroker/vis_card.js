@@ -89,6 +89,33 @@ function vcAutarkSem(frac) {
     return frac >= VC.autarkGoodMin ? 'good' : (frac >= VC.autarkWarnMin ? 'warn' : 'muted');
 }
 
+// ===== Maxxisun sign convention (the ONE place the dashboard layer decides direction) =====
+// javascript.0.power_maxxisun is SIGNED, defined by the producer solaredge_power.js:84 as
+// 'Maxxisun AC-Leistung (negativ = Einspeisung, positiv = Laden)' — so negative = the battery
+// delivers into the house, positive = it charges. Re-deriving that per call site is what
+// inverted the Energie tab ("Maxxisun · liefert" while charging at +730 W) and cross-fed the
+// daily kWh counters; both helpers below exist so there is nothing left to re-derive.
+//
+// The word only — colour stays the caller's business via vcRoleSem/vcSemColor, because the
+// charging side has its own magnitude ladder (muted → warn → alarm above a per-call `high`)
+// that a flat verdict here would flatten. Vocabulary matches maxxisun_status
+// (Speist | Lädt | Bereit) so the tab and the ribbon chip never disagree. Below the
+// VC.roleGoodMin band the flow is negligible and the row stays a plain "Maxxisun".
+function vcMaxxiWord(w) {
+    var v = (typeof w === 'number' && isFinite(w)) ? w : 0;
+    if (Math.abs(v) < VC.roleGoodMin) return '';
+    return v < 0 ? 'speist' : 'lädt';
+}
+// Signed power → the two non-negative contributions the daily kWh integrators accumulate.
+// Mirrors solaredge_power.js:438 (maxxiCharge = Math.max(0, apower)). Deliberately has NO
+// deadband: the 75 W band above suppresses a label, but energy accounting must integrate every
+// watt or the day's kWh silently under-reports trickle charging. A non-numeric reading (sNum()
+// returns null for an absent state) contributes nothing rather than guessing a direction.
+function vcMaxxiSplit(w) {
+    var v = (typeof w === 'number' && isFinite(w)) ? w : 0;
+    return { charge: Math.max(0, v), discharge: Math.max(0, -v) };
+}
+
 // ===== sem → presentation =====
 // PAL maps the five sems to a script's own colour representation, e.g.
 //   var PAL = { good: GREEN, warn: AMBER, alarm: RED, cold: BLUE, muted: LBL, text: TEXT };
