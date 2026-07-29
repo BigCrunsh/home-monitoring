@@ -191,8 +191,11 @@ var INTEGRALS = [
     ['consumption',   function () { return sNum(EN + 'power_consumption') || 0; }],
     ['purchased',     function () { return sNum(EN + 'power_purchased') || 0; }],
     ['feedin',        function () { return sNum(EN + 'power_feedin') || 0; }],
-    ['maxxicharge',   function () { return Math.max(0, -(sNum(EN + 'power_maxxisun') || 0)); }],
-    ['maxxidischarge', function () { return Math.max(0, (sNum(EN + 'power_maxxisun') || 0)); }]
+    // Charging is POSITIVE power, delivering NEGATIVE — vis_card owns that split so it cannot be
+    // re-derived the wrong way round again (these two were feeding each other's counter, which
+    // put the battery's charge in the discharge total and skewed both Bilanz bars).
+    ['maxxicharge',   function () { return vcMaxxiSplit(sNum(EN + 'power_maxxisun')).charge; }],
+    ['maxxidischarge', function () { return vcMaxxiSplit(sNum(EN + 'power_maxxisun')).discharge; }]
 ];
 var _lastTick = null;
 function integrateTick() {
