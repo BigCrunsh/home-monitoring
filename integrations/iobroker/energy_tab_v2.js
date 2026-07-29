@@ -3,7 +3,7 @@
 // (Netz / Haus / SolarEdge / Maxxisun), watts() formatting, enRoleCol/priceBand/spectrum/
 // energyFrame semantics. v4 fixes (owner review of the deployed v3, 2026-07-07):
 //   Verlauf  — rolling 24h window, two totals only (Erzeugung area + Haus line, 30-min smoothing, FIXED 0-4 kW axis)
-//              + a separate slim Maxxisun ±lane below the plot (liefert ↑ / lädt ↓)
+//              + a separate slim Maxxisun ±lane below the plot (speist ↑ / lädt ↓)
 //   Bilanz   — segmented balance bars on one shared kWh scale (Erzeugt = direkt+geladen+eingespeist;
 //              Verbraucht = Solar+aus Akku+Netz) so autarky is VISIBLE and the balance closes;
 //              + "Kosten heute · gespart" (the Tag row moved here from the Kosten card)
@@ -133,12 +133,16 @@ function buildFlow() {
     var pMin = tibber('energy_price_euro_min'), pMax = tibber('energy_price_euro_max');
     var se = Math.max(0, prod - Math.max(0, -maxxi));   // SolarEdge-only, like main_v2
     var grid = pur - feed;
+    // direction word from the shared convention (vis_card): negative = speist, positive = lädt.
+    // Never re-derive the sign here — doing so is what made this row read "liefert" while the
+    // battery was charging. The colour argument below is separate and already correct.
+    var mxWord = vcMaxxiWord(maxxi);
 
     var rows = [
         { ico: 'grid', label: 'Netz' + (Math.abs(grid) >= 75 ? (grid > 0 ? ' · Bezug' : ' · Einspeisung') : ''), val: grid, col: enRoleCol(grid, grid < 0) },
         { ico: 'house', label: 'Haus', val: haus, col: stale ? LBL : enRoleCol(haus, false), approx: stale },
         { ico: 'sun', label: 'SolarEdge', val: se, col: enRoleCol(se, true) },
-        { ico: 'battery', label: 'Maxxisun' + (Math.abs(maxxi) >= 75 ? (maxxi < 0 ? ' · lädt' : ' · liefert') : ''), val: maxxi, col: enRoleCol(maxxi, maxxi < 0, 500) }
+        { ico: 'battery', label: 'Maxxisun' + (mxWord ? ' · ' + mxWord : ''), val: maxxi, col: enRoleCol(maxxi, maxxi < 0, 500) }
     ];
     var maxV = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.val); }).concat([1]));
     var flows = '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:0 4px">'
@@ -314,7 +318,11 @@ function buildCurve() {
     var LMAX = Math.max(0.5, Math.ceil(lMax / 500) * 0.5);   // lane scale in kW, 0.5 steps
     function sx(h) { return X0 + h / 24 * PW; }
     function syM(w) { return MY + MH - clamp01((w / 1000) / YMAX) * MH; }
-    function syL(w) { return LY + LH / 2 - Math.max(-1, Math.min(1, (w / 1000) / LMAX)) * (LH / 2); }
+    // Lane sign: power_maxxisun is negative when the battery delivers, so the sign is INVERTED
+    // here (note the leading +, not -) to put delivering ABOVE the zero line. That keeps the
+    // lane's "up = favourable" metaphor identical to the Erzeugung plot above it, and matches
+    // the speist ↑ / lädt ↓ axis chrome below.
+    function syL(w) { return LY + LH / 2 + Math.max(-1, Math.min(1, (w / 1000) / LMAX)) * (LH / 2); }
     function path(rows, sy) { return 'M' + rows.map(function (r) { return sx(r.h).toFixed(1) + ',' + sy(r.v).toFixed(1); }).join(' L'); }
     var prodP = path(prod, syM);
     var prodA = prodP + ' L' + sx(prod[prod.length - 1].h).toFixed(1) + ',' + syM(0).toFixed(1)
@@ -360,13 +368,13 @@ function buildCurve() {
     // lane chrome + endpoint
     var lane = '<line x1="' + X0 + '" y1="' + syL(0).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + syL(0).toFixed(1) + '" stroke="' + LBL + '" stroke-width="1" opacity="0.5"/>'
         + '<text x="' + (X0 + 8) + '" y="' + (LY + 12) + '" fill="' + LBL + '" font-size="11" font-weight="600">Maxxisun</text>'
-        + '<text x="' + (X0 + PW - 8) + '" y="' + (LY + 12) + '" fill="' + LBL + '" font-size="10" text-anchor="end">liefert ↑</text>'
+        + '<text x="' + (X0 + PW - 8) + '" y="' + (LY + 12) + '" fill="' + LBL + '" font-size="10" text-anchor="end">speist ↑</text>'
         + '<text x="' + (X0 + PW - 8) + '" y="' + (LY + LH - 2) + '" fill="' + LBL + '" font-size="10" text-anchor="end">lädt ↓</text>';
     if (mx.length > 1) {
         lane += '<path d="' + laneA + '" fill="' + GREEN + '" opacity="0.25"/>'
             + '<path d="' + laneP + '" fill="none" stroke="' + GREEN + '" stroke-width="1.5"/>';
         if (lastM && Math.abs(lastM.v) >= 75) {
-            var word = lastM.v < 0 ? 'lädt' : 'liefert';
+            var word = vcMaxxiWord(lastM.v);   // shared convention; the guard is VC.roleGoodMin
             lane += '<circle cx="' + sx(lastM.h).toFixed(1) + '" cy="' + syL(lastM.v).toFixed(1) + '" r="3.5" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
                 + '<text x="' + tx + '" y="' + (syL(lastM.v) + 4).toFixed(1) + '" fill="' + GREEN + '" font-size="12" font-weight="600"' + ta + '>' + word + ' ' + comma(Math.abs(lastM.v) / 1000, 1) + ' kW</text>';
         }
