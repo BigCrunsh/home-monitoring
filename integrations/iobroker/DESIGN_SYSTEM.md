@@ -70,7 +70,11 @@ operating-voltages aren't comparable across device types, so `LOW_BAT` is the ca
 
 ### 5. Bars — two distinct concepts
 - **Spectrum** (`.spectrum`) — a *position* on a green→amber→red gradient with a knob (price within its
-  7-day p20/p80 band: Strompreis, Tanken). Verdict = where the knob sits.
+  window's min→max: Strompreis 7 d, Tanken 14 d). Verdict = where the knob sits. The gradient is
+  quantile-driven (`vcSpectrum` / `vcSpectrumGradient(PAL, {min,max,p20,p50,p80})`): the green→amber
+  and amber→red transitions sit where p20/p80 fall on the axis, amber peaks at the median — so the
+  colour under the knob always agrees with the price's günstig/mittel/teuer colour, and the bar shows
+  how prices were distributed. Missing or flat quantiles → even 0/50/100 % gradient.
 - **Magnitude** (`.flow .track/.fill`) — a *quantity* bar filled proportionally and tinted by role
   (energy flows). `.fill` must be `display:block` for `width:%` to apply.
 
