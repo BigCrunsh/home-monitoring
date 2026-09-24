@@ -112,7 +112,7 @@ function enRoleCol(val, favourable, high) { return vcSemColor(PAL, vcRoleSem(val
 function priceBand(price, p20, p80) { var s = vcPriceSem(price, p20, p80); return { band: s.band, col: vcSemColor(PAL, s.sem), word: s.word }; }
 function energyFrame(net, price, p80) { return vcSemColor(PAL, vcEnergyFrameSem(net, price, p80)); }
 function frameStyle(sem) { return vcFrameStyle(sem); }   // takes a sem token now (see buildFlow)
-function spectrum(knobPct, lo, hi) { return vcSpectrum(PAL, knobPct, lo, hi); }
+function spectrum(price, q) { return vcSpectrum(PAL, price, q); }
 function fo(w, h, body) {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">'
         + '<foreignObject width="' + w + '" height="' + h + '">'
@@ -131,6 +131,7 @@ function buildFlow() {
     var staleS = getState(EN + 'power_data_stale'), stale = !!(staleS && staleS.val === true);
     var price = tibber('energy_price_euro'), p20 = tibber('energy_price_euro_p20'), p80 = tibber('energy_price_euro_p80');
     var pMin = tibber('energy_price_euro_min'), pMax = tibber('energy_price_euro_max');
+    var pq = { min: pMin, max: pMax, p20: p20, p50: tibber('energy_price_euro_p50'), p80: p80 };
     var se = Math.max(0, prod - Math.max(0, -maxxi));   // SolarEdge-only, like main_v2
     var grid = pur - feed;
     // direction word from the shared convention (vis_card): negative = speist, positive = lädt.
@@ -165,7 +166,7 @@ function buildFlow() {
     var priceBlock = '<div class="stat"><span class="sl">Strompreis</span>'
         + '<span class="sv" style="color:' + pb.col + '">' + comma(price, 2) + '<span class="u"> €/kWh</span></span>'
         + ((pMin != null && pMax != null && pMax > pMin)
-            ? spectrum(clamp01(((price || 0) - pMin) / (pMax - pMin)) * 100, comma(pMin, 2), comma(pMax, 2))
+            ? spectrum(price, pq)
             : '<span class="ss">&nbsp;</span>')
         + '</div>';
     function stat(l, v, u, s, c) {

@@ -140,11 +140,28 @@ function vcEnIco(kind, col, sz) {
     else if (kind === 'house') g += '<path d="M2 8 L9 2 L16 8"/><rect x="4.5" y="8" width="9" height="7" rx="1"/>';
     return g + '</g></svg>';
 }
-// min→max spectrum bar with a marker (price-in-range). Colours passed via PAL so the gradient +
-// end labels match the host tab's representation.
-function vcSpectrum(PAL, knobPct, lo, hi) {
-    return '<div class="spec"><div class="bar" style="background:linear-gradient(90deg,' + PAL.good + ',' + PAL.warn + ',' + PAL.alarm + ')"><div class="knob" style="left:' + knobPct.toFixed(0) + '%"></div></div>'
-        + '<div class="mm"><span style="color:' + PAL.good + '">' + lo + '</span><span style="color:' + PAL.alarm + '">' + hi + '</span></div></div>';
+// ===== SPECTRUM (price position within its window) =====
+// q = {min, max, p20, p50, p80} of the price window (Strom 7 d, Tanken 14 d). The bar spans
+// min→max; its green→amber and amber→red transitions (CSS colour hints) sit where p20/p80 fall on
+// that axis, amber peaks at the median — so the gradient shows the distribution and always agrees
+// with vcPriceSem's verdict colour. Missing/flat quantiles → even gradient (no invented shape).
+function vcSpectrumPct(v, q) { return vcClamp01((v - q.min) / (q.max - q.min)) * 100; }
+function vcSpectrumGradient(PAL, q) {
+    var ok = q && [q.min, q.max, q.p20, q.p50, q.p80].every(function (v) { return typeof v === 'number'; }) && q.max > q.min;
+    if (!ok) return 'linear-gradient(90deg,' + PAL.good + ' 0%,' + PAL.warn + ' 50%,' + PAL.alarm + ' 100%)';
+    var a = vcSpectrumPct(q.p20, q), m = Math.max(a, vcSpectrumPct(q.p50, q)), b = Math.max(m, vcSpectrumPct(q.p80, q));
+    return 'linear-gradient(90deg,' + PAL.good + ' 0%,' + a.toFixed(0) + '%,' + PAL.warn + ' ' + m.toFixed(0) + '%,'
+        + b.toFixed(0) + '%,' + PAL.alarm + ' 100%)';
+}
+function vcSpectrumKnobPct(price, q) {
+    return (typeof price === 'number' && q && typeof q.min === 'number' && typeof q.max === 'number' && q.max > q.min)
+        ? vcSpectrumPct(price, q) : 50;
+}
+// bar + knob + actual min/max labels. Colours via PAL so it matches the host tab's representation.
+function vcSpectrum(PAL, price, q) {
+    q = q || {};
+    return '<div class="spec"><div class="bar" style="background:' + vcSpectrumGradient(PAL, q) + '"><div class="knob" style="left:' + vcSpectrumKnobPct(price, q).toFixed(0) + '%"></div></div>'
+        + '<div class="mm"><span style="color:' + PAL.good + '">' + vcComma(q.min, 2) + '</span><span style="color:' + PAL.alarm + '">' + vcComma(q.max, 2) + '</span></div></div>';
 }
 
 console.log('[vis_card] shared helpers loaded');
