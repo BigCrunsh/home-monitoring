@@ -304,9 +304,11 @@ function priceBand(price, p20, p80) {
     var s = vcPriceSem(price, p20, p80);
     return { band: s.band, col: vcSemColor(PAL, s.sem), word: s.word };
 }
-function spectrum(knobPct, loStr, hiStr) {
-    return '<div class="spectrum"><div class="bar"><div class="knob" style="left:' + knobPct.toFixed(0) + '%"></div></div>'
-        + '<div class="mmrow"><span class="lo num">' + loStr + '</span><span class="hi num">' + hiStr + '</span></div></div>';
+// q = {min,max,p20,p50,p80}: gradient transitions + knob come from vis_card (vcSpectrum*), so the
+// bar's colour under the knob agrees with priceBand's verdict. CSS background is the fallback only.
+function spectrum(price, q) {
+    return '<div class="spectrum"><div class="bar" style="background:' + vcSpectrumGradient(PAL, q) + '"><div class="knob" style="left:' + vcSpectrumKnobPct(price, q).toFixed(0) + '%"></div></div>'
+        + '<div class="mmrow"><span class="lo num">' + comma(q.min, 2) + '</span><span class="hi num">' + comma(q.max, 2) + '</span></div></div>';
 }
 
 // ===== HERO =====
@@ -440,11 +442,11 @@ function buildFuel(name, feedOid, base) {
         mn = sNum(base + '_min'), mx = sNum(base + '_max');
     var pb = priceBand(price, p20, p80), col = pb.col;
     // knob: low price = left/green, high = right/red. Labels show actual 14-day min/max.
-    var pos = (mn != null && mx != null && mx > mn && price != null) ? clamp01((price - mn) / (mx - mn)) * 100 : 50;
+    var q = { min: mn, max: mx, p20: p20, p50: sNum(base + '_p50'), p80: p80 };
     var h = '<div class="fuel">';
     h += '<div class="finfo"><span class="fname">' + name + '</span>'
         + '<div class="price" style="color:' + col + '">' + priceSuper(price) + '</div></div>';
-    h += spectrum(pos, comma(mn, 2), comma(mx, 2));
+    h += spectrum(price, q);
     return h + '</div>';
 }
 function buildTanken() {
@@ -468,7 +470,8 @@ function buildEnergie() {
         p20 = sNum(EN + 'tibber_states.energy_price_euro_p20'),
         p80 = sNum(EN + 'tibber_states.energy_price_euro_p80'),
         pMin = sNum(EN + 'tibber_states.energy_price_euro_min'),
-        pMax = sNum(EN + 'tibber_states.energy_price_euro_max');
+        pMax = sNum(EN + 'tibber_states.energy_price_euro_max'),
+        p50 = sNum(EN + 'tibber_states.energy_price_euro_p50');
     var staleS = getState(EN + 'power_data_stale'), stale = !!(staleS && staleS.val === true);
     var se = prodTotal != null ? Math.max(0, prodTotal - Math.max(0, -(maxxi || 0))) : null;  // SolarEdge-only
     var grid = (purchased || 0) - (feedin || 0);
@@ -491,10 +494,9 @@ function buildEnergie() {
     if (hasPrice) {
         h += '<div class="price-head"><span class="lbl">Strompreis</span><span class="val num" style="color:' + priceCol + '">' + comma(price, 2) + '<span class="u">€/kWh</span></span>'
             + '<span class="net" style="color:' + netCol + '">' + netSign + comma(Math.abs(net), 2) + '<span class="u">€/h</span></span></div>';
-        // bar spans the 7-day min–max range; labels show actual min/max (quantiles drive colour only).
+        // bar spans the 7-day min–max range; labels show actual min/max; p20/p80 place the colour transitions.
         if (pMin != null && pMax != null && pMax > pMin) {
-            var pf = clamp01((price - pMin) / (pMax - pMin)) * 100;
-            h += '<div class="pricebar">' + spectrum(pf, comma(pMin, 2), comma(pMax, 2)) + '</div>';
+            h += '<div class="pricebar">' + spectrum(price, { min: pMin, max: pMax, p20: p20, p50: p50, p80: p80 }) + '</div>';
         }
     }
     // four flow rows
@@ -711,12 +713,12 @@ ROOMS.forEach(function (r) {
 ['power_production', 'power_maxxisun', 'power_feedin', 'power_purchased', 'power_consumption', 'rate_autarky', 'rate_selfconsumption', 'power_data_stale'].forEach(function (s) {
     on({ id: EN + s, change: 'ne' }, publish);
 });
-[EN + 'tibber_states.energy_price_euro', EN + 'tibber_states.energy_price_euro_p20', EN + 'tibber_states.energy_price_euro_p80',
+[EN + 'tibber_states.energy_price_euro', EN + 'tibber_states.energy_price_euro_p20', EN + 'tibber_states.energy_price_euro_p50', EN + 'tibber_states.energy_price_euro_p80',
  EN + 'tibber_states.energy_price_euro_min', EN + 'tibber_states.energy_price_euro_max'].forEach(function (id) {
     on({ id: id, change: 'ne' }, publish);
 });
 ['diesel', 'e5'].forEach(function (f) {
-    ['_p20', '_p80', '_min', '_max'].forEach(function (q) {
+    ['_p20', '_p50', '_p80', '_min', '_max'].forEach(function (q) {
         on({ id: 'javascript.0.tankerkoenig_quantiles.' + f + q, change: 'ne' }, publish);
     });
 });
