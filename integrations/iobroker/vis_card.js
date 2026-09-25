@@ -37,7 +37,9 @@ var VC = {
     // net €/h neutral band (energyFrame): |net| ≤ 0,05 €/h reads as break-even.
     costNeutral: 0.05,
     // autarky verdict: ≥75 % good, ≥40 % warn, else muted (never alarm — low autarky isn't an error).
-    autarkGoodMin: 0.75, autarkWarnMin: 0.40
+    autarkGoodMin: 0.75, autarkWarnMin: 0.40,
+    // data freshness (vcFreshness): >60 min stale (caption red), >6 h dead (values greyed).
+    staleAfterMs: 3600000, deadAfterMs: 21600000
 };
 
 // ===== pure formatters (representation-independent) =====
@@ -69,6 +71,12 @@ function vcRoleSem(val, favourable, high) {
     if (favourable) return m < VC.roleGoodMin ? 'muted' : 'good';
     if (m < VC.consWarnMin) return 'muted';
     return m < (high || VC.consAlarmMin) ? 'warn' : 'alarm';
+}
+// age of a reading (ms) → 'fresh' | 'stale' | 'dead'. Netatmo + DasWetter freeze during an internet
+// outage; a frozen value must not keep its fresh comfort colour. Unknown age → dead (never fresh).
+function vcFreshness(ageMs) {
+    if (typeof ageMs !== 'number' || isNaN(ageMs)) return 'dead';
+    return ageMs > VC.deadAfterMs ? 'dead' : (ageMs > VC.staleAfterMs ? 'stale' : 'fresh');
 }
 // price position vs 7-day p20/p80 → {sem, word}. Missing data → muted, no false verdict.
 function vcPriceSem(price, p20, p80) {
