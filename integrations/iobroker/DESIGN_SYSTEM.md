@@ -57,6 +57,12 @@ Because every cluster fills the band height, all the bottom metadata lands on th
 automatically. Equal top/bottom breathing room comes from the hero's symmetric vertical padding.
 Layout L→R: temp(+min/max) · weather(+humidity/pressure) · clock(+date) · moon(+rise/set).
 
+**Freshness** (same rule as Room, `vcFreshness`: >60 min stale, >6 h or unknown dead). A small
+`.h-age` caption hangs *below* the temp column (out of flow, so the baseline above is untouched):
+"vor X" for the outdoor module, plus "· Prognose vor Y" only when the forecast lags; red when either
+is stale. Dead outdoor module → temp + humidity grey; dead base station → pressure grey; dead
+forecast (DasWetter `.ts` heartbeat, refreshed every 15 min) → min/max grey + symbol desaturated.
+
 ### 3. Room — `buildRoom()` / `.room`
 A 4-row grid: **name** (primary) → **operational** (`.op`: last-update + battery) directly beneath →
 **environmental** (`.env.hum` / `.env.co2`, stacked) on the left; the **temperature Metric** big on the

@@ -60,6 +60,11 @@ var CSS_BASE = `
 .mv2 .otemp .mval{font-size:var(--t-hero); letter-spacing:-.03em}
 .mv2 .otemp .mu{font-size:26px; padding-top:.16em}
 .mv2 .mm{display:flex; justify-content:space-between; align-items:flex-end}
+/* last-update caption hangs BELOW the temp column (out of flow) so min/max keep the shared metadata
+   baseline with humidity · pressure · date (§2 Hero); it sits in the hero's bottom padding. */
+.mv2 .h-tempcol{position:relative}
+.mv2 .h-age{position:absolute; left:0; top:100%; margin-top:2px; font-size:var(--t-cap); line-height:1; color:var(--muted); white-space:nowrap}
+.mv2 .h-wxcol.dead .h-wx img{filter:grayscale(1); opacity:.45}
 .mv2 .mm .metric .mval{font-size:50px}
 .mv2 .mm .metric .mu{font-size:15px}
 .mv2 .h-wxcol{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s1)}
@@ -314,8 +319,8 @@ function spectrum(price, q) {
 // ===== HERO =====
 // the Metric component: value (comfort-coloured) + °C top-aligned + optional bottom-aligned label.
 // cls='otemp' selects the hero-temp size; min/max metrics live inside .mm.
-function tempMetric(val, dec, label, cls) {
-    return '<span class="metric ' + (cls || '') + '"><span class="mval num" style="color:' + comfortCol(val) + '">' + comma(val, dec)
+function tempMetric(val, dec, label, cls, col) {
+    return '<span class="metric ' + (cls || '') + '"><span class="mval num" style="color:' + (col || comfortCol(val)) + '">' + comma(val, dec)
         + '</span><span class="mu"><span class="uu">°C</span>' + (label ? '<span class="ll">' + label + '</span>' : '') + '</span></span>';
 }
 function buildHero() {
@@ -327,18 +332,31 @@ function buildHero() {
     var pr = sNum(NB + '.Pressure.Pressure');
     var wsym = sNum('daswetter.0.NextDays.Location_1.Day_1.Wetter_Symbol_id');
     var RS = '#8A8A8A';
+    // freshness (same rule as the room tiles, vcFreshness): Netatmo + DasWetter both need the
+    // internet, so during an outage they freeze. Dead (>6 h / unknown) → grey, never fresh colours.
+    // Outdoor module → temp + humidity; base station → pressure; DasWetter (refreshes its states
+    // every 15 min, so .ts is its heartbeat) → min/max + symbol.
+    var oLu = sStr(OUTDOOR + '.LastUpdate'), oF = vcFreshness(ageMs(oLu));
+    var bF = vcFreshness(ageMs(sStr(NB + '.LastUpdate')));
+    var fcS = getState(FCMIN), fcAge = (fcS && fcS.ts) ? Date.now() - fcS.ts : null, fcF = vcFreshness(fcAge);
+    var oDead = oF === 'dead', fcDead = fcF === 'dead';
+    // caption: age of the outdoor reading; the forecast's age is added only when it lags.
+    var cap = 'vor ' + (agoStr(oLu) || '–');
+    if (fcF !== 'fresh') cap += ' · Prognose vor ' + (agoStr(fcS && fcS.ts) || '–');
+    var capCol = (oF !== 'fresh' || fcF !== 'fresh') ? RED : LBL;
 
     var h = '<div class="hero">';
     // LEFT: temp column (temp top / min-max baseline) + weather column (symbol top / hum-pres baseline)
     h += '<div class="h-clim">'
         + '<div class="h-tempcol">'
-        +   tempMetric(ot, 1, null, 'otemp')
-        +   '<div class="mm">' + tempMetric(mn, 0, 'min') + tempMetric(mx, 0, 'max') + '</div>'
+        +   tempMetric(ot, 1, null, 'otemp', oDead ? LBL : null)
+        +   '<div class="mm">' + tempMetric(mn, 0, 'min', null, fcDead ? LBL : null) + tempMetric(mx, 0, 'max', null, fcDead ? LBL : null) + '</div>'
+        +   '<div class="h-age" style="color:' + capCol + '">' + esc(cap) + '</div>'
         + '</div>'
-        + '<div class="h-wxcol">' + wxImg(wsym)
+        + '<div class="h-wxcol' + (fcDead ? ' dead' : '') + '">' + wxImg(wsym)
         +   '<div class="h-metrics">'
-        +     '<div class="line">' + icoDrop('#5080AC', 18) + '<b class="num">' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
-        +     '<div class="line">' + icoGauge(18) + '<b class="num">' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar</span></div>'
+        +     '<div class="line"' + (oDead ? ' style="color:' + LBL + '"' : '') + '>' + icoDrop(oDead ? LBL : '#5080AC', 18) + '<b class="num">' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
+        +     '<div class="line"' + (bF === 'dead' ? ' style="color:' + LBL + '"' : '') + '>' + icoGauge(18) + '<b class="num">' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar</span></div>'
         +   '</div></div>'
         + '</div>';
     // CENTRE: clock (top) + date (baseline)
@@ -364,10 +382,10 @@ function buildRoom(name, module) {
     // an unguarded getState would warn-spam the log on every publish
     var bs = existsState(module + '.BatteryStatus') ? sNum(module + '.BatteryStatus') : null;
     var lu = getState(module + '.LastUpdate'), luv = lu && lu.val ? lu.val : null, ago = agoStr(luv);
-    var luMs = ageMs(luv), stale = luMs != null && luMs > 3600000;  // >60 min = stale sensor (alarm)
-    // >6 h without an update (typically a dead battery): the readings are history, not truth —
-    // grey the whole tile instead of presenting stale values in fresh comfort colours.
-    var dead = luMs == null || luMs > 21600000;
+    // vcFreshness: >60 min = stale sensor (caption red); >6 h or unknown (typically a dead battery or
+    // an internet outage): the readings are history, not truth — grey the whole tile instead of
+    // presenting stale values in fresh comfort colours.
+    var fr = vcFreshness(ageMs(luv)), stale = fr !== 'fresh', dead = fr === 'dead';
     var cc = dead ? LBL : comfortCol(t);
     var h = '<div class="ktile">';
     h += '<div class="kh"><span class="th2" style="background:' + (dead ? 'rgba(138,138,138,.14)' : comfortTint(t)) + '">' + icoThermo(cc) + '</span><span class="nm">' + esc(name) + '</span></div>';
