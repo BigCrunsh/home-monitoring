@@ -44,35 +44,10 @@ var CSS_BASE = `
 /* HERO — two tiers: display glyphs (top) + one metadata baseline (bottom). Each cluster is a
    full-height column (glyph top / metadata bottom), so all the small data lands on one baseline. */
 .mv2 .hero{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:var(--s3) var(--inset-x); overflow:hidden}
-.mv2 .h-clim{justify-self:start; display:flex; align-items:center; gap:var(--s6)}
 .mv2 .h-clock{justify-self:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px}
 .mv2 .h-moon{justify-self:end; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:var(--s2)}
 
-/* the Metric component — value + top-aligned unit (uu) + optional bottom-aligned label (ll) */
-.mv2 .metric{display:inline-flex; align-items:stretch; gap:3px; white-space:nowrap}
-.mv2 .metric .mval{font-weight:600; line-height:.82}
-.mv2 .metric .mu{display:flex; flex-direction:column; justify-content:space-between; padding:.1em 0 .02em; color:var(--muted); font-weight:500; line-height:1; font-size:13px}
-
-/* left: temp column + weather column, each glyph-top / metadata-baseline-bottom.
-   align-items:stretch + .mm space-between makes min/max span the temp's width → left+right aligned. */
-.mv2 .h-tempcol{display:flex; flex-direction:column; align-items:stretch; justify-content:center; gap:var(--s1)}
-.mv2 .otemp{align-self:flex-start}
-.mv2 .otemp .mval{font-size:var(--t-hero); letter-spacing:-.03em}
-.mv2 .otemp .mu{font-size:26px; padding-top:.16em}
-.mv2 .mm{display:flex; justify-content:space-between; align-items:flex-end}
-/* last-update caption hangs BELOW the temp column (out of flow) so min/max keep the shared metadata
-   baseline with humidity · pressure · date (§2 Hero); it sits in the hero's bottom padding. */
-.mv2 .h-tempcol{position:relative}
-.mv2 .h-age{position:absolute; left:0; top:100%; margin-top:2px; font-size:var(--t-cap); line-height:1; color:var(--muted); white-space:nowrap}
-.mv2 .h-wxcol.dead .h-wx img{filter:grayscale(1); opacity:.45}
-.mv2 .mm .metric .mval{font-size:50px}
-.mv2 .mm .metric .mu{font-size:15px}
-.mv2 .h-wxcol{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s1)}
-.mv2 .h-wx{display:flex; align-items:center; justify-content:center; min-height:var(--sym-wx)}
-.mv2 .h-wx img{height:var(--sym-wx); width:auto; display:block}
-.mv2 .h-metrics{display:flex; flex-direction:row; align-items:center; gap:var(--s4)}
-.mv2 .h-metrics .line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted)}
-.mv2 .h-metrics .line b{color:var(--text); font-weight:600; font-size:var(--t-sub)}
+/* left: the outdoor-climate cluster — shared with Klima; its CSS is VC_CLIM_CSS (vis_card.js). */
 
 /* centre: clock (top) + date (baseline) */
 .mv2 .m2clk{font-size:var(--t-clock); font-weight:600; line-height:.82; letter-spacing:-.02em}
@@ -230,9 +205,6 @@ function priceSuper(v) {
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
 // second base station (NAMain "Studio", mains-powered — no BatteryStatus state)
 var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
-var OUTDOOR = NB + '.02-00-00-32-ae-a4';
-var FCMIN = 'daswetter.0.NextDays.Location_1.Day_1.Minimale_Temperatur_value';
-var FCMAX = 'daswetter.0.NextDays.Location_1.Day_1.Maximale_Temperatur_value';
 // Klima: Außen lives in the hero now; 6 rooms fill the 2×3 tile grid.
 // Kids' rooms use short labels — the half-width tile can't fit "Carlottas Zimmer".
 // Dachterrasse is the outdoor module on the Studio base station (no CO₂ — env line shows –).
@@ -267,7 +239,6 @@ function icoBatt(pct, col) {
         + '<rect x="13.4" y="4" width="1.8" height="3" rx=".6" fill="' + col + '"/>'
         + '<rect x="2.3" y="3.2" width="' + w + '" height="4.6" rx=".7" fill="' + col + '"/></svg>';
 }
-function icoGauge(sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><g fill="none" stroke="' + LBL + '" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="7.5" x2="12" y2="9.2"/><line x1="16.5" y1="12" x2="14.8" y2="12"/><line x1="7.5" y1="12" x2="9.2" y2="12"/><line x1="12" y1="12" x2="15.4" y2="9.2"/></g><circle cx="12" cy="12" r="1.6" fill="' + LBL + '"/></svg>'; }
 function icoSunSmall() { return '<svg width="18" height="18" viewBox="0 0 22 22"><g stroke="#F1BE3D" stroke-width="1.5" fill="none" stroke-linecap="round"><circle cx="11" cy="11" r="3.4" fill="#F1BE3D" stroke="none"/><line x1="11" y1="2.5" x2="11" y2="4.6"/><line x1="11" y1="17.4" x2="11" y2="19.5"/><line x1="2.5" y1="11" x2="4.6" y2="11"/><line x1="17.4" y1="11" x2="19.5" y2="11"/><line x1="5" y1="5" x2="6.5" y2="6.5"/><line x1="15.5" y1="15.5" x2="17" y2="17"/><line x1="17" y1="5" x2="15.5" y2="6.5"/><line x1="6.5" y1="15.5" x2="5" y2="17"/></g></svg>'; }
 // small crescent for the moon rise/set row (the big phase emoji is the hero symbol)
 function icoMoonMini(col) { return '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M12.2 2.6 A6.6 6.6 0 1 0 12.8 13.4 A5.2 5.2 0 0 1 12.2 2.6 Z" fill="' + col + '"/></svg>'; }
@@ -282,12 +253,6 @@ function moonEmoji(phase) {
     return ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘'][phase];
 }
 // Weather symbol = the native daswetter art (galeria1, ids 1..22), embedded inline as a same-origin
-// <img> beside the big temp (the foreignObject HTML rebuild makes the old native-overlay widget
-// unnecessary; this auto-aligns + scales + survives the Neu→Main move). Falls back to nothing if the id is out of range.
-function wxImg(id) {
-    if (id == null || isNaN(id) || id < 1 || id > 22) return '<div class="h-wx"></div>';  // keep the slot so the column doesn't collapse
-    return '<div class="h-wx"><img src="/daswetter.admin/icons/tiempo-weather/galeria1/' + Math.round(id) + '.png" alt=""/></div>';
-}
 function enIco(kind, col) {
     var g = '<svg width="18" height="18" viewBox="0 0 18 18"><g stroke="' + col + '" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">';
     if (kind === 'sun') {
@@ -317,48 +282,15 @@ function spectrum(price, q) {
 }
 
 // ===== HERO =====
-// the Metric component: value (comfort-coloured) + °C top-aligned + optional bottom-aligned label.
-// cls='otemp' selects the hero-temp size; min/max metrics live inside .mm.
-function tempMetric(val, dec, label, cls, col) {
-    return '<span class="metric ' + (cls || '') + '"><span class="mval num" style="color:' + (col || comfortCol(val)) + '">' + comma(val, dec)
-        + '</span><span class="mu"><span class="uu">°C</span>' + (label ? '<span class="ll">' + label + '</span>' : '') + '</span></span>';
-}
 function buildHero() {
     var b = berlinNow();
     var sr = sStr(EN + 'sunrise'), ss = sStr(EN + 'sunset');
     var mr = sStr(EN + 'moonrise'), ms = sStr(EN + 'moonset'), mph = sNum(EN + 'moon_phase');
-    var ot = sNum(OUTDOOR + '.Temperature.Temperature'), mn = sNum(FCMIN), mx = sNum(FCMAX);
-    var oh = sNum(OUTDOOR + '.Humidity.Humidity');
-    var pr = sNum(NB + '.Pressure.Pressure');
-    var wsym = sNum('daswetter.0.NextDays.Location_1.Day_1.Wetter_Symbol_id');
     var RS = '#8A8A8A';
-    // freshness (same rule as the room tiles, vcFreshness): Netatmo + DasWetter both need the
-    // internet, so during an outage they freeze. Dead (>6 h / unknown) → grey, never fresh colours.
-    // Outdoor module → temp + humidity; base station → pressure; DasWetter (refreshes its states
-    // every 15 min, so .ts is its heartbeat) → min/max + symbol.
-    var oLu = sStr(OUTDOOR + '.LastUpdate'), oF = vcFreshness(ageMs(oLu));
-    var bF = vcFreshness(ageMs(sStr(NB + '.LastUpdate')));
-    var fcS = getState(FCMIN), fcAge = (fcS && fcS.ts) ? Date.now() - fcS.ts : null, fcF = vcFreshness(fcAge);
-    var oDead = oF === 'dead', fcDead = fcF === 'dead';
-    // caption: age of the outdoor reading; the forecast's age is added only when it lags.
-    var cap = 'vor ' + (agoStr(oLu) || '–');
-    if (fcF !== 'fresh') cap += ' · Prognose vor ' + (agoStr(fcS && fcS.ts) || '–');
-    var capCol = (oF !== 'fresh' || fcF !== 'fresh') ? RED : LBL;
 
     var h = '<div class="hero">';
-    // LEFT: temp column (temp top / min-max baseline) + weather column (symbol top / hum-pres baseline)
-    h += '<div class="h-clim">'
-        + '<div class="h-tempcol">'
-        +   tempMetric(ot, 1, null, 'otemp', oDead ? LBL : null)
-        +   '<div class="mm">' + tempMetric(mn, 0, 'min', null, fcDead ? LBL : null) + tempMetric(mx, 0, 'max', null, fcDead ? LBL : null) + '</div>'
-        +   '<div class="h-age" style="color:' + capCol + '">' + esc(cap) + '</div>'
-        + '</div>'
-        + '<div class="h-wxcol' + (fcDead ? ' dead' : '') + '">' + wxImg(wsym)
-        +   '<div class="h-metrics">'
-        +     '<div class="line"' + (oDead ? ' style="color:' + LBL + '"' : '') + '>' + icoDrop(oDead ? LBL : '#5080AC', 18) + '<b class="num">' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
-        +     '<div class="line"' + (bF === 'dead' ? ' style="color:' + LBL + '"' : '') + '>' + icoGauge(18) + '<b class="num">' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar</span></div>'
-        +   '</div></div>'
-        + '</div>';
+    // LEFT: the outdoor-climate cluster — the ONE shared component (vis_card.js), also Klima's corner
+    h += vcClimCluster(PAL, vcClimRead(getState));
     // CENTRE: clock (top) + date (baseline)
     h += '<div class="h-clock"><div class="m2clk num">' + pad2(b.getHours()) + '<span class="sep">:</span>' + pad2(b.getMinutes()) + '</div>'
         + '<div class="m2date">' + DAYS_FULL[b.getDay()] + ', ' + b.getDate() + '. ' + MONTHS[b.getMonth()] + '</div></div>';
@@ -686,7 +618,7 @@ var RIBBON_OIDS = ['hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1
 // <svg><foreignObject> sized to its vis box and carrying the shared CSS_BASE. The mid/right
 // widgets run taller than the left/nav so the calendar + Energie gain height beside the nav. =====
 function widgetSvg(rootCls, w, h, body) {
-    var inner = '<div class="mv2 ' + rootCls + '"><style>' + CSS_BASE + '</style>' + body + '</div>';
+    var inner = '<div class="mv2 ' + rootCls + '"><style>' + CSS_BASE + VC_CLIM_CSS + '</style>' + body + '</div>';
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
         + '<foreignObject x="0" y="0" width="' + w + '" height="' + h + '">'
         + '<div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
@@ -722,10 +654,9 @@ ROOMS.forEach(function (r) {
         on({ id: r[1] + s, change: 'ne' }, publish);
     });
 });
-[OUTDOOR + '.Temperature.Temperature', OUTDOOR + '.Humidity.Humidity', FCMIN, FCMAX,
- NB + '.Pressure.Pressure',
+VC_CLIM.triggers.concat([
  EN + 'sunrise', EN + 'sunset', EN + 'moonrise', EN + 'moonset', EN + 'moon_phase',
- 'tankerkoenig.0.stations.1.diesel.feed', 'tankerkoenig.0.stations.1.e5.feed', 'ical.0.data.table'].forEach(function (id) {
+ 'tankerkoenig.0.stations.1.diesel.feed', 'tankerkoenig.0.stations.1.e5.feed', 'ical.0.data.table']).forEach(function (id) {
     on({ id: id, change: 'ne' }, publish);
 });
 ['power_production', 'power_maxxisun', 'power_feedin', 'power_purchased', 'power_consumption', 'rate_autarky', 'rate_selfconsumption', 'power_data_stale'].forEach(function (s) {
@@ -742,8 +673,6 @@ ROOMS.forEach(function (r) {
 });
 // Steuerung plug tiles (Drucker/Couch/Vitrine) react to their real on/off state
 STEUER_OIDS.forEach(function (id) { on({ id: id, change: 'ne' }, publish); });
-// weather symbol updates with the forecast
-on({ id: 'daswetter.0.NextDays.Location_1.Day_1.Wetter_Symbol_id', change: 'ne' }, publish);
 // Tür tile flips to the red "öffnen bestätigen" look while the guard is armed
 on({ id: 'javascript.0.tuer_arm', change: 'ne' }, publish);
 RIBBON_OIDS.forEach(function (id) { on({ id: id, change: 'ne' }, publishRibbon); });

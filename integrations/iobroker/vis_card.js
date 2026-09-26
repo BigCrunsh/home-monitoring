@@ -172,4 +172,120 @@ function vcSpectrum(PAL, price, q) {
         + '<div class="mm"><span style="color:' + PAL.good + '">' + vcComma(q.min, 2) + '</span><span style="color:' + PAL.alarm + '">' + vcComma(q.max, 2) + '</span></div></div>';
 }
 
+// ===== OUTDOOR CLIMATE CLUSTER (hero top-left: Übersicht + Klima) =====
+// ONE component, referenced by both tabs so the corner can't drift apart again (Klima's copy had
+// lost the weather column and the freshness greying). Layout: temp column (big outdoor temp top /
+// today's min·max on the metadata baseline, last-update caption hanging below) + weather column
+// (symbol top / humidity · pressure baseline). vcClimRead takes the states → plain numbers;
+// vcClimCluster is pure (numbers → markup); the host puts VC_CLIM_CSS into its widget <style>.
+
+// comfort band of an air temperature → sem (outside temp + rooms): ≤3 °C muted (frost range reads
+// as "nothing to do"), <12 cold, <20 good, <27 warn, else alarm. Missing → muted.
+function vcComfortSem(t) {
+    if (typeof t !== 'number' || isNaN(t)) return 'muted';
+    return t <= 3 ? 'muted' : (t < 12 ? 'cold' : (t < 20 ? 'good' : (t < 27 ? 'warn' : 'alarm')));
+}
+// age (ms) → "40 s" | "13 min" | "7 h"; unknown → null. Clock skew (future) clamps to 0 s.
+function vcAgo(ms) {
+    if (typeof ms !== 'number' || isNaN(ms)) return null;
+    var s = Math.max(0, Math.round(ms / 1000));
+    return s < 60 ? s + ' s' : (s < 3600 ? Math.round(s / 60) + ' min' : Math.round(s / 3600) + ' h');
+}
+
+var VC_NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';   // Netatmo base station (pressure)
+var VC_CLIM = {
+    base: VC_NB,
+    outdoor: VC_NB + '.02-00-00-32-ae-a4',                            // outdoor module (temp, humidity)
+    fcMin: 'daswetter.0.NextDays.Location_1.Day_1.Minimale_Temperatur_value',
+    fcMax: 'daswetter.0.NextDays.Location_1.Day_1.Maximale_Temperatur_value',
+    wsym: 'daswetter.0.NextDays.Location_1.Day_1.Wetter_Symbol_id'
+};
+// the states whose change should re-render the cluster (hosts subscribe to exactly this list)
+VC_CLIM.triggers = [VC_CLIM.outdoor + '.Temperature.Temperature', VC_CLIM.outdoor + '.Humidity.Humidity',
+    VC_CLIM.base + '.Pressure.Pressure', VC_CLIM.fcMin, VC_CLIM.fcMax, VC_CLIM.wsym];
+
+// states → snapshot. get = ioBroker getState (injected so this stays testable). Netatmo stamps each
+// module's LastUpdate; DasWetter rewrites its states every 15 min, so the min state's .ts is its heartbeat.
+function vcClimRead(get, now) {
+    now = now || Date.now();
+    function num(id) { var s = get(id); return (s && typeof s.val === 'number' && !isNaN(s.val)) ? s.val : null; }
+    function luAge(mod) {
+        var s = get(mod + '.LastUpdate'); if (!s || s.val == null) return null;
+        var t = new Date(s.val).getTime(); return isNaN(t) ? null : now - t;
+    }
+    var fc = get(VC_CLIM.fcMin);
+    return {
+        temp: num(VC_CLIM.outdoor + '.Temperature.Temperature'), hum: num(VC_CLIM.outdoor + '.Humidity.Humidity'),
+        pres: num(VC_CLIM.base + '.Pressure.Pressure'),
+        min: num(VC_CLIM.fcMin), max: num(VC_CLIM.fcMax), wsym: num(VC_CLIM.wsym),
+        outdoorAgeMs: luAge(VC_CLIM.outdoor), baseAgeMs: luAge(VC_CLIM.base),
+        forecastAgeMs: (fc && typeof fc.ts === 'number') ? now - fc.ts : null
+    };
+}
+
+function vcIcoDrop(col, sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><path d="M12 2.5 C12 2.5 5.5 10.5 5.5 15.2 a6.5 6.5 0 0 0 13 0 C18.5 10.5 12 2.5 12 2.5 Z" fill="' + col + '"/><ellipse cx="9.6" cy="15.2" rx="1.6" ry="2.4" fill="#ffffff" opacity="0.35"/></svg>'; }
+function vcIcoGauge(col, sz) { sz = sz || 16; return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 24 24"><g fill="none" stroke="' + col + '" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><line x1="12" y1="7.5" x2="12" y2="9.2"/><line x1="16.5" y1="12" x2="14.8" y2="12"/><line x1="7.5" y1="12" x2="9.2" y2="12"/><line x1="12" y1="12" x2="15.4" y2="9.2"/></g><circle cx="12" cy="12" r="1.6" fill="' + col + '"/></svg>'; }
+// DasWetter symbol 1..22; anything else keeps the (empty) slot so the column doesn't collapse.
+function vcWxImg(id) {
+    if (typeof id !== 'number' || isNaN(id) || id < 1 || id > 22) return '<div class="h-wx"></div>';
+    return '<div class="h-wx"><img src="/daswetter.admin/icons/tiempo-weather/galeria1/' + Math.round(id) + '.png" alt=""/></div>';
+}
+// the Metric component: value + top-aligned °C + optional bottom-aligned label (min/max).
+function vcTempMetric(val, dec, label, cls, col) {
+    return '<span class="metric ' + (cls || '') + '"><span class="mval num" style="color:' + col + '">' + vcComma(val, dec)
+        + '</span><span class="mu"><span class="uu">°C</span>' + (label ? '<span class="ll">' + label + '</span>' : '') + '</span></span>';
+}
+// d = vcClimRead(...). Freshness (vcFreshness) per source: outdoor module → temp + humidity; base
+// station → pressure; DasWetter → min/max + symbol. Dead → grey; any source not fresh → red caption.
+function vcClimCluster(PAL, d) {
+    d = d || {};
+    var oF = vcFreshness(d.outdoorAgeMs), bF = vcFreshness(d.baseAgeMs), fcF = vcFreshness(d.forecastAgeMs);
+    var oDead = oF === 'dead', fcDead = fcF === 'dead';
+    var mut = PAL.muted;
+    var fcCol = function (v) { return fcDead ? mut : vcSemColor(PAL, vcComfortSem(v)); };
+    var cap = 'vor ' + (vcAgo(d.outdoorAgeMs) || '–');
+    if (fcF !== 'fresh') cap += ' · Prognose vor ' + (vcAgo(d.forecastAgeMs) || '–');
+    var capCol = (oF !== 'fresh' || fcF !== 'fresh') ? PAL.alarm : mut;
+    function r0(v) { return (typeof v === 'number' && !isNaN(v)) ? Math.round(v) : '–'; }
+    return '<div class="h-clim">'
+        + '<div class="h-tempcol">'
+        +   vcTempMetric(d.temp, 1, null, 'otemp', oDead ? mut : vcSemColor(PAL, vcComfortSem(d.temp)))
+        +   '<div class="mm">' + vcTempMetric(d.min, 0, 'min', null, fcCol(d.min)) + vcTempMetric(d.max, 0, 'max', null, fcCol(d.max)) + '</div>'
+        +   '<div class="h-age" style="color:' + capCol + '">' + vcEsc(cap) + '</div>'
+        + '</div>'
+        + '<div class="h-wxcol' + (fcDead ? ' dead' : '') + '">' + vcWxImg(d.wsym)
+        +   '<div class="h-metrics">'
+        +     '<div class="line"' + (oDead ? ' style="color:' + mut + '"' : '') + '>' + vcIcoDrop(oDead ? mut : PAL.cold, 18) + '<b class="num">' + r0(d.hum) + '</b><span class="u">%</span></div>'
+        +     '<div class="line"' + (bF === 'dead' ? ' style="color:' + mut + '"' : '') + '>' + vcIcoGauge(mut, 18) + '<b class="num">' + r0(d.pres) + '</b><span class="u">mbar</span></div>'
+        +   '</div></div>'
+        + '</div>';
+}
+// the cluster's CSS (needs the .mv2 token block: --s*, --t-*, --sym-wx, --muted, --text).
+var VC_CLIM_CSS = `
+.mv2 .h-clim{justify-self:start; display:flex; align-items:center; gap:var(--s6)}
+/* the Metric component — value + top-aligned unit (uu) + optional bottom-aligned label (ll) */
+.mv2 .metric{display:inline-flex; align-items:stretch; gap:3px; white-space:nowrap}
+.mv2 .metric .mval{font-weight:600; line-height:.82}
+.mv2 .metric .mu{display:flex; flex-direction:column; justify-content:space-between; padding:.1em 0 .02em; color:var(--muted); font-weight:500; line-height:1; font-size:13px}
+/* temp column + weather column, each glyph-top / metadata-baseline-bottom.
+   align-items:stretch + .mm space-between makes min/max span the temp's width → left+right aligned. */
+.mv2 .h-tempcol{position:relative; display:flex; flex-direction:column; align-items:stretch; justify-content:center; gap:var(--s1)}
+.mv2 .otemp{align-self:flex-start}
+.mv2 .otemp .mval{font-size:var(--t-hero); letter-spacing:-.03em}
+.mv2 .otemp .mu{font-size:26px; padding-top:.16em}
+.mv2 .mm{display:flex; justify-content:space-between; align-items:flex-end}
+.mv2 .mm .metric .mval{font-size:50px}
+.mv2 .mm .metric .mu{font-size:15px}
+/* last-update caption hangs BELOW the temp column (out of flow) so min/max keep the shared metadata
+   baseline with humidity · pressure; it sits in the hero's bottom padding. */
+.mv2 .h-age{position:absolute; left:0; top:100%; margin-top:2px; font-size:var(--t-cap); line-height:1; color:var(--muted); white-space:nowrap}
+.mv2 .h-wxcol{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--s1)}
+.mv2 .h-wxcol.dead .h-wx img{filter:grayscale(1); opacity:.45}
+.mv2 .h-wx{display:flex; align-items:center; justify-content:center; min-height:var(--sym-wx)}
+.mv2 .h-wx img{height:var(--sym-wx); width:auto; display:block}
+.mv2 .h-metrics{display:flex; flex-direction:row; align-items:center; gap:var(--s4)}
+.mv2 .h-metrics .line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted)}
+.mv2 .h-metrics .line b{color:var(--text); font-weight:600; font-size:var(--t-sub)}
+`;
+
 console.log('[vis_card] shared helpers loaded');
