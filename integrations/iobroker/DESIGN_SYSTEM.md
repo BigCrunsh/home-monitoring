@@ -57,6 +57,11 @@ Because every cluster fills the band height, all the bottom metadata lands on th
 automatically. Equal top/bottom breathing room comes from the hero's symmetric vertical padding.
 Layout L→R: temp(+min/max) · weather(+humidity/pressure) · clock(+date) · moon(+rise/set).
 
+The left corner (temp + weather, with its freshness caption) is **one shared component**:
+`vcClimCluster` + `VC_CLIM_CSS` in `vis_card.js`. Übersicht and Klima both reference it — never
+rebuild it in a tab (a guard test fails if one does). Klima fills the other two slots with its own
+drill-down extras (24 h outdoor curve · rain / pressure trend / dew point).
+
 **Freshness** (same rule as Room, `vcFreshness`: >60 min stale, >6 h or unknown dead). A small
 `.h-age` caption hangs *below* the temp column (out of flow, so the baseline above is untouched):
 "vor X" for the outdoor module, plus "· Prognose vor Y" only when the forecast lags; red when either
