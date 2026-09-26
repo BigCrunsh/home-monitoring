@@ -1,6 +1,10 @@
 // Live SolarEdge readings over Modbus TCP (SunSpec) — replaces the ~15-min,
 // rate-limited cloud feed for production, so the Energiefluss hub's consumption
-// and autarky become real-time. Inverter SE3680H @ 192.168.178.127:1502.
+// and autarky become real-time. Inverter SE3680H, SunSpec Modbus TCP port 1502.
+//
+// The inverter's address comes from the Fritz!Box DHCP and has moved before (a lease change
+// on 2026-09-21 left this script polling a dead address for 4.5 days), so it is dialled by
+// its Fritz!Box DNS name, which follows the lease.
 //
 // The inverter accepts only ONE Modbus TCP connection at a time, so each poll
 // opens one socket, reads, and closes; overlapping polls are skipped. Published:
@@ -11,7 +15,7 @@
 // SunSpec scale factors (sunSF) are signed int16 exponents: value = raw * 10^sf.
 
 var net = require('net');
-var HOST = '192.168.178.127', PORT = 1502, UNIT = 1, POLL_MS = 6000;
+var HOST = 'solaredgeinv-741523F9.fritz.box', PORT = 1502, UNIT = 1, POLL_MS = 6000;
 
 createState('solaredge_modbus_production', 0, { type: 'number', role: 'value.power', unit: 'W', desc: 'SolarEdge AC-Leistung (Modbus, live)' });
 createState('solaredge_modbus_grid', 0, { type: 'number', role: 'value.power', unit: 'W', desc: 'WattNode Netzleistung (Modbus)' });
