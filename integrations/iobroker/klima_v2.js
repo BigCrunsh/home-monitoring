@@ -2,7 +2,7 @@
 // view as HTML/CSS foreignObject states, the SAME .mv2 component library as main_v2.js.
 //
 // Layout (blueprint geometry: hero + 3 columns + nav):
-//   klima_hero  (4,4)   1170x178  — outdoor glance: temp now→heute min/max · weather · rain · pressure
+//   klima_hero  (4,4)   1170x178  — outdoor glance: shared climate corner (= Übersicht) · 24 h curve · rain · pressure trend · dew point
 //   klima_left  (4,189)  392x487  — 6-Tage Vorhersage (daswetter)
 //   klima_mid   (408,189)377x534  — 5 rooms, EXPANDED (today min/max + trend) vs the overview's compact card
 //   klima_right (797,189)377x534  — Garten: Gardena valves + soil sensors
@@ -38,20 +38,14 @@ var CSS_BASE = `
 .mv2 .card-body{flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--s2)}
 .mv2 .card-h{font-size:var(--t-label); font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; padding-bottom:var(--s2); margin-bottom:var(--s1); border-bottom:1px solid var(--border); flex:none}
 
-/* HERO — outdoor glance, two-tier like main_v2 (glyph top / metadata baseline) */
+/* HERO — left corner is the shared outdoor-climate cluster (VC_CLIM_CSS, identical to Übersicht);
+   centre = 24 h outdoor curve, right = the Klima-only extras (rain, pressure trend, dew point). */
 .mv2 .hero{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:var(--s3) var(--inset-x); overflow:hidden}
-.mv2 .h-left{justify-self:start; display:flex; flex-direction:column; gap:var(--s2)}
-.mv2 .h-mid{justify-self:center; display:flex; flex-direction:column; align-items:center; gap:var(--s1)}
 .mv2 .h-right{justify-self:end; display:flex; flex-direction:column; align-items:flex-end; gap:var(--s2)}
-.mv2 .otemp{font-size:var(--t-hero); font-weight:600; line-height:.82; letter-spacing:-.03em}
-.mv2 .h-mm{display:flex; gap:var(--s4); font-size:var(--t-sub); color:var(--muted)}
-.mv2 .h-mm b{color:var(--text); font-weight:600}
 .mv2 .h-mid{justify-self:center; display:flex; flex-direction:column; align-items:center; gap:var(--s2)}
-.mv2 .h-wx img{width:84px; height:84px; object-fit:contain}
 .mv2 .h-spark{display:flex; align-items:center; gap:var(--s2); width:300px}
 .mv2 .h-spark .lab{font-size:var(--t-cap); color:var(--mute); flex:none}
 .mv2 .h-spark svg{flex:1}
-.mv2 .h-cond{font-size:var(--t-sub); color:var(--muted); font-weight:500}
 .mv2 .h-line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted)}
 .mv2 .h-line b{color:var(--text); font-weight:600; font-size:var(--t-sub)}
 
@@ -214,45 +208,33 @@ function fo(cls, w, h, body) {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">'
         + '<foreignObject width="' + w + '" height="' + h + '">'
         + '<div xmlns="http://www.w3.org/1999/xhtml" class="mv2 ' + cls + '">'
-        + '<style>' + CSS_BASE + '</style>' + body
+        + '<style>' + CSS_BASE + VC_CLIM_CSS + '</style>' + body
         + '</div></foreignObject></svg>';
 }
 
 // ===== HERO — outdoor glance =====
 function buildHero() {
-    var ot = sNum(OUTDOOR + '.Temperature.Temperature');
-    var otr = sStr(OUTDOOR + '.Temperature.TemperatureTrend');
-    var mn = sNum(FC + '1.Minimale_Temperatur_value'), mx = sNum(FC + '1.Maximale_Temperatur_value');
-    var oh = sNum(OUTDOOR + '.Humidity.Humidity');
+    var d = vcClimRead(getState);
+    var otc = d.temp == null || vcFreshness(d.outdoorAgeMs) === 'dead' ? LBL : comfortCol(d.temp);
     var dew = sNum(OUTDOOR + '.Temperature.DewPoint');
-    var pr = sNum(NB + '.Pressure.Pressure'), prt = sStr(NB + '.Pressure.PressureTrend');
+    var prt = sStr(NB + '.Pressure.PressureTrend');
     var rain = sNum(RAINMOD + '.Rain.SumRain24');
-    var wsym = sNum(FC + '1.Wetter_Symbol_id');
-
-    // Colour rule A (value-ranges): outside temp coloured by comfort band.
-    var otc = comfortCol(ot);
     // Pressure as a Wetterhäuschen direction: rising → improving, falling → worsening.
     var pd = pressureDir(prt);
 
     var h = '<div class="hero">';
-    // LEFT: big outdoor temp + today min/max
-    h += '<div class="h-left">'
-        + '<div class="otemp num" style="color:' + otc + '">' + comma(ot, 1) + '<span class="u">°C</span></div>'
-        + '<div class="h-mm"><span>heute</span><span><b>' + (mn != null ? Math.round(mn) : '–') + '°</b> min</span><span><b>' + (mx != null ? Math.round(mx) : '–') + '°</b> max</span></div>'
-        + '</div>';
-    // CENTER: outdoor 24h curve (more than the overview's snapshot) + today's weather icon
+    // LEFT: the outdoor-climate cluster — the ONE shared component (vis_card.js), same as Übersicht
+    h += vcClimCluster(VC_PAL, d);
+    // CENTER: outdoor 24h curve — what the Klima corner adds over the overview's snapshot
     var osp = SPARK['Gartenhaus'];
     h += '<div class="h-mid">'
-        + '<div class="h-wx">' + wxImg(wsym) + '</div>'
         + (osp && osp.length > 1 ? '<div class="h-spark"><span class="lab">24 h</span>' + sparkline(osp, 240, 30, otc) + '</div>' : '')
         + '</div>';
-    // RIGHT: overview-style metric lines — humidity (drop) + pressure (gauge, mbar) mirror the
-    // Übersicht hero; rain, the pressure-trend word and Taupunkt are the Klima-only extras kept here.
-    // "Taupunkt" is the Netatmo DewPoint shown verbatim — NOT a computed feels-like temperature.
+    // RIGHT: Klima-only extras. Humidity + pressure value live in the cluster; here only rain, the
+    // pressure-trend word and Taupunkt (the Netatmo DewPoint verbatim — NOT a computed feels-like).
     h += '<div class="h-right">'
         + '<div class="h-line">' + icoDrop(rain != null && rain > 0 ? BLUE : LBL, 16) + 'Regen <b>' + (rain != null ? comma(rain, 1) : '0,0') + '</b><span class="u">mm</span></div>'
-        + '<div class="h-line">' + icoDrop(BLUE, 16) + 'Luftfeuchte <b>' + (oh != null ? Math.round(oh) : '–') + '</b><span class="u">%</span></div>'
-        + '<div class="h-line">' + icoGauge(16) + 'Druck <b>' + (pr != null ? Math.round(pr) : '–') + '</b><span class="u">mbar</span> <span style="color:' + pd[1] + '">' + pd[0] + '</span></div>'
+        + '<div class="h-line">' + icoGauge(16) + 'Druck <span style="color:' + pd[1] + '">' + pd[0] + '</span></div>'
         + '<div class="h-line">Taupunkt <b>' + (dew != null ? Math.round(dew) : '–') + '</b><span class="u">°C</span></div>'
         + '</div>';
     return h + '</div>';
@@ -471,8 +453,7 @@ ROOMS.forEach(function (r) {
         on({ id: r[1] + s, change: 'ne' }, function () { setState('klima_mid', fo('mw', 377, 534, buildRooms()), true); });
     });
 });
-[OUTDOOR + '.Temperature.Temperature', NB + '.Pressure.Pressure', RAINMOD + '.Rain.SumRain24',
- FC + '1.Maximale_Temperatur_value'].forEach(function (id) {
+VC_CLIM.triggers.concat([RAINMOD + '.Rain.SumRain24', OUTDOOR + '.Temperature.DewPoint', NB + '.Pressure.PressureTrend']).forEach(function (id) {
     on({ id: id, change: 'ne' }, function () { setState('klima_hero', fo('hw', 1170, 178, buildHero()), true); });
 });
 on({ id: FC + '1.Wetter_Symbol_id', change: 'ne' }, function () {

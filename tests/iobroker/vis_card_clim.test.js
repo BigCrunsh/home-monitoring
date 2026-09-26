@@ -140,7 +140,7 @@ test('triggers: every state the cluster reads is in the re-render trigger list',
 });
 
 // ---- both tabs reference the one component (the regression the user hit) ----
-['main_v2.js'].forEach(function (f) {
+['main_v2.js', 'klima_v2.js'].forEach(function (f) {
     test(f + ': hero renders the shared cluster and its shared CSS, no local copy', () => {
         const src = fs.readFileSync(path.join(IOB, f), 'utf8');
         assert.match(src, /vcClimCluster\(/);
