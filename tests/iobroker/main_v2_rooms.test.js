@@ -76,12 +76,12 @@ function outdoor(over) {
     return { out, s: Object.assign(s, over || {}) };
 }
 
-test('tile: outdoor module shows humidity and its base station pressure instead of CO₂', () => {
+test('tile: outdoor module shows humidity and its base station pressure (gauge icon, no unit) instead of CO₂', () => {
     const { out, s } = outdoor();
     const values = block(loadMain(s).buildRoom('Lübkowsee', out), 'kv');
     assert.match(values, />75</);
-    assert.match(values, />1027<\/span><span class="un">mbar/);
-    assert.doesNotMatch(values, /ppm/);
+    assert.match(values, /<circle cx="12" cy="12" r="8.5"\/>.*>1027</, 'gauge icon precedes the pressure');
+    assert.doesNotMatch(values, /ppm|mbar/);
     assert.ok(values.indexOf('>1027<') < values.indexOf('>75<'), 'pressure line comes before the humidity line');
 });
 
@@ -96,27 +96,29 @@ test('tile: a four-character temperature keeps the full size', () => {
     assert.match(values, /class="tv num"[^>]*>21,8/);
 });
 
-test('tile: falling pressure at the base station shows a blue down arrow', () => {
+test('tile: falling pressure colours the value blue, with no arrow', () => {
     const { out, s } = outdoor({ [LUEB + '.Pressure.PressureTrend']: 'down' });
     const ctx = loadMain(s);
     const values = block(ctx.buildRoom('Lübkowsee', out), 'kv');
-    assert.match(values, new RegExp('color:' + ctx.VC_PAL.cold + '">↓<'));
-});
-
-test('tile: stable pressure shows no arrow', () => {
-    const { out, s } = outdoor({ [LUEB + '.Pressure.PressureTrend']: 'stable' });
-    const values = block(loadMain(s).buildRoom('Lübkowsee', out), 'kv');
+    assert.match(values, new RegExp('color:' + ctx.VC_PAL.cold + '">1027<'));
     assert.doesNotMatch(values, /[↑↓→]/);
 });
 
-test('tile: a base station without a trend state is never asked for one (ioBroker warns per read)', () => {
+test('tile: stable pressure stays plain white text', () => {
+    const { out, s } = outdoor({ [LUEB + '.Pressure.PressureTrend']: 'stable' });
+    const ctx = loadMain(s);
+    const values = block(ctx.buildRoom('Lübkowsee', out), 'kv');
+    assert.match(values, new RegExp('color:' + ctx.VC_PAL.text + '">1027<'));
+});
+
+test('tile: a base station without a trend state is never asked for one and reads as stable', () => {
     const { out, s } = outdoor();
     const ctx = loadMain(s);
     const missing = [];
     ctx.getState = (id) => { if (!(id in s)) missing.push(id); return id in s ? { val: s[id] } : null; };
     const values = block(ctx.buildRoom('Lübkowsee', out), 'kv');
     assert.deepEqual(JSON.parse(JSON.stringify(missing)), []);
-    assert.doesNotMatch(values, /[↑↓]/);
+    assert.match(values, new RegExp('color:' + ctx.VC_PAL.text + '">1027<'));
 });
 
 test('tile: outdoor module whose base station has no pressure reading shows a dash', () => {

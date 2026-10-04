@@ -337,14 +337,13 @@ function buildRoom(name, module) {
         + '<div class="kid"><span class="nm">' + esc(name) + '</span>'
         + '<span class="op2"' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–')
         + (bs != null ? ' ·' + icoBatt(bs, bc) + '<span style="color:' + bc + '">' + Math.round(bs) + '%</span>' : '') + '</span></div></div>';
-    // air line: CO₂, or for outdoor modules the base station's pressure (+ trend arrow)
+    // air line: CO₂, or for outdoor modules the base station's pressure — gauge icon instead of the
+    // "mbar" unit (the half-width tile can't fit it), value coloured by trend like a Wetterhäuschen
     var air;
     if (c != null) {
         air = '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>';
     } else if (p.val != null) {
-        var pt = vcPressureTrend(p.trend);
-        air = (pt.arrow ? '<span style="color:' + (dead ? LBL : vcSemColor(PAL, pt.sem)) + '">' + pt.arrow + '</span>' : '')
-            + '<span style="color:' + (dead ? LBL : PAL.text) + '">' + Math.round(p.val) + '</span><span class="un">mbar</span>';
+        air = vcIcoGauge(LBL, 12) + '<span style="color:' + (dead ? LBL : vcPressureColor(PAL, p.trend)) + '">' + Math.round(p.val) + '</span>';
     } else {
         air = '<span class="un">–</span>';
     }
@@ -357,7 +356,7 @@ function buildRoom(name, module) {
     return h + '</div>';
 }
 // Outdoor modules measure no CO₂ and no air pressure; the pressure (and its trend) comes from the base
-// station they pair with (the parent in the ioBroker path). Pressure carries no verdict: text-coloured.
+// station they pair with (the parent in the ioBroker path).
 function basePressure(module) {
     var base = module.slice(0, module.lastIndexOf('.'));
     function opt(id) { return existsState(id) ? getState(id).val : null; }
