@@ -69,9 +69,10 @@ is stale. Dead outdoor module → temp + humidity grey; dead base station → pr
 forecast (DasWetter `.ts` heartbeat, refreshed every 15 min) → min/max grey + symbol desaturated.
 
 ### 3. Room — `buildRoom()` / `.room`
-A 4-row grid: **name** (primary) → **operational** (`.op`: last-update + battery) directly beneath →
-**environmental** (`.env.hum` / `.env.co2`, stacked) on the left; the **temperature Metric** big on the
-right. The round thermo icon spans rows 1–2 and top-aligns with the name. Comfort bands (the owner's:
+Two tiers: **name** (primary) with the **operational** line (`.op2`: last-update · battery icon + %)
+directly beneath → the **temperature** big on the left with **environmental** (humidity over CO₂,
+stacked) beside it on the right. The round thermo icon spans the name + operational lines. This compact
+tile is what lets Übersicht fit 8 rooms (2×4) in the nav-pinned left column. Comfort bands (the owner's:
 ≤3 grey / <12 blue / <20 green / <27 amber / ≥27 red) drive the icon tint + temp colour.
 
 ### 4. Indicator — `indDot()` / `.rind` (HAUS ribbon)
