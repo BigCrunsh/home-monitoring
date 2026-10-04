@@ -69,11 +69,15 @@ is stale. Dead outdoor module → temp + humidity grey; dead base station → pr
 forecast (DasWetter `.ts` heartbeat, refreshed every 15 min) → min/max grey + symbol desaturated.
 
 ### 3. Room — `buildRoom()` / `.room`
-Two tiers: **name** (primary) with the **operational** line (`.op2`: last-update · battery icon + %)
-directly beneath → the **temperature** big on the left with **environmental** (humidity over CO₂,
-stacked) beside it on the right. The round thermo icon spans the name + operational lines. This compact
-tile is what lets Übersicht fit 8 rooms (2×4) in the nav-pinned left column. Comfort bands (the owner's:
-≤3 grey / <12 blue / <20 green / <27 amber / ≥27 red) drive the icon tint + temp colour.
+Two tiers, centred in the tile: **name** (primary, 17 px) with the **operational** line (`.op2`:
+last-update · battery icon + %, coloured by `vcBattSem`) directly beneath → the **temperature** big on the
+left with **environmental** (CO₂ over humidity, stacked) beside it on the right. Outdoor modules have no
+CO₂: their top line is the base station's **air pressure** (text-coloured, no verdict) with the
+`vcPressureTrend` arrow (rising green ↑, falling blue ↓, stable none). The round thermo icon spans the
+name + operational lines. This compact tile is what lets Übersicht fit 8 rooms (2×4) in the nav-pinned
+left column; a five-character temperature (−10,2) drops to the narrower size so the values still fit.
+Comfort bands (the owner's: ≤3 grey / <12 blue / <20 green / <27 amber / ≥27 red) drive the icon tint +
+temp colour.
 
 ### 4. Indicator — `indDot()` / `.rind` (HAUS ribbon)
 `dot · name (top) / status (beneath) · battery`. The battery (`lowbatIco()`, from each sensor's
