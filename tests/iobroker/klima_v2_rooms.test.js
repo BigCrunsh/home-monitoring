@@ -72,3 +72,11 @@ test('rooms: the room grid has exactly one row per room', () => {
     const rows = Number(ctx.CSS_BASE.match(/\.rooms\{[^}]*grid-template-rows:repeat\((\d+),1fr\)/)[1]);
     assert.equal(rows, ctx.ROOMS.length);
 });
+
+test('rooms: an outdoor module never reads its non-existent CO₂ state (ioBroker warns on every read)', () => {
+    const ctx = loadKlima();
+    const reads = [];
+    ctx.getState = (id) => { reads.push(id); return null; };
+    ctx.buildRoom('Bungalow außen', LUEB + '.02-00-00-c3-99-18');
+    assert.ok(!reads.some((id) => id.endsWith('.CO2.CO2')), 'read CO₂ although the state does not exist');
+});

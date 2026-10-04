@@ -108,3 +108,14 @@ test('tile: a missing temperature reading renders a dash, not 0', () => {
     const values = block(loadMain(s).buildRoom('Bungalow', LUEB), 'kv');
     assert.match(values, /–<span class="u">°C/);
 });
+
+test('tile: an outdoor module never reads its non-existent CO₂ state (ioBroker warns on every read)', () => {
+    const out = LUEB + '.02-00-00-c3-99-18';
+    const s = station(out);
+    delete s[out + '.CO2.CO2'];
+    const ctx = loadMain(s);
+    const missing = [];
+    ctx.getState = (id) => { if (!(id in s)) missing.push(id); return id in s ? { val: s[id] } : null; };
+    ctx.buildRoom('Bungalow außen', out);
+    assert.deepEqual(JSON.parse(JSON.stringify(missing)), []);
+});
