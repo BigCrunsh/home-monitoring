@@ -260,7 +260,7 @@ function buildRoom(name, module, influxName) {
     h += '<div class="thermo" style="background:' + (dead ? 'rgba(138,138,138,.14)' : comfortTint(t)) + '">' + icoThermo(cc) + '</div>';
     h += '<div class="name">' + esc(name) + '</div>';
     h += '<div class="op"><span' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–') + '</span>';
-    if (bs != null) { var bcol = bs < 20 ? RED : (bs < 30 ? AMBER : LBL); h += '<span class="batt" style="color:' + bcol + '">' + icoBatt(bs, bcol) + Math.round(bs) + '%</span>'; }
+    if (bs != null) { var bcol = vcSemColor(VC_PAL, vcBattSem(bs)); h += '<span class="batt" style="color:' + bcol + '">' + icoBatt(bs, bcol) + Math.round(bs) + '%</span>'; }
     h += '</div>';
     h += '<div class="env">' + icoDrop(BLUE, 14) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
         + '<span class="un">·</span>' + (c != null
@@ -405,7 +405,7 @@ function buildGarden() {
         // Operational line under the name: last-update age + battery — mirrors the room component.
         var battChip = '';
         if (batt != null) {
-            var bcol = batt < 20 ? RED : (batt < 30 ? AMBER : LBL);
+            var bcol = vcSemColor(VC_PAL, vcBattSem(batt));
             battChip = '<span class="batt" style="color:' + bcol + '">' + icoBatt(batt, bcol) + Math.round(batt) + '%</span>';
         }
         // F4: a sensor that hasn't reported in >24h is offline, not "bone dry" — show "–", never a

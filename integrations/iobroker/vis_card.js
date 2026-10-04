@@ -39,7 +39,9 @@ var VC = {
     // autarky verdict: ≥75 % good, ≥40 % warn, else muted (never alarm — low autarky isn't an error).
     autarkGoodMin: 0.75, autarkWarnMin: 0.40,
     // data freshness (vcFreshness): >60 min stale (caption red), >6 h dead (values greyed).
-    staleAfterMs: 3600000, deadAfterMs: 21600000
+    staleAfterMs: 3600000, deadAfterMs: 21600000,
+    // sensor battery % (vcBattSem): <20 alarm, <30 warn, else muted (an ok battery isn't news).
+    battAlarmBelow: 20, battWarnBelow: 30
 };
 
 // ===== pure formatters (representation-independent) =====
@@ -77,6 +79,11 @@ function vcRoleSem(val, favourable, high) {
 function vcFreshness(ageMs) {
     if (typeof ageMs !== 'number' || isNaN(ageMs)) return 'dead';
     return ageMs > VC.deadAfterMs ? 'dead' : (ageMs > VC.staleAfterMs ? 'stale' : 'fresh');
+}
+// battery level (%) of a battery-powered sensor → sem. Unknown → muted (no false alarm).
+function vcBattSem(pct) {
+    if (typeof pct !== 'number' || isNaN(pct)) return 'muted';
+    return pct < VC.battAlarmBelow ? 'alarm' : (pct < VC.battWarnBelow ? 'warn' : 'muted');
 }
 // price position vs 7-day p20/p80 → {sem, word}. Missing data → muted, no false verdict.
 function vcPriceSem(price, p20, p80) {
