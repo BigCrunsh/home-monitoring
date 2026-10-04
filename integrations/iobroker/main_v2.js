@@ -67,18 +67,21 @@ var CSS_BASE = `
 .mv2 .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r2); padding:var(--s3) var(--s4); display:flex; flex-direction:column; gap:var(--s2); min-height:0; overflow:hidden}
 .mv2 .card-body{flex:1; min-height:0; display:flex; flex-direction:column; gap:var(--s2)}
 
-/* KLIMA — 2×3 tile grid (6 rooms); compact vertical tile, temp stays the biggest thing.
-   Tile: header (thermo disc + name) → temperature → operational (age · battery) → hum · CO₂ */
-.mv2 .klima .rooms{flex:1; display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(3,1fr); gap:var(--s2)}
-.mv2 .ktile{background:var(--bg); border-radius:var(--r3); padding:10px 12px; display:flex; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden}
+/* KLIMA — 2×4 tile grid (8 rooms). The column height is pinned by the nav beneath it, so the tile is
+   compact: header (thermo disc · name over age · battery) → temperature with hum/CO₂ stacked beside it */
+.mv2 .klima .rooms{flex:1; display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(4,1fr); gap:var(--s2)}
+.mv2 .ktile{background:var(--bg); border-radius:var(--r3); padding:8px 12px; display:flex; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden}
 .mv2 .ktile .kh{display:flex; align-items:center; gap:8px; min-width:0}
 .mv2 .ktile .th2{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none}
 .mv2 .ktile .th2 svg{width:16px; height:16px}
-.mv2 .ktile .nm{font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
-.mv2 .ktile .tv{font-size:37px; font-weight:600; line-height:1; margin:3px 0 2px}
+.mv2 .ktile .kid{display:flex; flex-direction:column; gap:1px; min-width:0}
+.mv2 .ktile .nm{font-size:15px; font-weight:600; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.mv2 .ktile .op2{display:flex; align-items:center; gap:4px; font-size:11px; color:var(--muted); white-space:nowrap}
+.mv2 .ktile .kv{display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0}
+.mv2 .ktile .tv{font-size:37px; font-weight:600; line-height:1; white-space:nowrap}
 .mv2 .ktile .tv .u{font-size:15px}
-.mv2 .ktile .op2{font-size:11px; color:var(--muted); white-space:nowrap}
-.mv2 .ktile .env2{display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; margin-top:1px}
+.mv2 .ktile .env2{display:flex; flex-direction:column; align-items:flex-end; gap:2px; font-size:13px; white-space:nowrap}
+.mv2 .ktile .env2 .ln{display:flex; align-items:center; gap:3px}
 .mv2 .ktile .env2 .un{color:var(--muted); font-weight:500}
 
 /* WOCHE */
@@ -205,16 +208,20 @@ function priceSuper(v) {
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
 // second base station (NAMain "Studio", mains-powered — no BatteryStatus state)
 var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
-// Klima: Außen lives in the hero now; 6 rooms fill the 2×3 tile grid.
+// third base station (NAMain "Lübkowsee", the bungalow) with its outdoor module
+var NB3 = 'netatmo.0.6ac096020a296fac710a1287.70-ee-50-c3-9e-84';
+// Klima: Außen lives in the hero now; 8 rooms fill the 2×4 tile grid.
 // Kids' rooms use short labels — the half-width tile can't fit "Carlottas Zimmer".
-// Dachterrasse is the outdoor module on the Studio base station (no CO₂ — env line shows –).
+// Dachterrasse / Bungalow außen are outdoor modules (no CO₂ — the CO₂ line shows –).
 var ROOMS = [
     ['Wohnzimmer', NB],
     ['Carlotta', NB + '.03-00-00-0e-16-36'],
     ['Clara', NB + '.03-00-00-0f-01-6e'],
     ['Clea', NB + '.03-00-00-10-e5-42'],
     ['Studio', NB2],
-    ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c']
+    ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c'],
+    ['Bungalow', NB3],
+    ['Bungalow außen', NB3 + '.02-00-00-c3-99-18']
 ];
 // Steuerung — the proven control set ("what we had before"), restyled. Lights = Hue .on / plug .STATE
 // (boolean). Maxxisun = guarded plug. Garten = Gardena valves (start = write seconds; tap interactivity
@@ -320,16 +327,18 @@ function buildRoom(name, module) {
     var fr = vcFreshness(ageMs(luv)), stale = fr !== 'fresh', dead = fr === 'dead';
     var cc = dead ? LBL : comfortCol(t);
     var h = '<div class="ktile">';
-    h += '<div class="kh"><span class="th2" style="background:' + (dead ? 'rgba(138,138,138,.14)' : comfortTint(t)) + '">' + icoThermo(cc) + '</span><span class="nm">' + esc(name) + '</span></div>';
-    h += '<div class="tv num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
-    // operational: last-update (red when stale) · battery % (base stations have none)
-    h += '<div class="op2"' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–')
-        + (bs != null ? ' · ' + Math.round(bs) + '%' : '') + '</div>';
-    // environmental: humidity · CO2 on one line
-    h += '<div class="env2">' + icoDrop('#5080AC', 13) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
-        + '<span class="un">·</span>' + (c != null
+    // header: thermo disc beside name + operational line (last-update, red when stale · battery;
+    // base stations have none)
+    h += '<div class="kh"><span class="th2" style="background:' + (dead ? 'rgba(138,138,138,.14)' : comfortTint(t)) + '">' + icoThermo(cc) + '</span>'
+        + '<div class="kid"><span class="nm">' + esc(name) + '</span>'
+        + '<span class="op2"' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–')
+        + (bs != null ? ' ·' + icoBatt(bs, LBL) + '<span>' + Math.round(bs) + '%</span>' : '') + '</span></div></div>';
+    // values: temperature, with humidity over CO₂ stacked beside it
+    h += '<div class="kv"><div class="tv num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>'
+        + '<div class="env2"><span class="ln">' + icoDrop('#5080AC', 12) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span>'
+        + '<span class="ln">' + (c != null
             ? '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
-            : '<span class="un">–</span>') + '</div>';
+            : '<span class="un">–</span>') + '</span></div></div>';
     return h + '</div>';
 }
 function buildKlima() {
