@@ -54,11 +54,16 @@ function outdoorRow(base) {
     return { ctx, env: html.slice(html.indexOf('class="env"'), html.indexOf('class="temp')) };
 }
 
-test('rooms: an outdoor row shows its base station pressure above humidity, with the trend arrow', () => {
+test('rooms: an outdoor row shows its base station pressure above humidity, coloured by trend', () => {
     const { ctx, env } = outdoorRow({ [LUEB + '.Pressure.PressureTrend']: 'up' });
-    assert.match(env, />1027<\/span><span class="un">mbar/);
-    assert.match(env, new RegExp('color:' + ctx.VC_PAL.good + '">↑<'));
+    assert.match(env, new RegExp('<circle cx="12" cy="12" r="8.5"/>.*color:' + ctx.VC_PAL.good + '">1027</span><span class="un">mbar'));
+    assert.doesNotMatch(env, /[↑↓→]/);
     assert.ok(env.indexOf('>1027<') < env.indexOf('>75<'), 'pressure line comes before humidity');
+});
+
+test('rooms: stable pressure on an outdoor row stays plain white text', () => {
+    const { ctx, env } = outdoorRow({ [LUEB + '.Pressure.PressureTrend']: 'stable' });
+    assert.match(env, new RegExp('color:' + ctx.VC_PAL.text + '">1027<'));
 });
 
 test('rooms: an outdoor row without a base pressure reading shows a dash', () => {
