@@ -49,21 +49,22 @@ var CSS_BASE = `
 .mv2 .h-line{display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); color:var(--muted)}
 .mv2 .h-line b{color:var(--text); font-weight:600; font-size:var(--t-sub)}
 
-/* ROOMS (expanded) — main_v2's Room component, compacted to fit 6 rooms (Studio, then Dachterrasse joined):
-   humidity+CO2 share one line, the heute-min/max strip rides in the sparkline row */
-.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(6,1fr); gap:5px}
-.mv2 .room{display:grid; grid-template-columns:auto 1fr auto; grid-template-rows:auto auto auto auto; column-gap:var(--s3); row-gap:0; align-items:center; background:var(--bg); border-radius:var(--r3); padding:3px var(--s3); min-height:0; overflow:hidden}
-.mv2 .thermo{grid-column:1; grid-row:1 / 3; align-self:start; margin-top:1px; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center}
-.mv2 .room .name{grid-column:2 / 4; grid-row:1; align-self:start; font-size:17px; font-weight:600; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.mv2 .room .op{grid-column:2; grid-row:2; margin-top:-3px; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted); white-space:nowrap}
+/* ROOMS (expanded) — main_v2's Room component, compacted to fit 8 rooms: name over the operational
+   line, humidity over CO₂ stacked beside the temperature, the 24 h curve + heute-min/max strip beneath */
+.mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(8,1fr); gap:3px}
+.mv2 .room{display:grid; grid-template-columns:auto 1fr auto auto; grid-template-rows:auto auto auto; column-gap:var(--s3); row-gap:0; align-items:center; background:var(--bg); border-radius:var(--r3); padding:2px var(--s3); min-height:0; overflow:hidden}
+.mv2 .thermo{grid-column:1; grid-row:1 / 3; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center}
+.mv2 .room .name{grid-column:2; grid-row:1; font-size:16px; font-weight:600; line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.mv2 .room .op{grid-column:2; grid-row:2; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted); white-space:nowrap}
 .mv2 .room .op .batt{display:flex; align-items:center; gap:3px}
-.mv2 .room .env{grid-column:2; grid-row:3; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-label); white-space:nowrap}
+.mv2 .room .env{grid-column:3; grid-row:1 / 3; display:flex; flex-direction:column; align-items:flex-end; gap:1px; font-size:13px; white-space:nowrap}
+.mv2 .room .env .ln{display:flex; align-items:center; gap:3px}
 .mv2 .room .env .un{color:var(--muted); font-weight:500}
-.mv2 .room .temp{grid-column:3; grid-row:2 / 4; align-self:center; justify-self:end; font-size:29px; font-weight:600; line-height:.9; white-space:nowrap}
+.mv2 .room .temp{grid-column:4; grid-row:1 / 3; justify-self:end; min-width:80px; text-align:right; font-size:29px; font-weight:600; line-height:.9; white-space:nowrap}
 .mv2 .room .mmx{display:flex; align-items:center; gap:6px; font-size:var(--t-cap); color:var(--muted); white-space:nowrap; margin-left:auto}
 .mv2 .room .mmx b{color:var(--text); font-weight:600}
 /* 24h temperature sparkline — what makes the Klima room out-earn the overview card */
-.mv2 .room .spark{grid-column:1 / 4; grid-row:4; display:flex; align-items:center; gap:var(--s2); margin-top:2px; padding-top:2px; border-top:1px solid var(--border)}
+.mv2 .room .spark{grid-column:1 / 5; grid-row:3; display:flex; align-items:center; gap:var(--s2); margin-top:1px; padding-top:1px; border-top:1px solid var(--border)}
 .mv2 .room .spark .lab{font-size:var(--t-cap); color:var(--mute); flex:none}
 
 /* 6-TAGE VORHERSAGE */
@@ -112,24 +113,29 @@ var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.a
 var NB = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
 // second base station (NAMain "Studio", mains-powered — no BatteryStatus/PressureTrend states)
 var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
+// third base station (NAMain "Lübkowsee", the bungalow) with its outdoor module
+var NB3 = 'netatmo.0.6ac096020a296fac710a1287.70-ee-50-c3-9e-84';
 var OUTDOOR = NB + '.02-00-00-32-ae-a4';
 var RAINMOD = NB + '.05-00-00-05-d4-18';
 var FC = 'daswetter.0.NextDays.Location_1.Day_';   // + N + '.<field>'
 var HF = 'daswetter.0.NextHours.Location_1.';      // hourly: Day_d.Hour_h.<field> (hour_value "HH:00")
 var HOURS_AHEAD = [1, 3, 6, 12];
-// [display name, ioBroker module path, InfluxDB module_name for the 24h sparkline]
+// [display name, ioBroker module path]; outdoor modules (Dachterrasse, Bungalow außen) have no CO₂
 var ROOMS = [
-    ['Wohnzimmer', NB, 'Wohnzimmer'],
-    ['Carlottas Zimmer', NB + '.03-00-00-0e-16-36', 'Kinderzimmer Carlotta'],
-    ['Claras Zimmer', NB + '.03-00-00-0f-01-6e', 'Kinderzimmer Clara'],
-    ['Cleas Zimmer', NB + '.03-00-00-10-e5-42', 'Kinderzimmer Clea'],
-    // the Studio base module still carries Netatmo's default name, hence the influx tag
-    ['Studio', NB2, 'Weather Station'],
-    // outdoor module on the Studio base (no CO₂ — env line shows –)
-    ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c', 'Dachterrasse']
+    ['Wohnzimmer', NB],
+    ['Carlottas Zimmer', NB + '.03-00-00-0e-16-36'],
+    ['Claras Zimmer', NB + '.03-00-00-0f-01-6e'],
+    ['Cleas Zimmer', NB + '.03-00-00-10-e5-42'],
+    ['Studio', NB2],
+    ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c'],
+    ['Bungalow', NB3],
+    ['Bungalow außen', NB3 + '.02-00-00-c3-99-18']
 ];
 var INFLUX = 'influxdb.0';
-var SPARK = {};   // module_name -> [hourly mean temps over the last 24h]
+var SPARK = {};   // device_id -> [hourly mean temps over the last 24h]
+// InfluxDB device_id (the module's MAC) from its ioBroker path: '…70-ee-50-c3-9e-84' → '70:ee:50:c3:9e:84'.
+// Netatmo module names aren't unique (two base stations are both "Weather Station"), the MAC is.
+function deviceId(module) { return module.split('.').pop().replace(/-/g, ':'); }
 // Gardena
 var GLOC = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.';
 var GVALVE = GLOC + 'DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
@@ -226,7 +232,7 @@ function buildHero() {
     // LEFT: the outdoor-climate cluster — the ONE shared component (vis_card.js), same as Übersicht
     h += vcClimCluster(VC_PAL, d);
     // CENTER: outdoor 24h curve — what the Klima corner adds over the overview's snapshot
-    var osp = SPARK['Gartenhaus'];
+    var osp = SPARK[deviceId(OUTDOOR)];
     h += '<div class="h-mid">'
         + (osp && osp.length > 1 ? '<div class="h-spark"><span class="lab">24 h</span>' + sparkline(osp, 240, 30, otc) + '</div>' : '')
         + '</div>';
@@ -241,7 +247,7 @@ function buildHero() {
 }
 
 // ===== ROOM (expanded) — B′ colouring =====
-function buildRoom(name, module, influxName) {
+function buildRoom(name, module) {
     var t = sNum(module + '.Temperature.Temperature'), hh = sNum(module + '.Humidity.Humidity'),
         c = sNum(module + '.CO2.CO2');
     // base stations (Wohnzimmer, Studio) are mains-powered and have no BatteryStatus state —
@@ -262,33 +268,33 @@ function buildRoom(name, module, influxName) {
     h += '<div class="op"><span' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–') + '</span>';
     if (bs != null) { var bcol = vcSemColor(VC_PAL, vcBattSem(bs)); h += '<span class="batt" style="color:' + bcol + '">' + icoBatt(bs, bcol) + Math.round(bs) + '%</span>'; }
     h += '</div>';
-    h += '<div class="env">' + icoDrop(BLUE, 14) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span>'
-        + '<span class="un">·</span>' + (c != null
+    h += '<div class="env"><span class="ln">' + icoDrop(BLUE, 12) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span>'
+        + '<span class="ln">' + (c != null
             ? '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
-            : '<span class="un">–</span>') + '</div>';
+            : '<span class="un">–</span>') + '</span></div>';
     h += '<div class="temp num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
     // bottom strip: 24h sparkline (from home_monitoring InfluxDB) + today min/max + trend
-    var sv = SPARK[influxName];
+    var sv = SPARK[deviceId(module)];
     h += '<div class="spark">'
-        + (sv && sv.length > 1 ? '<span class="lab">24 h</span>' + sparkline(sv, 175, 14, cc) : '')
+        + (sv && sv.length > 1 ? '<span class="lab">24 h</span>' + sparkline(sv, 175, 12, cc) : '')
         + '<div class="mmx">' + trendArrow(tr, cc)
         + '<span>heute <b>' + (tmin != null ? Math.round(tmin) : '–') + '°</b>/<b>' + (tmax != null ? Math.round(tmax) : '–') + '°</b></span></div></div>';
     return h + '</div>';
 }
 function buildRooms() {
     var h = '<div class="card"><div class="card-h">Räume</div><div class="card-body"><div class="rooms">';
-    ROOMS.forEach(function (r) { h += buildRoom(r[0], r[1], r[2]); });
+    ROOMS.forEach(function (r) { h += buildRoom(r[0], r[1]); });
     return h + '</div></div></div>';
 }
 
 // Fetch each room's last-24h hourly temperature curve from home_monitoring InfluxDB
 // into SPARK, then run `done` (the rooms re-render once the curves are in).
 function fetchSparks(done) {
-    var mods = ROOMS.map(function (r) { return r[2]; }).concat(['Gartenhaus']);  // + outdoor
+    var mods = ROOMS.map(function (r) { return deviceId(r[1]); }).concat([deviceId(OUTDOOR)]);  // + hero outdoor
     var pending = mods.length;
     mods.forEach(function (mod) {
         var q = 'SELECT mean("Temperature") AS m FROM home_monitoring.autogen.weather_temperature_celsius'
-            + " WHERE module_name='" + mod + "' AND time > now()-24h GROUP BY time(1h) fill(none)";
+            + " WHERE device_id='" + mod + "' AND time > now()-24h GROUP BY time(1h) fill(none)";
         sendTo(INFLUX, 'query', q, function (res) {
             try {
                 var rows = (res && res.result && res.result[0]) || [];
