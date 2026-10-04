@@ -70,18 +70,21 @@ var CSS_BASE = `
 /* KLIMA — 2×4 tile grid (8 rooms). The column height is pinned by the nav beneath it, so the tile is
    compact: header (thermo disc · name over age · battery) → temperature with hum/CO₂ stacked beside it */
 .mv2 .klima .rooms{flex:1; display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(4,1fr); gap:var(--s2)}
-.mv2 .ktile{background:var(--bg); border-radius:var(--r3); padding:8px 12px; display:flex; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden}
-.mv2 .ktile .kh{display:flex; align-items:center; gap:8px; min-width:0}
-.mv2 .ktile .th2{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none}
-.mv2 .ktile .th2 svg{width:16px; height:16px}
+.mv2 .ktile{background:var(--bg); border-radius:var(--r3); padding:8px 10px; display:flex; flex-direction:column; justify-content:center; gap:6px; min-width:0; overflow:hidden}
+.mv2 .ktile .kh{display:flex; align-items:center; gap:7px; min-width:0}
+.mv2 .ktile .th2{width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none}
+.mv2 .ktile .th2 svg{width:17px; height:17px}
 .mv2 .ktile .kid{display:flex; flex-direction:column; gap:1px; min-width:0}
-.mv2 .ktile .nm{font-size:15px; font-weight:600; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
-.mv2 .ktile .op2{display:flex; align-items:center; gap:4px; font-size:11px; color:var(--muted); white-space:nowrap}
-.mv2 .ktile .kv{display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0}
-.mv2 .ktile .tv{font-size:37px; font-weight:600; line-height:1; white-space:nowrap}
+.mv2 .ktile .nm{font-size:17px; font-weight:600; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.mv2 .ktile .op2{display:flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); white-space:nowrap}
+.mv2 .ktile .op2 svg{flex:none}
+.mv2 .ktile .kv{display:flex; align-items:center; justify-content:space-between; gap:6px; min-width:0}
+.mv2 .ktile .tv{font-size:32px; font-weight:600; line-height:1; white-space:nowrap}
 .mv2 .ktile .tv .u{font-size:15px}
+.mv2 .ktile .tv.long{font-size:24px}
+.mv2 .ktile .tv.long .u{font-size:13px}
 .mv2 .ktile .env2{display:flex; flex-direction:column; align-items:flex-end; gap:2px; font-size:13px; white-space:nowrap}
-.mv2 .ktile .env2 .ln{display:flex; align-items:center; gap:3px}
+.mv2 .ktile .env2 .ln{display:flex; align-items:center; gap:2px}
 .mv2 .ktile .env2 .un{color:var(--muted); font-weight:500}
 
 /* WOCHE */
@@ -212,7 +215,7 @@ var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
 var NB3 = 'netatmo.0.6ac096020a296fac710a1287.70-ee-50-c3-9e-84';
 // Klima: Außen lives in the hero now; 8 rooms fill the 2×4 tile grid.
 // Kids' rooms use short labels — the half-width tile can't fit "Carlottas Zimmer".
-// Dachterrasse / Bungalow außen are outdoor modules (no CO₂ — the CO₂ line shows –).
+// Dachterrasse / Lübkowsee are outdoor modules (no CO₂ — that line shows the base station's pressure).
 var ROOMS = [
     ['Wohnzimmer', NB],
     ['Carlotta', NB + '.03-00-00-0e-16-36'],
@@ -221,7 +224,7 @@ var ROOMS = [
     ['Studio', NB2],
     ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c'],
     ['Bungalow', NB3],
-    ['Bungalow außen', NB3 + '.02-00-00-c3-99-18']
+    ['Lübkowsee', NB3 + '.02-00-00-c3-99-18']
 ];
 // Steuerung — the proven control set ("what we had before"), restyled. Lights = Hue .on / plug .STATE
 // (boolean). Maxxisun = guarded plug. Garten = Gardena valves (start = write seconds; tap interactivity
@@ -320,6 +323,7 @@ function buildRoom(name, module) {
     // outdoor modules have no CO2 state, mains-powered base stations no BatteryStatus state —
     // an unguarded getState would warn-spam the log on every publish
     var bs = existsState(module + '.BatteryStatus') ? sNum(module + '.BatteryStatus') : null;
+    var p = c == null ? basePressure(module) : { val: null, trend: null };
     var lu = getState(module + '.LastUpdate'), luv = lu && lu.val ? lu.val : null, ago = agoStr(luv);
     // vcFreshness: >60 min = stale sensor (caption red); >6 h or unknown (typically a dead battery or
     // an internet outage): the readings are history, not truth — grey the whole tile instead of
@@ -333,13 +337,32 @@ function buildRoom(name, module) {
         + '<div class="kid"><span class="nm">' + esc(name) + '</span>'
         + '<span class="op2"' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–')
         + (bs != null ? ' ·' + icoBatt(bs, bc) + '<span style="color:' + bc + '">' + Math.round(bs) + '%</span>' : '') + '</span></div></div>';
-    // values: temperature, with humidity over CO₂ stacked beside it
-    h += '<div class="kv"><div class="tv num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>'
-        + '<div class="env2"><span class="ln">' + icoDrop('#5080AC', 12) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span>'
-        + '<span class="ln">' + (c != null
-            ? '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
-            : '<span class="un">–</span>') + '</span></div></div>';
+    // air line: CO₂, or for outdoor modules the base station's pressure (+ trend arrow)
+    var air;
+    if (c != null) {
+        air = '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>';
+    } else if (p.val != null) {
+        var pt = vcPressureTrend(p.trend);
+        air = (pt.arrow ? '<span style="color:' + (dead ? LBL : vcSemColor(PAL, pt.sem)) + '">' + pt.arrow + '</span>' : '')
+            + '<span style="color:' + (dead ? LBL : PAL.text) + '">' + Math.round(p.val) + '</span><span class="un">mbar</span>';
+    } else {
+        air = '<span class="un">–</span>';
+    }
+    // values: temperature, with the air line over humidity stacked beside it
+    // a five-character reading ("-10,2") would push the value column out of the half-width tile
+    var tTxt = comma(t, 1);
+    h += '<div class="kv"><div class="tv num' + (tTxt.length > 4 ? ' long' : '') + '" style="color:' + cc + '">' + tTxt + '<span class="u">°C</span></div>'
+        + '<div class="env2"><span class="ln">' + air + '</span>'
+        + '<span class="ln">' + icoDrop('#5080AC', 12) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span></div></div>';
     return h + '</div>';
+}
+// Outdoor modules measure no CO₂ and no air pressure; the pressure (and its trend) comes from the base
+// station they pair with (the parent in the ioBroker path). Pressure carries no verdict: text-coloured.
+function basePressure(module) {
+    var base = module.slice(0, module.lastIndexOf('.'));
+    function opt(id) { return existsState(id) ? getState(id).val : null; }
+    var v = opt(base + '.Pressure.Pressure');
+    return { val: typeof v === 'number' ? v : null, trend: opt(base + '.Pressure.PressureTrend') };
 }
 function buildKlima() {
     var h = '<div class="card klima"><div class="card-body"><div class="rooms">';

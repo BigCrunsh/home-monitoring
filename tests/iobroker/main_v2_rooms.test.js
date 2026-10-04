@@ -44,11 +44,11 @@ function block(html, cls, nextCls) {
 
 test('rooms: Bungalow Lübkowsee indoor + outdoor fill the new last row', () => {
     const ctx = loadMain({});
-    const last = JSON.parse(JSON.stringify(ctx.ROOMS.slice(-2).map((r) => r[1])));
-    assert.deepEqual(last, [LUEB, LUEB + '.02-00-00-c3-99-18']);
+    const last = JSON.parse(JSON.stringify(ctx.ROOMS.slice(-2)));
+    assert.deepEqual(last, [['Bungalow', LUEB], ['Lübkowsee', LUEB + '.02-00-00-c3-99-18']]);
 });
 
-test('tile: battery sits under the name, humidity + CO₂ beside the temperature', () => {
+test('tile: battery sits under the name, CO₂ over humidity beside the temperature', () => {
     const ctx = loadMain(station(LUEB));
     const html = ctx.buildRoom('Bungalow', LUEB);
     const head = block(html, 'kh', 'kv');
@@ -57,8 +57,8 @@ test('tile: battery sits under the name, humidity + CO₂ beside the temperature
     assert.match(head, />46%</);
     const values = block(html, 'kv');
     assert.match(values, /21,8/);
-    assert.match(values, />58</);
-    assert.match(values, />479</);
+    assert.ok(values.indexOf('>479<') >= 0 && values.indexOf('>58<') >= 0);
+    assert.ok(values.indexOf('>479<') < values.indexOf('>58<'), 'ppm line comes before the humidity line');
 });
 
 test('rooms: the grid has exactly one row per pair of rooms', () => {
@@ -67,15 +67,71 @@ test('rooms: the grid has exactly one row per pair of rooms', () => {
     assert.equal(rows * 2, ctx.ROOMS.length);
 });
 
-test('tile: outdoor module without CO₂ shows humidity and a dash for ppm', () => {
+// outdoor module: no CO₂ sensor; the air pressure comes from its base station
+function outdoor(over) {
     const out = LUEB + '.02-00-00-c3-99-18';
     const s = station(out, { [out + '.Temperature.Temperature']: 10.3, [out + '.Humidity.Humidity']: 75 });
     delete s[out + '.CO2.CO2'];
-    const html = loadMain(s).buildRoom('Bungalow außen', out);
-    const values = block(html, 'kv');
+    s[LUEB + '.Pressure.Pressure'] = 1026.8;
+    return { out, s: Object.assign(s, over || {}) };
+}
+
+test('tile: outdoor module shows humidity and its base station pressure instead of CO₂', () => {
+    const { out, s } = outdoor();
+    const values = block(loadMain(s).buildRoom('Lübkowsee', out), 'kv');
     assert.match(values, />75</);
+    assert.match(values, />1027<\/span><span class="un">mbar/);
     assert.doesNotMatch(values, /ppm/);
+    assert.ok(values.indexOf('>1027<') < values.indexOf('>75<'), 'pressure line comes before the humidity line');
+});
+
+test('tile: a five-character temperature (−10,2) uses the narrower size so the values still fit', () => {
+    const { out, s } = outdoor({ [LUEB + '.02-00-00-c3-99-18.Temperature.Temperature']: -10.2 });
+    const values = block(loadMain(s).buildRoom('Lübkowsee', out), 'kv');
+    assert.match(values, /class="tv num long"[^>]*>-10,2/);
+});
+
+test('tile: a four-character temperature keeps the full size', () => {
+    const values = block(loadMain(station(LUEB)).buildRoom('Bungalow', LUEB), 'kv');
+    assert.match(values, /class="tv num"[^>]*>21,8/);
+});
+
+test('tile: falling pressure at the base station shows a blue down arrow', () => {
+    const { out, s } = outdoor({ [LUEB + '.Pressure.PressureTrend']: 'down' });
+    const ctx = loadMain(s);
+    const values = block(ctx.buildRoom('Lübkowsee', out), 'kv');
+    assert.match(values, new RegExp('color:' + ctx.VC_PAL.cold + '">↓<'));
+});
+
+test('tile: stable pressure shows no arrow', () => {
+    const { out, s } = outdoor({ [LUEB + '.Pressure.PressureTrend']: 'stable' });
+    const values = block(loadMain(s).buildRoom('Lübkowsee', out), 'kv');
+    assert.doesNotMatch(values, /[↑↓→]/);
+});
+
+test('tile: a base station without a trend state is never asked for one (ioBroker warns per read)', () => {
+    const { out, s } = outdoor();
+    const ctx = loadMain(s);
+    const missing = [];
+    ctx.getState = (id) => { if (!(id in s)) missing.push(id); return id in s ? { val: s[id] } : null; };
+    const values = block(ctx.buildRoom('Lübkowsee', out), 'kv');
+    assert.deepEqual(JSON.parse(JSON.stringify(missing)), []);
+    assert.doesNotMatch(values, /[↑↓]/);
+});
+
+test('tile: outdoor module whose base station has no pressure reading shows a dash', () => {
+    const { out, s } = outdoor();
+    delete s[LUEB + '.Pressure.Pressure'];
+    const values = block(loadMain(s).buildRoom('Lübkowsee', out), 'kv');
+    assert.doesNotMatch(values, /mbar|ppm/);
     assert.match(values, />–</);
+});
+
+test('tile: a dead outdoor module greys the pressure too', () => {
+    const { out, s } = outdoor({ [LUEB + '.02-00-00-c3-99-18.LastUpdate']: new Date(Date.now() - 7 * H).toString() });
+    const ctx = loadMain(s);
+    const values = block(ctx.buildRoom('Lübkowsee', out), 'kv');
+    assert.match(values, new RegExp('color:' + ctx.VC_PAL.muted + '">1027<'));
 });
 
 test('tile: mains-powered base station shows no battery', () => {
