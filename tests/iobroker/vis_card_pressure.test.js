@@ -21,6 +21,20 @@ test('pressure trend: falling reads cold with a down arrow', () => {
 test('pressure trend: stable is muted without an arrow', () => {
     assert.deepEqual(plain(ctx.vcPressureTrend('stable')), { sem: 'muted', arrow: '', word: 'stabil' });
 });
+// Wetterhäuschen colouring of the pressure value itself (hero + outdoor tiles)
+const P = ctx.VC_PAL;
+test('pressure colour: rising pressure is green', () => {
+    assert.equal(ctx.vcPressureColor(P, 'up'), P.good);
+});
+test('pressure colour: falling pressure is blue', () => {
+    assert.equal(ctx.vcPressureColor(P, 'down'), P.cold);
+});
+test('pressure colour: stable, missing or unknown trend stays plain white text', () => {
+    assert.equal(ctx.vcPressureColor(P, 'stable'), P.text);
+    assert.equal(ctx.vcPressureColor(P, null), P.text);
+    assert.equal(ctx.vcPressureColor(P, 'sideways'), P.text);
+});
+
 test('pressure trend: unknown or missing trend is muted without an arrow', () => {
     assert.deepEqual(plain(ctx.vcPressureTrend(null)), { sem: 'muted', arrow: '', word: 'stabil' });
     assert.deepEqual(plain(ctx.vcPressureTrend('sideways')), { sem: 'muted', arrow: '', word: 'stabil' });

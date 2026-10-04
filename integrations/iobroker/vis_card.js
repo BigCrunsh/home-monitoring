@@ -92,6 +92,12 @@ function vcPressureTrend(tr) {
     if (tr === 'down') return { sem: 'cold', arrow: '↓', word: 'fallend' };
     return { sem: 'muted', arrow: '', word: 'stabil' };
 }
+// the pressure value itself, coloured like a Wetterhäuschen: rising green, falling blue, stable/unknown
+// plain text (white — "nothing happening", not greyed-out like missing data).
+function vcPressureColor(PAL, tr) {
+    var sem = vcPressureTrend(tr).sem;
+    return sem === 'muted' ? PAL.text : vcSemColor(PAL, sem);
+}
 // price position vs 7-day p20/p80 → {sem, word}. Missing data → muted, no false verdict.
 function vcPriceSem(price, p20, p80) {
     if (price == null || p20 == null || p80 == null) return { band: -1, sem: 'muted', word: '–' };
@@ -216,7 +222,7 @@ var VC_CLIM = {
 };
 // the states whose change should re-render the cluster (hosts subscribe to exactly this list)
 VC_CLIM.triggers = [VC_CLIM.outdoor + '.Temperature.Temperature', VC_CLIM.outdoor + '.Humidity.Humidity',
-    VC_CLIM.base + '.Pressure.Pressure', VC_CLIM.fcMin, VC_CLIM.fcMax, VC_CLIM.wsym];
+    VC_CLIM.base + '.Pressure.Pressure', VC_CLIM.base + '.Pressure.PressureTrend', VC_CLIM.fcMin, VC_CLIM.fcMax, VC_CLIM.wsym];
 
 // states → snapshot. get = ioBroker getState (injected so this stays testable). Netatmo stamps each
 // module's LastUpdate; DasWetter rewrites its states every 15 min, so the min state's .ts is its heartbeat.
@@ -230,7 +236,7 @@ function vcClimRead(get, now) {
     var fc = get(VC_CLIM.fcMin);
     return {
         temp: num(VC_CLIM.outdoor + '.Temperature.Temperature'), hum: num(VC_CLIM.outdoor + '.Humidity.Humidity'),
-        pres: num(VC_CLIM.base + '.Pressure.Pressure'),
+        pres: num(VC_CLIM.base + '.Pressure.Pressure'), presTrend: (get(VC_CLIM.base + '.Pressure.PressureTrend') || {}).val || null,
         min: num(VC_CLIM.fcMin), max: num(VC_CLIM.fcMax), wsym: num(VC_CLIM.wsym),
         outdoorAgeMs: luAge(VC_CLIM.outdoor), baseAgeMs: luAge(VC_CLIM.base),
         forecastAgeMs: (fc && typeof fc.ts === 'number') ? now - fc.ts : null
@@ -270,7 +276,7 @@ function vcClimCluster(PAL, d) {
         + '<div class="h-wxcol' + (fcDead ? ' dead' : '') + '">' + vcWxImg(d.wsym)
         +   '<div class="h-metrics">'
         +     '<div class="line"' + (oDead ? ' style="color:' + mut + '"' : '') + '>' + vcIcoDrop(oDead ? mut : PAL.cold, 18) + '<b class="num">' + r0(d.hum) + '</b><span class="u">%</span></div>'
-        +     '<div class="line"' + (bF === 'dead' ? ' style="color:' + mut + '"' : '') + '>' + vcIcoGauge(mut, 18) + '<b class="num">' + r0(d.pres) + '</b><span class="u">mbar</span></div>'
+        +     '<div class="line"' + (bF === 'dead' ? ' style="color:' + mut + '"' : '') + '>' + vcIcoGauge(mut, 18) + '<b class="num" style="color:' + (bF === 'dead' ? mut : vcPressureColor(PAL, d.presTrend)) + '">' + r0(d.pres) + '</b><span class="u">mbar</span></div>'
         +   '</div></div>'
         + '</div>';
 }

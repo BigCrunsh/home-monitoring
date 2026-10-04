@@ -475,7 +475,7 @@ ROOMS.forEach(function (r) {
         on({ id: r[1] + s, change: 'ne' }, function () { setState('klima_mid', fo('mw', 377, 534, buildRooms()), true); });
     });
 });
-VC_CLIM.triggers.concat([RAINMOD + '.Rain.SumRain24', OUTDOOR + '.Temperature.DewPoint', NB + '.Pressure.PressureTrend']).forEach(function (id) {
+VC_CLIM.triggers.concat([RAINMOD + '.Rain.SumRain24', OUTDOOR + '.Temperature.DewPoint']).forEach(function (id) {
     on({ id: id, change: 'ne' }, function () { setState('klima_hero', fo('hw', 1170, 178, buildHero()), true); });
 });
 on({ id: FC + '1.Wetter_Symbol_id', change: 'ne' }, function () {

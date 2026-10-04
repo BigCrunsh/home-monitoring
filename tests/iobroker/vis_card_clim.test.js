@@ -97,6 +97,19 @@ test('cluster: all readings missing → dashes, weather slot kept, no crash', ()
     assert.ok((h.match(/–/g) || []).length >= 5, 'expected dashes for temp, min, max, hum, pres');
     assert.equal(colourAfter(h, 'otemp'), P.muted);
 });
+// pressure value coloured like a Wetterhäuschen by the base station's trend
+test('cluster: rising pressure colours the pressure value green', () => {
+    const h = ctx.vcClimCluster(P, fresh({ presTrend: 'up' }));
+    assert.match(h, new RegExp('<b class="num" style="color:' + P.good + '">1036</b><span class="u">mbar'));
+});
+test('cluster: stable pressure stays plain white text', () => {
+    const h = ctx.vcClimCluster(P, fresh({ presTrend: 'stable' }));
+    assert.match(h, new RegExp('<b class="num" style="color:' + P.text + '">1036</b>'));
+});
+test('cluster: a dead base station greys the pressure whatever the trend', () => {
+    const h = ctx.vcClimCluster(P, fresh({ presTrend: 'up', baseAgeMs: 7 * H }));
+    assert.match(h, new RegExp('<b class="num" style="color:' + P.muted + '">1036</b>'));
+});
 test('cluster: out-of-range weather symbol leaves an empty slot, never a broken image', () => {
     assert.doesNotMatch(ctx.vcClimCluster(P, fresh({ wsym: 0 })), /<img/);
     assert.doesNotMatch(ctx.vcClimCluster(P, fresh({ wsym: 23 })), /<img/);
@@ -110,12 +123,13 @@ test('read: pulls outdoor, base station and forecast states into one snapshot', 
     S[ctx.VC_CLIM.outdoor + '.Humidity.Humidity'] = { val: 60 };
     S[ctx.VC_CLIM.outdoor + '.LastUpdate'] = { val: '2026-09-26T11:50:00Z' };
     S[ctx.VC_CLIM.base + '.Pressure.Pressure'] = { val: 1012 };
+    S[ctx.VC_CLIM.base + '.Pressure.PressureTrend'] = { val: 'down' };
     S[ctx.VC_CLIM.base + '.LastUpdate'] = { val: '2026-09-26T11:55:00Z' };
     S[ctx.VC_CLIM.fcMin] = { val: 9, ts: now - 20 * MIN };
     S[ctx.VC_CLIM.fcMax] = { val: 19 };
     S[ctx.VC_CLIM.wsym] = { val: 4 };
     const d = ctx.vcClimRead(function (id) { return S[id] || null; }, now);
-    assert.equal(d.temp, 18.2); assert.equal(d.hum, 60); assert.equal(d.pres, 1012);
+    assert.equal(d.temp, 18.2); assert.equal(d.hum, 60); assert.equal(d.pres, 1012); assert.equal(d.presTrend, 'down');
     assert.equal(d.min, 9); assert.equal(d.max, 19); assert.equal(d.wsym, 4);
     assert.equal(d.outdoorAgeMs, 10 * MIN); assert.equal(d.baseAgeMs, 5 * MIN); assert.equal(d.forecastAgeMs, 20 * MIN);
 });
@@ -135,7 +149,7 @@ test('read: non-numeric values and an unparsable LastUpdate are treated as missi
 test('triggers: every state the cluster reads is in the re-render trigger list', () => {
     const ids = ctx.VC_CLIM.triggers;
     [ctx.VC_CLIM.outdoor + '.Temperature.Temperature', ctx.VC_CLIM.outdoor + '.Humidity.Humidity',
-     ctx.VC_CLIM.base + '.Pressure.Pressure', ctx.VC_CLIM.fcMin, ctx.VC_CLIM.fcMax, ctx.VC_CLIM.wsym]
+     ctx.VC_CLIM.base + '.Pressure.Pressure', ctx.VC_CLIM.base + '.Pressure.PressureTrend', ctx.VC_CLIM.fcMin, ctx.VC_CLIM.fcMax, ctx.VC_CLIM.wsym]
         .forEach(function (id) { assert.ok(ids.indexOf(id) >= 0, 'missing trigger ' + id); });
 });
 
