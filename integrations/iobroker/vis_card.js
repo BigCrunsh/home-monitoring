@@ -85,6 +85,13 @@ function vcBattSem(pct) {
     if (typeof pct !== 'number' || isNaN(pct)) return 'muted';
     return pct < VC.battAlarmBelow ? 'alarm' : (pct < VC.battWarnBelow ? 'warn' : 'muted');
 }
+// Netatmo PressureTrend ('up'|'down'|'stable') read as a barometer: rising → improving weather,
+// falling → worsening. Stable/unknown carries no arrow (nothing to point at).
+function vcPressureTrend(tr) {
+    if (tr === 'up') return { sem: 'good', arrow: '↑', word: 'steigend' };
+    if (tr === 'down') return { sem: 'cold', arrow: '↓', word: 'fallend' };
+    return { sem: 'muted', arrow: '', word: 'stabil' };
+}
 // price position vs 7-day p20/p80 → {sem, word}. Missing data → muted, no false verdict.
 function vcPriceSem(price, p20, p80) {
     if (price == null || p20 == null || p80 == null) return { band: -1, sem: 'muted', word: '–' };

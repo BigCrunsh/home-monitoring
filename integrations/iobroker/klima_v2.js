@@ -185,9 +185,8 @@ function trendArrow(tr, col) {
 }
 // Barometer/Wetterhäuschen reading: rising pressure → improving, falling → worsening.
 function pressureDir(tr) {
-    if (tr === 'up') return ['↑ steigend', GREEN];
-    if (tr === 'down') return ['↓ fallend', BLUE];
-    return ['→ stabil', LBL];
+    var p = vcPressureTrend(tr);
+    return [(p.arrow || '→') + ' ' + p.word, vcSemColor(VC_PAL, p.sem)];
 }
 function wxImg(id, sz) {
     if (id == null) return '';
