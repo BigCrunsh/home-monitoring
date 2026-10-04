@@ -120,7 +120,7 @@ var RAINMOD = NB + '.05-00-00-05-d4-18';
 var FC = 'daswetter.0.NextDays.Location_1.Day_';   // + N + '.<field>'
 var HF = 'daswetter.0.NextHours.Location_1.';      // hourly: Day_d.Hour_h.<field> (hour_value "HH:00")
 var HOURS_AHEAD = [1, 3, 6, 12];
-// [display name, ioBroker module path]; outdoor modules (Dachterrasse, Bungalow außen) have no CO₂
+// [display name, ioBroker module path]; outdoor modules (Dachterrasse, Lübkowsee) have no CO₂ — they show the base station's pressure
 var ROOMS = [
     ['Wohnzimmer', NB],
     ['Carlottas Zimmer', NB + '.03-00-00-0e-16-36'],
@@ -129,7 +129,7 @@ var ROOMS = [
     ['Studio', NB2],
     ['Dachterrasse', NB2 + '.02-00-00-c2-7e-7c'],
     ['Bungalow', NB3],
-    ['Bungalow außen', NB3 + '.02-00-00-c3-99-18']
+    ['Lübkowsee', NB3 + '.02-00-00-c3-99-18']
 ];
 var INFLUX = 'influxdb.0';
 var SPARK = {};   // device_id -> [hourly mean temps over the last 24h]
@@ -267,10 +267,19 @@ function buildRoom(name, module) {
     h += '<div class="op"><span' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–') + '</span>';
     if (bs != null) { var bcol = vcSemColor(VC_PAL, vcBattSem(bs)); h += '<span class="batt" style="color:' + bcol + '">' + icoBatt(bs, bcol) + Math.round(bs) + '%</span>'; }
     h += '</div>';
-    h += '<div class="env"><span class="ln">' + icoDrop(BLUE, 12) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span>'
-        + '<span class="ln">' + (c != null
-            ? '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>'
-            : '<span class="un">–</span>') + '</span></div>';
+    // air line: CO₂, or for outdoor modules the base station's pressure (+ trend arrow)
+    var air, p = c == null ? basePressure(module) : null;
+    if (c != null) {
+        air = '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>';
+    } else if (p.val != null) {
+        var pt = vcPressureTrend(p.trend);
+        air = (pt.arrow ? '<span style="color:' + (dead ? LBL : vcSemColor(VC_PAL, pt.sem)) + '">' + pt.arrow + '</span>' : '')
+            + '<span style="color:' + (dead ? LBL : TEXT) + '">' + Math.round(p.val) + '</span><span class="un">mbar</span>';
+    } else {
+        air = '<span class="un">–</span>';
+    }
+    h += '<div class="env"><span class="ln">' + air + '</span>'
+        + '<span class="ln">' + icoDrop(BLUE, 12) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span></div>';
     h += '<div class="temp num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>';
     // bottom strip: 24h sparkline (from home_monitoring InfluxDB) + today min/max + trend
     var sv = SPARK[deviceId(module)];
@@ -279,6 +288,14 @@ function buildRoom(name, module) {
         + '<div class="mmx">' + trendArrow(tr, cc)
         + '<span>heute <b>' + (tmin != null ? Math.round(tmin) : '–') + '°</b>/<b>' + (tmax != null ? Math.round(tmax) : '–') + '°</b></span></div></div>';
     return h + '</div>';
+}
+// Outdoor modules measure no CO₂ and no air pressure; the pressure (and its trend) comes from the base
+// station they pair with (the parent in the ioBroker path). Pressure carries no verdict: text-coloured.
+function basePressure(module) {
+    var base = module.slice(0, module.lastIndexOf('.'));
+    function opt(id) { return existsState(id) ? getState(id).val : null; }
+    var v = opt(base + '.Pressure.Pressure');
+    return { val: typeof v === 'number' ? v : null, trend: opt(base + '.Pressure.PressureTrend') };
 }
 function buildRooms() {
     var h = '<div class="card"><div class="card-h">Räume</div><div class="card-body"><div class="rooms">';

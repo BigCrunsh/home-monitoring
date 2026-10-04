@@ -36,8 +36,48 @@ function loadKlima(curves) {
 
 test('rooms: Bungalow Lübkowsee indoor + outdoor join the end of the list', () => {
     const ctx = loadKlima();
-    const last = JSON.parse(JSON.stringify(ctx.ROOMS.slice(-2).map((r) => r[1])));
-    assert.deepEqual(last, [LUEB, LUEB + '.02-00-00-c3-99-18']);
+    const last = JSON.parse(JSON.stringify(ctx.ROOMS.slice(-2)));
+    assert.deepEqual(last, [['Bungalow', LUEB], ['Lübkowsee', LUEB + '.02-00-00-c3-99-18']]);
+});
+
+// an outdoor-module row: no CO₂; pressure + trend come from the base station
+function outdoorRow(base) {
+    const out = LUEB + '.02-00-00-c3-99-18';
+    const s = Object.assign({
+        [out + '.Temperature.Temperature']: 10.3, [out + '.Humidity.Humidity']: 75,
+        [out + '.LastUpdate']: new Date().toString(), [LUEB + '.Pressure.Pressure']: 1026.8
+    }, base || {});
+    const ctx = loadKlima();
+    ctx.getState = (id) => (id in s ? { val: s[id] } : null);
+    ctx.existsState = (id) => id in s;
+    const html = ctx.buildRoom('Lübkowsee', out);
+    return { ctx, env: html.slice(html.indexOf('class="env"'), html.indexOf('class="temp')) };
+}
+
+test('rooms: an outdoor row shows its base station pressure above humidity, with the trend arrow', () => {
+    const { ctx, env } = outdoorRow({ [LUEB + '.Pressure.PressureTrend']: 'up' });
+    assert.match(env, />1027<\/span><span class="un">mbar/);
+    assert.match(env, new RegExp('color:' + ctx.VC_PAL.good + '">↑<'));
+    assert.ok(env.indexOf('>1027<') < env.indexOf('>75<'), 'pressure line comes before humidity');
+});
+
+test('rooms: an outdoor row without a base pressure reading shows a dash', () => {
+    const { env } = outdoorRow({ [LUEB + '.Pressure.Pressure']: undefined });
+    assert.doesNotMatch(env, /mbar/);
+    assert.match(env, />–</);
+});
+
+test('rooms: an indoor row shows CO₂ above humidity, never pressure', () => {
+    const s = {
+        [LUEB + '.Temperature.Temperature']: 21.8, [LUEB + '.Humidity.Humidity']: 58, [LUEB + '.CO2.CO2']: 479,
+        [LUEB + '.Pressure.Pressure']: 1026.8, [LUEB + '.LastUpdate']: new Date().toString()
+    };
+    const ctx = loadKlima();
+    ctx.getState = (id) => (id in s ? { val: s[id] } : null);
+    ctx.existsState = (id) => id in s;
+    const html = ctx.buildRoom('Bungalow', LUEB);
+    assert.doesNotMatch(html, /mbar/);
+    assert.ok(html.indexOf('>479<') < html.indexOf('>58<'), 'CO₂ line comes before humidity');
 });
 
 test('curves: each room is queried by the hardware address in its module path', () => {
