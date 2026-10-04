@@ -325,14 +325,14 @@ function buildRoom(name, module) {
     // an internet outage): the readings are history, not truth — grey the whole tile instead of
     // presenting stale values in fresh comfort colours.
     var fr = vcFreshness(ageMs(luv)), stale = fr !== 'fresh', dead = fr === 'dead';
-    var cc = dead ? LBL : comfortCol(t);
+    var cc = dead ? LBL : comfortCol(t), bc = vcSemColor(PAL, vcBattSem(bs));
     var h = '<div class="ktile">';
     // header: thermo disc beside name + operational line (last-update, red when stale · battery;
     // base stations have none)
     h += '<div class="kh"><span class="th2" style="background:' + (dead ? 'rgba(138,138,138,.14)' : comfortTint(t)) + '">' + icoThermo(cc) + '</span>'
         + '<div class="kid"><span class="nm">' + esc(name) + '</span>'
         + '<span class="op2"' + (stale ? ' style="color:' + RED + '"' : '') + '>vor ' + (ago || '–')
-        + (bs != null ? ' ·' + icoBatt(bs, LBL) + '<span>' + Math.round(bs) + '%</span>' : '') + '</span></div></div>';
+        + (bs != null ? ' ·' + icoBatt(bs, bc) + '<span style="color:' + bc + '">' + Math.round(bs) + '%</span>' : '') + '</span></div></div>';
     // values: temperature, with humidity over CO₂ stacked beside it
     h += '<div class="kv"><div class="tv num" style="color:' + cc + '">' + comma(t, 1) + '<span class="u">°C</span></div>'
         + '<div class="env2"><span class="ln">' + icoDrop('#5080AC', 12) + '<span style="color:' + (dead ? LBL : humCol(hh)) + '">' + (hh != null ? Math.round(hh) : '–') + '</span><span class="un">%</span></span>'

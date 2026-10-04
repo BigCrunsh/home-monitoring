@@ -86,6 +86,13 @@ test('tile: mains-powered base station shows no battery', () => {
     assert.doesNotMatch(head, /%/);
 });
 
+test('tile: a nearly empty battery turns its icon and % red', () => {
+    const ctx = loadMain(station(LUEB, { [LUEB + '.BatteryStatus']: 12 }));
+    const head = block(ctx.buildRoom('Bungalow', LUEB), 'kh', 'kv');
+    assert.match(head, new RegExp('stroke="' + ctx.VC_PAL.alarm + '"'));
+    assert.match(head, new RegExp('color:' + ctx.VC_PAL.alarm + '">12%'));
+});
+
 test('tile: a station silent for >6 h greys temperature, humidity and CO₂', () => {
     const s = station(LUEB, { [LUEB + '.LastUpdate']: new Date(Date.now() - 7 * H).toString() });
     const ctx = loadMain(s);
