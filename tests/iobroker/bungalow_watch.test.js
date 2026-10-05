@@ -133,6 +133,17 @@ test('check: an ongoing incident survives a script restart without a second aler
     restarted.check(T0 + 20 * MIN);
     assert.equal(restarted.sent.length, 0);
 });
+test('check: a station whose states are gone is treated as silent without reading them (ioBroker warns per read)', () => {
+    const ctx = load();
+    const missing = [];
+    const get = ctx.getState;
+    ctx.getState = (id) => { if (!(id in ctx.st)) missing.push(id); return get(id); };
+    ctx.st[ctx.HOME_BASE + '.LastUpdate'] = new Date(T0 - 5 * MIN).toString();
+    ctx.check(T0);
+    assert.deepEqual(JSON.parse(JSON.stringify(missing)), []);
+    assert.equal(ctx.written['0_userdata.0.bungalow.lastSeen'], '');
+});
+
 test('check: a corrupt persisted state starts clean instead of crashing', () => {
     const ctx = load({ '0_userdata.0.bungalow.state': '{not json' });
     netatmo(ctx, fresh, T0);

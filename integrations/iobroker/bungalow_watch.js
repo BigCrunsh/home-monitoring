@@ -96,10 +96,17 @@ function step(state, obs, now) {
 }
 
 // ===== ioBroker wiring =====
-function ageMin(module, now) {
-    var s = getState(module + '.LastUpdate');
+// a station's last Netatmo report (ms) or null; existsState first — a removed station must not
+// warn-spam the log on every check
+function lastUpdate(module) {
+    var id = module + '.LastUpdate';
+    var s = existsState(id) ? getState(id) : null;
     var t = s && s.val ? new Date(s.val).getTime() : NaN;
-    return isNaN(t) ? null : (now - t) / MIN_MS;
+    return isNaN(t) ? null : t;
+}
+function ageMin(module, now) {
+    var t = lastUpdate(module);
+    return t == null ? null : (now - t) / MIN_MS;
 }
 function loadState() {
     var s = getState(OUT + 'state');
@@ -111,11 +118,11 @@ function check(now) {
     var obs = observe({ bungalowBase: ageMin(BUNGALOW_BASE, now), bungalowOutdoor: ageMin(BUNGALOW_OUTDOOR, now), homeBase: ageMin(HOME_BASE, now) });
     var r = step(loadState(), obs, now);
     r.messages.forEach(function (text) { log(text); sendTo(TELEGRAM, 'send', { text: text }); });
-    var st = r.state, lu = getState(BUNGALOW_BASE + '.LastUpdate');
+    var st = r.state, seen = lastUpdate(BUNGALOW_BASE);
     setState(OUT + 'state', JSON.stringify(st), true);
     setState(OUT + 'online', !st.offline.active, true);
     setState(OUT + 'status', st.blind.active ? 'blind' : (st.offline.active ? 'offline' : (st.outdoor.active ? 'outdoor' : 'online')), true);
-    setState(OUT + 'lastSeen', lu && lu.val ? new Date(lu.val).toISOString() : '', true);
+    setState(OUT + 'lastSeen', seen != null ? new Date(seen).toISOString() : '', true);
     setState(OUT + 'outageSince', st.offline.active ? new Date(st.offline.since).toISOString() : '', true);
 }
 
