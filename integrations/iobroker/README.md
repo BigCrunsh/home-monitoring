@@ -74,8 +74,35 @@ design system, see `DESIGN_SYSTEM.md`):
 | `ical_events.js` | Calendar events for the dashboard agenda |
 | `suncalc_phases.js` | Sun phase times (sunrise/sunset) |
 | `reset_lock_target_state.js` | Resets a lock's target state after actuation |
+| `bungalow_watch.js` | Dead man's switch for the Bungalow Lübkowsee: Telegram alert when its Netatmo station goes silent (details below) |
 
 ## Scripts
+
+### `bungalow_watch.js`
+
+The bungalow can't report its own outage, so the home Pi watches for silence every 5 min and
+messages via `telegram.0`. Signal = Netatmo `LastUpdate` (Netatmo's measurement time, so an
+adapter restart can't fake an outage); the home station is the control:
+
+| Situation | Status | Message |
+|---|---|---|
+| bungalow base silent > 40 min, home fine | `offline` | 🔴 internet or power out at the bungalow |
+| only the bungalow outdoor module silent | `outdoor` | 🟡 sensor battery / radio |
+| home station silent too | `blind` | ⚪ Netatmo cloud / adapter / home internet — bungalow verdicts frozen |
+
+Alerts fire after 3 consecutive silent checks, once per incident, with a reminder every 12 h and a
+recovery message with the outage duration. Thresholds are constants at the top of the script.
+State for the dashboard lives in `0_userdata.0.bungalow.*` (`online`, `status`, `lastSeen`,
+`outageSince`; `state` is the persisted incident JSON that makes restarts safe).
+
+**Live test plan** (after deploying):
+1. *Offline + recovery:* temporarily set `BUNGALOW_BASE` to a module id that doesn't exist
+   (e.g. append `-test`) and redeploy → unknown age counts as silent → 🔴 after ~15 min (3 checks).
+   Restore the id and redeploy → 🟢 with the duration on the next check.
+2. *Blind:* stop the Netatmo adapter (`iobroker stop netatmo`) for ~60 min → the home station goes
+   stale too → ⚪ only, no 🔴. Start it again → "wieder aktiv".
+3. Check `0_userdata.0.bungalow.status` follows each step, and that a script restart mid-incident
+   sends no second alert.
 
 ### `tibber_states.js`
 
