@@ -114,6 +114,11 @@ function vcEnergyFrameSem(net, price, p80) {
     if (Math.abs(net) <= VC.costNeutral) return 'muted';
     return (price != null && p80 != null && price >= p80) ? 'alarm' : 'warn';
 }
+// net €/h is shown as a cost (owner): paying for grid import → "+", feed-in income → "−".
+function vcNetCostSign(net) {
+    if (Math.abs(net) < 0.005) return '';
+    return net > 0 ? '+' : '−';
+}
 // autarky/self-sufficiency ratio (0..1) → sem. Never alarm.
 function vcAutarkSem(frac) {
     if (frac == null) return 'muted';

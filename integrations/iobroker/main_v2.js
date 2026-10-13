@@ -449,8 +449,7 @@ function buildEnergie() {
     var grid = (purchased || 0) - (feedin || 0);
     var gridCol = enRoleCol(grid, grid < 0);
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * 0.1048;
-    // net>0 = importing (a cost, "−"); net<0 = exporting (income, "+")
-    var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−');
+    var netZero = Math.abs(net) < 0.005, netSign = vcNetCostSign(net);
     var pb = priceBand(price, p20, p80), priceCol = pb.col;
     var hasPrice = price != null && price > 0;
     var fcSem = vcEnergyFrameSem(net, price, p80);

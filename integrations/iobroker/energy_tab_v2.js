@@ -156,7 +156,7 @@ function buildFlow() {
         }).join('') + '</div>';
 
     var net = grid > 0 ? grid / 1000 * (price || 0) : grid / 1000 * FEEDIN_RATE;
-    var netZero = Math.abs(net) < 0.005, netSign = netZero ? '' : (net < 0 ? '+' : '−');
+    var netZero = Math.abs(net) < 0.005, netSign = vcNetCostSign(net);
     var fcSem = vcEnergyFrameSem(net, price, p80);
     if (grid > 50 && !(price != null && price > 0)) fcSem = 'warn';   // importing w/o price ≠ break-even
     var fc = vcSemColor(PAL, fcSem);
