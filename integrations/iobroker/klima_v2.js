@@ -52,7 +52,7 @@ var CSS_BASE = `
 /* ROOMS (expanded) — main_v2's Room component, compacted to fit 8 rooms: name over the operational
    line, humidity over CO₂ stacked beside the temperature, the 24 h curve + heute-min/max strip beneath */
 .mv2 .rooms{flex:1; display:grid; grid-template-rows:repeat(8,1fr); gap:3px}
-.mv2 .room{display:grid; grid-template-columns:auto 1fr auto auto; grid-template-rows:auto auto auto; column-gap:var(--s3); row-gap:0; align-items:center; background:var(--bg); border-radius:var(--r3); padding:2px var(--s3); min-height:0; overflow:hidden}
+.mv2 .room{display:grid; grid-template-columns:auto 1fr auto auto; grid-template-rows:auto auto auto; column-gap:var(--s2); row-gap:0; align-items:center; background:var(--bg); border-radius:var(--r3); padding:2px var(--s3); min-height:0; overflow:hidden}
 .mv2 .thermo{grid-column:1; grid-row:1 / 3; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center}
 .mv2 .room .name{grid-column:2; grid-row:1; font-size:16px; font-weight:600; line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
 .mv2 .room .op{grid-column:2; grid-row:2; display:flex; align-items:center; gap:var(--s2); font-size:var(--t-cap); font-weight:500; color:var(--muted); white-space:nowrap}
@@ -60,7 +60,7 @@ var CSS_BASE = `
 .mv2 .room .env{grid-column:3; grid-row:1 / 3; display:flex; flex-direction:column; align-items:flex-end; gap:1px; font-size:13px; white-space:nowrap}
 .mv2 .room .env .ln{display:flex; align-items:center; gap:3px}
 .mv2 .room .env .un{color:var(--muted); font-weight:500}
-.mv2 .room .temp{grid-column:4; grid-row:1 / 3; justify-self:end; min-width:80px; text-align:right; font-size:29px; font-weight:600; line-height:.9; white-space:nowrap}
+.mv2 .room .temp{grid-column:4; grid-row:1 / 3; justify-self:end; min-width:76px; text-align:right; font-size:29px; font-weight:600; line-height:.9; white-space:nowrap}
 .mv2 .room .mmx{display:flex; align-items:center; gap:6px; font-size:var(--t-cap); color:var(--muted); white-space:nowrap; margin-left:auto}
 .mv2 .room .mmx b{color:var(--text); font-weight:600}
 /* 24h temperature sparkline — what makes the Klima room out-earn the overview card */
@@ -273,7 +273,7 @@ function buildRoom(name, module) {
     if (c != null) {
         air = '<span style="color:' + (dead ? LBL : co2Col(c)) + '">' + Math.round(c) + '</span><span class="un">ppm</span>';
     } else if (p.val != null) {
-        air = vcIcoGauge(LBL, 12) + '<span style="color:' + (dead ? LBL : vcPressureColor(VC_PAL, p.trend)) + '">' + Math.round(p.val) + '</span><span class="un">mbar</span>';
+        air = vcIcoGauge(LBL, 12) + '<span style="color:' + (dead ? LBL : vcPressureColor(VC_PAL, p.trend)) + '">' + Math.round(p.val) + '</span>';
     } else {
         air = '<span class="un">–</span>';
     }

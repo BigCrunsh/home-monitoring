@@ -56,7 +56,8 @@ function outdoorRow(base) {
 
 test('rooms: an outdoor row shows its base station pressure above humidity, coloured by trend', () => {
     const { ctx, env } = outdoorRow({ [LUEB + '.Pressure.PressureTrend']: 'up' });
-    assert.match(env, new RegExp('<circle cx="12" cy="12" r="8.5"/>.*color:' + ctx.VC_PAL.good + '">1027</span><span class="un">mbar'));
+    assert.match(env, new RegExp('<circle cx="12" cy="12" r="8.5"/>.*color:' + ctx.VC_PAL.good + '">1027</span>'));
+    assert.doesNotMatch(env, /mbar/, 'the gauge icon carries the unit, as on the Übersicht tiles');
     assert.doesNotMatch(env, /[↑↓→]/);
     assert.ok(env.indexOf('>1027<') < env.indexOf('>75<'), 'pressure line comes before humidity');
 });
