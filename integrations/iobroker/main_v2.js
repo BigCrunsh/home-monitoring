@@ -226,15 +226,6 @@ var ROOMS = [
     ['Bungalow', NB3],
     ['Lübkowsee', NB3 + '.02-00-00-c3-99-18']
 ];
-// Steuerung — the proven control set ("what we had before"), restyled. Lights = Hue .on / plug .STATE
-// (boolean). Maxxisun = guarded plug. Garten = Gardena valves (start = write seconds; tap interactivity
-// is the native-widget overlay phase). State IDs verified on the Pi.
-var LIGHTS = [
-    ['Küche', 'hue.0.Küche.on'], ['Esstisch', 'hue.0.Esszimmer.on'], ['Wohnen', 'hue.0.Wohnzimmertischlampe.on'],
-    ['Flur', 'hue.0.Flur.on'], ['Büro', 'hue.0.Arbeitszimmerlicht.on'], ['Maxxi', 'hm-rpc.1.0001DD89A46CA5.3.STATE', 'mx']
-];
-var GARD = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
-var VALVES = [['Rand', '-3A1'], ['Vor', '-3A2'], ['Trauf', '-3A3'], ['Dach', '-3A4'], ['Gart', '-3A5'], ['Hoch', '-3A6']];
 var DAYS_SHORT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 var MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 var DAYS_FULL = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
