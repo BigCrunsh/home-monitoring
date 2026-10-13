@@ -230,15 +230,17 @@ function buildAdapters() {
 // presence): UNREACH = offline (red), >36h silent = still (amber), LOW_BAT = battery (amber),
 // smoke-chamber degradation (amber).
 // Calm when clean — one green count row; offenders get their own rows (worst first, capped).
-// The device list is enumerated once at init ($ selector on channel-0 UNREACH); a device added on
-// the CCU appears after the next script restart, which is fine for a hardware change.
+// The device list is re-enumerated on every refresh ($ selector on channel-0 UNREACH), so it follows
+// the CCU: hm-rpc deletes a removed device's objects, but its last state values linger (UNREACH stays
+// true) — only devices whose device object still exists are listed.
 var HM_DEVICES = [];
 function enumerateHmDevices() {
     HM_DEVICES = [];
     $('state[id=hm-rpc.*.0.UNREACH]').each(function (id) {
         var dev = id.replace(/\.0\.UNREACH$/, '');
         var obj = getObject(dev);
-        var name = (obj && obj.common && obj.common.name) || dev.split('.').pop();
+        if (!obj) return;
+        var name = (obj.common && obj.common.name) || dev.split('.').pop();
         HM_DEVICES.push({ dev: dev, name: String(name) });
     });
     HM_DEVICES.sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -276,6 +278,7 @@ function deviceIssues() {
 // all issues when they fit, otherwise the 3 worst + a "+n weitere" pointer to the CCU.
 var DEV_MAX_ROWS = 4;
 function buildDevices() {
+    enumerateHmDevices();
     var issues = deviceIssues();
     var h = '<div class="card"><div class="card-h">Geräte · HomeMatic</div><div class="rows dense">';
     if (!issues.length) {
@@ -311,8 +314,7 @@ function publish() {
 createState('javascript.0.backup_nas_ts', 0, { type: 'number', role: 'value.time', desc: 'NAS-Pull Erfolgs-Marker' });
 createState('javascript.0.backup_influx_ts', 0, { type: 'number', role: 'value.time', desc: 'Influx-Dump Marker' });
 
-// freshness is time-based — refresh every minute (also catches adapter/host changes)
-enumerateHmDevices();
+// freshness is time-based — refresh every minute (also catches adapter/host/device changes)
 setTimeout(publish, 2000);
 schedule('* * * * *', publish);
 console.log('[Diagnose v2] initialized');
