@@ -63,10 +63,14 @@ var LIGHTS = [
     ['Spiel­zimmer', 'hue.0.Spielzimmer.on'], ['Clara Decke', 'hue.0.Claras_Deckenlampe.on'],
     ['Carlotta Decke', 'hue.0.Carlottas_Deckenlampe.on'], ['Carlotta Lampe', 'hue.0.Carlottas_Stehlampe.on']
 ];
-// [label, hm serial] → .3.STATE (on/off) + .6.POWER (W)
+// [label, on/off state, power state (W), icon]. HomeMatic plugs: .3.STATE + .6.POWER. Maxxi Akku is
+// the Shelly Plug S Gen3 metering the Maxxisun: solaredge_power.js mirrors its relay into
+// maxxisun_relay (writes switch the plug) and publishes its signed power (negative = feeding).
+function hmPlug(label, serial, icon) { return [label, 'hm-rpc.1.' + serial + '.3.STATE', 'hm-rpc.1.' + serial + '.6.POWER', icon]; }
 var PLUGS = [
-    ['Couch', '0001DD89A46CAD'], ['Drucker', '0001DD89A46CE1'], ['Vitrine', '0001DD89AADDE7'],
-    ['Stehlampe', '0001DD89A46B91'], ['Maxxi Akku', '0001DD89A46CA5']
+    hmPlug('Couch', '0001DD89A46CAD', icoCouch), hmPlug('Drucker', '0001DD89A46CE1', icoPrinter),
+    hmPlug('Vitrine', '0001DD89AADDE7', icoCabinet),
+    ['Maxxi Akku', 'javascript.0.maxxisun_relay', 'javascript.0.power_maxxisun', icoBattery]
 ];
 // [label, hm serial] → .4.LEVEL (0..100 position)
 var SHUTTERS = [
@@ -90,7 +94,6 @@ var esc = vcEsc;
 
 // 24px state-coloured icons (same visual language as main_v2's Steuerung tiles)
 function icoBulb(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/></g></svg>'; }
-function icoPlug(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5"/><path d="M7 8h10v2a5 5 0 0 1-10 0V8Z"/><path d="M12 15v6"/></g></svg>'; }
 function icoCouch(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13 v-2 a3 3 0 0 1 3 -3 h8 a3 3 0 0 1 3 3 v2"/><rect x="3" y="13" width="18" height="5" rx="1.5"/><line x1="6" y1="18" x2="6" y2="20"/><line x1="18" y1="18" x2="18" y2="20"/></g></svg>'; }
 function icoPrinter(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="6" rx="1"/><path d="M4 9 h16 v7 h-4 v5 H8 v-5 H4 Z"/><line x1="8" y1="13" x2="16" y2="13"/></g></svg>'; }
 function icoCabinet(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="15" x2="18" y2="15"/></g></svg>'; }
@@ -99,14 +102,6 @@ function icoBlind(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><
 function icoValve(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 3 C12 3 6 10 6 14.5 a6 6 0 0 0 12 0 C18 10 12 3 12 3 Z" fill="' + c + '"/><ellipse cx="9.8" cy="14.5" rx="1.5" ry="2.2" fill="#ffffff" opacity=".35"/></svg>'; }
 function icoStop(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
 function icoPower(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.8" fill="none" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.5a8 8 0 1 0 11.4 0"/></g></svg>'; }
-// per-plug icon (reuse the overview's device icons where they match)
-function plugIcon(serial, c) {
-    if (serial === '0001DD89A46CAD') return icoCouch(c);
-    if (serial === '0001DD89A46CE1') return icoPrinter(c);
-    if (serial === '0001DD89AADDE7') return icoCabinet(c);
-    if (serial === '0001DD89A46CA5') return icoBattery(c);
-    return icoPlug(c);
-}
 
 function pos(x, y, w, h) { return 'style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px"'; }
 function rnd(o) { return { kind: o.kind, oid: o.oid, value: o.value, x: Math.round(o.x), y: Math.round(o.y), w: Math.round(o.w), h: Math.round(o.h) }; }
@@ -124,11 +119,10 @@ function lightTile(it, x, y, w, h) {
 }
 // square plug tile: keeps the live-W status line
 function plugTile(it, x, y, w, h) {
-    var oid = 'hm-rpc.1.' + it[1] + '.3.STATE';
-    var on = sBool(oid); var pw = sNum('hm-rpc.1.' + it[1] + '.6.POWER');
+    var on = sBool(it[1]), pw = sNum(it[2]);
     var st = on ? (pw != null ? Math.round(pw) + ' W' : 'an') : 'aus';
-    return { html: tileHtml('sq1' + (on ? ' on' : ''), pos(x, y, w, h), plugIcon(it[1], on ? AMBER : LBL), it[0], st),
-        targets: [rnd({ kind: 'toggle', oid: oid, x: x, y: y, w: w, h: h })] };
+    return { html: tileHtml('sq1' + (on ? ' on' : ''), pos(x, y, w, h), it[3](on ? AMBER : LBL), it[0], st),
+        targets: [rnd({ kind: 'toggle', oid: it[1], x: x, y: y, w: w, h: h })] };
 }
 // Gardena valve: tap = water 10 min (write seconds to duration_value); 'STOP' marker = stop-all tile
 // (two-tap via garten_stop_cmd: a stray tap must not kill a running watering cycle)
@@ -222,7 +216,7 @@ function build() {
     var L = section('Lichter', LIGHTS, y, { x: PADX, w: LW, tileW: 68 }, lightTile, targets); html += L.html;
     var S = section('System', [['CCU', 'CCU']], y, { x: PADX + LW + 8, w: W - 2 * PADX - LW - 8, cols: 1 }, systemTile, targets); html += S.html; y = L.nextY;
     var R = section('Rollläden', SHUTTERS.concat([ROLL_ALL]), y, { cols: 6 }, shutterTile, targets); html += R.html; y = R.nextY;
-    // Steckdosen (5 squares, exactly 392 wide) and Garten share the third band
+    // Steckdosen (up to 5 squares, card exactly 392 wide) and Garten share the third band
     var PW = 392;
     var P = section('Steckdosen', PLUGS, y, { x: PADX, w: PW, tileW: 68 }, plugTile, targets); html += P.html;
     var G = section('Garten · Bewässerung', GARDENA, y, { x: PADX + PW + 8, w: W - 2 * PADX - PW - 8, cols: 7 }, gardenaTile, targets); html += G.html; y = G.nextY;
@@ -298,7 +292,7 @@ on({ id: 'javascript.0.ccu_rega_ping', change: 'any' }, function () {
 
 // re-render on any control state change
 LIGHTS.forEach(function (l) { on({ id: l[1], change: 'ne' }, publish); });
-PLUGS.forEach(function (p) { on({ id: 'hm-rpc.1.' + p[1] + '.3.STATE', change: 'ne' }, publish); on({ id: 'hm-rpc.1.' + p[1] + '.6.POWER', change: 'ne' }, publish); });
+PLUGS.forEach(function (p) { on({ id: p[1], change: 'ne' }, publish); on({ id: p[2], change: 'ne' }, publish); });
 SHUTTERS.forEach(function (s) { on({ id: 'hm-rpc.1.' + s[1] + '.4.LEVEL', change: 'ne' }, publish); });
 
 setTimeout(publish, 2000);
