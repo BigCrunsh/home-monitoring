@@ -205,6 +205,9 @@ function vcComfortSem(t) {
     if (typeof t !== 'number' || isNaN(t)) return 'muted';
     return t <= 3 ? 'muted' : (t < 12 ? 'cold' : (t < 20 ? 'good' : (t < 27 ? 'warn' : 'alarm')));
 }
+// the 16 %-tint (thermo disc behind the room temperature) of the same band; CSS vars from the tab's token block
+var VC_COMFORT_TINT = { muted: 'var(--muted-16)', cold: 'var(--blue-16)', good: 'var(--green-16)', warn: 'var(--amber-16)', alarm: 'var(--red-16)' };
+function vcComfortTint(t) { return VC_COMFORT_TINT[vcComfortSem(t)]; }
 // age (ms) → "40 s" | "13 min" | "7 h"; unknown → null. Clock skew (future) clamps to 0 s.
 function vcAgo(ms) {
     if (typeof ms !== 'number' || isNaN(ms)) return null;

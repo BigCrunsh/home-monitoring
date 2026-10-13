@@ -178,8 +178,8 @@ function agoStr(luVal) {
     var s = Math.max(0, Math.round(ms / 1000));
     return s < 60 ? s + ' s' : (s < 3600 ? Math.round(s / 60) + ' min' : Math.round(s / 3600) + ' h');
 }
-function comfortCol(t) { return t == null ? LBL : (t <= 3 ? LBL : (t < 12 ? BLUE : (t < 20 ? GREEN : (t < 27 ? AMBER : RED)))); }
-function comfortTint(t) { return t == null ? 'var(--muted-16)' : (t <= 3 ? 'var(--muted-16)' : (t < 12 ? 'var(--blue-16)' : (t < 20 ? 'var(--green-16)' : (t < 27 ? 'var(--amber-16)' : 'var(--red-16)')))); }
+function comfortCol(t) { return vcSemColor(VC_PAL, vcComfortSem(t)); }
+var comfortTint = vcComfortTint;
 function co2Col(c) { return c == null ? LBL : (c < 1000 ? GREEN : (c < 1400 ? AMBER : RED)); }
 function humCol(h) { return h == null ? LBL : (h < 40 ? AMBER : (h <= 60 ? GREEN : BLUE)); }
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

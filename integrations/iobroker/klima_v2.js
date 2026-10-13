@@ -160,9 +160,9 @@ function agoStr(v) {
     var m = Math.round(ms / 60000); if (m < 1) return 'jetzt'; if (m < 60) return m + ' min';
     var h = Math.round(m / 60); if (h < 24) return h + ' h'; return Math.round(h / 24) + ' d';
 }
-// comfort bands (owner's): ≤3 grey · <12 blue · <20 green · <27 amber · ≥27 red
-function comfortCol(t) { return t == null ? LBL : (t <= 3 ? LBL : (t < 12 ? BLUE : (t < 20 ? GREEN : (t < 27 ? AMBER : RED)))); }
-function comfortTint(t) { return t == null ? 'var(--muted-16)' : (t <= 3 ? 'var(--muted-16)' : (t < 12 ? 'var(--blue-16)' : (t < 20 ? 'var(--green-16)' : (t < 27 ? 'var(--amber-16)' : 'var(--red-16)')))); }
+// comfort bands: the shared vcComfortSem rule (vis_card)
+function comfortCol(t) { return vcSemColor(VC_PAL, vcComfortSem(t)); }
+var comfortTint = vcComfortTint;
 function co2Col(c) { return c == null ? LBL : (c < 1000 ? GREEN : (c < 1400 ? AMBER : RED)); }
 function humCol(h) { return h == null ? LBL : (h < 40 ? AMBER : (h <= 60 ? GREEN : BLUE)); }
 // B′: a verdict colour "needs attention" when it isn't green/neutral
