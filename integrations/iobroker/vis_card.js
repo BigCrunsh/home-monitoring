@@ -29,6 +29,9 @@ var VC_PAL = {
     text: '#CCCCCC',
     surf: '#15161c', inset: '#1c1f28', border: '#262a33', bg: '#0d0e12'
 };
+// frost (≤3 °C) = snow white, the clock's white — deliberately not the muted grey, which means
+// "missing / disconnected"
+VC_PAL.frost = VC_PAL.text;
 
 var VC = {
     // role/consumption ladder (enRoleCol): favourable ≥75 W = good; consumption ≥150 W = warn,
@@ -199,14 +202,15 @@ function vcSpectrum(PAL, price, q) {
 // (symbol top / humidity · pressure baseline). vcClimRead takes the states → plain numbers;
 // vcClimCluster is pure (numbers → markup); the host puts VC_CLIM_CSS into its widget <style>.
 
-// comfort band of an air temperature → sem (outside temp + rooms): ≤3 °C muted (frost range reads
-// as "nothing to do"), <12 cold, <20 good, <27 warn, else alarm. Missing → muted.
+// comfort band of an air temperature → sem (outside temp + rooms): ≤3 °C frost (snow white),
+// <12 cold, <20 good, <27 warn, else alarm. Missing → muted.
 function vcComfortSem(t) {
     if (typeof t !== 'number' || isNaN(t)) return 'muted';
-    return t <= 3 ? 'muted' : (t < 12 ? 'cold' : (t < 20 ? 'good' : (t < 27 ? 'warn' : 'alarm')));
+    return t <= 3 ? 'frost' : (t < 12 ? 'cold' : (t < 20 ? 'good' : (t < 27 ? 'warn' : 'alarm')));
 }
-// the 16 %-tint (thermo disc behind the room temperature) of the same band; CSS vars from the tab's token block
-var VC_COMFORT_TINT = { muted: 'var(--muted-16)', cold: 'var(--blue-16)', good: 'var(--green-16)', warn: 'var(--amber-16)', alarm: 'var(--red-16)' };
+// the 16 %-tint (thermo disc behind the room temperature) of the same band; CSS vars from the tab's
+// token block (frost has no token there, so its white tint is spelled out)
+var VC_COMFORT_TINT = { muted: 'var(--muted-16)', frost: 'rgba(204,204,204,.16)', cold: 'var(--blue-16)', good: 'var(--green-16)', warn: 'var(--amber-16)', alarm: 'var(--red-16)' };
 function vcComfortTint(t) { return VC_COMFORT_TINT[vcComfortSem(t)]; }
 // age (ms) → "40 s" | "13 min" | "7 h"; unknown → null. Clock skew (future) clamps to 0 s.
 function vcAgo(ms) {

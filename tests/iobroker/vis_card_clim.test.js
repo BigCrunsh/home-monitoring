@@ -34,12 +34,24 @@ function colourAfter(html, marker) {
 test('comfort: 15 °C sits in the comfortable band', () => {
     assert.equal(ctx.vcComfortSem(15), 'good');
 });
-test('comfort: band edges — ≤3 muted, <12 cold, <20 good, <27 warn, else alarm', () => {
-    assert.equal(ctx.vcComfortSem(3), 'muted');
+test('comfort: band edges — ≤3 frost, <12 cold, <20 good, <27 warn, else alarm', () => {
+    assert.equal(ctx.vcComfortSem(3), 'frost');
+    assert.equal(ctx.vcComfortSem(-12), 'frost');
     assert.equal(ctx.vcComfortSem(3.1), 'cold');
     assert.equal(ctx.vcComfortSem(12), 'good');
     assert.equal(ctx.vcComfortSem(20), 'warn');
     assert.equal(ctx.vcComfortSem(27), 'alarm');
+});
+test('comfort: frost reads snow-white like the clock, never the missing-data grey', () => {
+    assert.equal(ctx.vcSemColor(P, ctx.vcComfortSem(2)), P.text);
+    assert.notEqual(ctx.vcSemColor(P, ctx.vcComfortSem(2)), ctx.vcSemColor(P, ctx.vcComfortSem(null)));
+});
+test('comfort: the frost thermo-disc tint differs from the missing-data tint', () => {
+    assert.notEqual(ctx.vcComfortTint(2), ctx.vcComfortTint(null));
+});
+test('cluster: a 2 °C outside temperature is white, a dead module still grey', () => {
+    assert.equal(colourAfter(ctx.vcClimCluster(P, fresh({ temp: 2 })), 'otemp'), P.text);
+    assert.equal(colourAfter(ctx.vcClimCluster(P, fresh({ temp: 2, outdoorAgeMs: 7 * H })), 'otemp'), P.muted);
 });
 test('comfort: missing temperature is muted, never a verdict', () => {
     assert.equal(ctx.vcComfortSem(null), 'muted');
