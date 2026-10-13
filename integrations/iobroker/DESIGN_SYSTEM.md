@@ -77,7 +77,7 @@ CO₂: their top line is the base station's **air pressure** behind a gauge icon
 falling blue, stable white. The hero's pressure uses the same colouring. The round thermo icon spans the
 name + operational lines. This compact tile is what lets Übersicht fit 8 rooms (2×4) in the nav-pinned
 left column; a five-character temperature (−10,2) drops to the narrower size so the values still fit.
-Comfort bands (the owner's: ≤3 grey / <12 blue / <20 green / <27 amber / ≥27 red) drive the icon tint +
+Comfort bands (the owner's: ≤3 snow white — the clock's white, never the missing-data grey / <12 blue / <20 green / <27 amber / ≥27 red) drive the icon tint +
 temp colour.
 
 ### 4. Indicator — `indDot()` / `.rind` (HAUS ribbon)
