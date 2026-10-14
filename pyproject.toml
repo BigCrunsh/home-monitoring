@@ -17,7 +17,7 @@ dependencies = [
     "py-smart-gardena==1.3.9",
     # py-smart-gardena imports oauthlib but does not declare it (upstream
     # packaging bug) — keep the explicit pin
-    "oauthlib==3.2.2",
+    "oauthlib==4.0.0",
     "pyTibber==0.32.2",
     "pyserial==3.5",
 ]
