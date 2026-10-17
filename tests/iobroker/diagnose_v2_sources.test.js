@@ -48,3 +48,27 @@ test('sources: Lübkowsee never seen shows red with a dash', () => {
     assert.match(r, new RegExp('color:' + ctx.VC_PAL.alarm));
     assert.match(r, />–</);
 });
+
+// daswetter runs on a schedule and has no .connected state; reading it anyway logged a warning twice a minute
+test('adapters: a schedule-mode adapter is never asked for a connected state', () => {
+    const ctx = loadDiagnose({ 'system.adapter.daswetter.0.alive': Date.now() });
+    ctx.getObject = (id) => ({ common: { enabled: true, mode: id.endsWith('daswetter.0') ? 'schedule' : 'daemon' } });
+    const asked = [];
+    const realGet = ctx.getState;
+    ctx.getState = (id) => { asked.push(id); return realGet(id); };
+    ctx.buildAdapters();
+    assert.ok(!asked.includes('system.adapter.daswetter.0.connected'));
+});
+
+test('adapters: a daemon without a connected state still reads ok when alive', () => {
+    const ctx = loadDiagnose({ 'system.adapter.vis-2.0.alive': Date.now() });
+    ctx.getObject = () => ({ common: { enabled: true, mode: 'daemon' } });
+    assert.equal(ctx.adapterHealth('vis-2.0').st, 'ok');
+});
+
+test('adapters: a daemon that is not alive reads offline', () => {
+    const ctx = loadDiagnose({ 'system.adapter.hue.0.alive': Date.now() });
+    ctx.getState = (id) => (id === 'system.adapter.hue.0.alive' ? { val: false, ts: Date.now() } : null);
+    ctx.getObject = () => ({ common: { enabled: true, mode: 'daemon' } });
+    assert.equal(ctx.adapterHealth('hue.0').st, 'offline');
+});

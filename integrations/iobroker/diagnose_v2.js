@@ -90,7 +90,8 @@ var ADAPTERS = [
 ];
 
 function sNum(id) { var s = getState(id); return (s && typeof s.val === 'number') ? s.val : null; }
-function sBool(id) { var s = getState(id); return s ? !!s.val : null; }
+// schedule-mode adapters (daswetter) have no .connected; getState on a missing id logs a warning
+function sBool(id) { if (!existsState(id)) return null; var s = getState(id); return s ? !!s.val : null; }
 // adapter health that understands schedule-mode adapters (alive=false between runs is normal)
 function adapterHealth(inst) {
     var obj = getObject('system.adapter.' + inst);
