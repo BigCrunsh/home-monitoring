@@ -85,3 +85,9 @@ test('devices: a sibling device whose address shares a prefix is not mistaken fo
     const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
     assert.doesNotMatch(h, /Keller/);
 });
+
+test('devices: a room already named in the device name is not repeated', () => {
+    const rooms = [{ id: 'enum.rooms.Flur', name: 'Flur', members: [MOTION + '.1'] }];
+    const h = loadDiagnose([MOTION], { [MOTION]: 'Bewegungsmelder Flur' }, rooms).buildDevices();
+    assert.match(h, /<span class="nm">Bewegungsmelder Flur<\/span>/);
+});

@@ -252,7 +252,8 @@ function enumerateHmDevices() {
         if (!obj) return;
         var name = String((obj.common && obj.common.name) || dev.split('.').pop());
         var room = roomOf(dev, rooms);
-        HM_DEVICES.push({ dev: dev, name: room ? room + ' · ' + name : name });
+        var label = room && name.indexOf(room) < 0 ? room + ' · ' + name : name;
+        HM_DEVICES.push({ dev: dev, name: label });
     });
     HM_DEVICES.sort(function (a, b) { return a.name.localeCompare(b.name); });
 }
