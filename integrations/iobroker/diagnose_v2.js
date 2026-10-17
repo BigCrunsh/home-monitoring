@@ -5,7 +5,8 @@
 //   diag_summary (4,4)   1170x72  — overall verdict + Stand
 //   diag_left    (4,84)   392x596 — DATENQUELLEN: per-source age + freshness verdict (primary)
 //   diag_mid     (408,84) 377x596 — SYSTEM · Pi: CPU / Last / RAM / Disk / Uptime + BACKUP card
-//   diag_right   (797,84) 377x596 — ADAPTER: alive/connected dots + GERÄTE · HomeMatic health sweep
+//   diag_right   (797,84) 377x596 — ADAPTER: alive/connected dots + GERÄTE health sweep
+//                                    (HomeMatic, Netatmo modules, Hue battery remotes)
 
 var CSS_BASE = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap');
@@ -225,7 +226,7 @@ function buildAdapters() {
     return h + '</div></div>';
 }
 
-// ===== GERÄTE · HomeMatic =====
+// ===== GERÄTE =====
 // Health sweep over every hm-rpc device (incl. the 6 wall buttons that have no other display
 // presence): UNREACH = offline (red), >36h silent = still (amber), LOW_BAT = battery (amber),
 // smoke-chamber degradation (amber).
@@ -258,6 +259,43 @@ function enumerateHmDevices() {
     HM_DEVICES.sort(function (a, b) { return a.name.localeCompare(b.name); });
 }
 // existsState first: mains-powered plugs have no LOW_BAT, and getState on a missing id logs a warning
+// Netatmo modules (outdoor, indoor, rain, wind) hang under a base station: netatmo.0.<home>.<station>.<module>.
+// The base stations themselves are watched as Datenquellen; only modules are listed here.
+// Modules report every ~10 min — 2 h of silence means a dead battery or lost radio link.
+var NETATMO_SILENT_MS = 2 * 3600000, LOW_BAT_PCT = 20;
+var STATION_LABELS = {};
+STATION_LABELS[NB2] = 'Studio';
+STATION_LABELS[NB3] = 'Lübkowsee';
+var NETATMO_MODULES = [], HUE_REMOTES = [];
+function nameOf(obj, fallback) {
+    var n = obj && obj.common && obj.common.name;
+    if (n && typeof n === 'object') n = n.de || n.en;
+    return String(n || fallback);
+}
+function enumerateBatteryDevices() {
+    NETATMO_MODULES = [];
+    $('state[id=netatmo.0.*.LastUpdate]').each(function (id) {
+        var parts = id.split('.');
+        if (parts.length !== 6) return;
+        var mod = parts.slice(0, 5).join('.'), station = parts.slice(0, 4).join('.');
+        var obj = getObject(mod);
+        if (!obj) return;
+        var name = nameOf(obj, parts[4]);
+        NETATMO_MODULES.push({ id: mod, name: STATION_LABELS[station] ? STATION_LABELS[station] + ' · ' + name : name });
+    });
+    HUE_REMOTES = [];
+    $('state[id=hue.0.*.battery]').each(function (id) {
+        var dev = id.replace(/\.battery$/, '');
+        var obj = getObject(dev);
+        if (obj) HUE_REMOTES.push({ id: dev, name: nameOf(obj, dev.split('.').pop()) });
+    });
+}
+// LastUpdate is the module's own measurement time as a date string; the state ts moves on every poll
+function netatmoSilentMs(mod) {
+    var s = getState(mod + '.LastUpdate');
+    var t = s ? Date.parse(s.val) : NaN;
+    return isNaN(t) ? null : Date.now() - t;
+}
 function sTrue(id) { if (!existsState(id)) return false; var s = getState(id); return !!(s && s.val === true); }
 // a device silent for >36h is effectively offline even before the CCU flags UNREACH (dead
 // battery, radio loss) — the newest ts/lc across the channel-0 housekeeping states is the
@@ -284,19 +322,31 @@ function deviceIssues() {
     // smoke detector chamber degradation — a silent safety fault, not covered by UNREACH/LOW_BAT
     if (sTrue('hm-rpc.1.000A5D89B45113.1.ERROR_DEGRADED_CHAMBER'))
         issues.push({ nm: 'Rauchmelder', txt: 'Kammer prüfen', col: AMBER, rank: 1 });
+    NETATMO_MODULES.forEach(function (m) {
+        var silent = netatmoSilentMs(m.id);
+        var bat = sNum(m.id + '.BatteryStatus');
+        if (silent != null && silent > NETATMO_SILENT_MS) issues.push({ nm: m.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
+        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: m.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+    });
+    HUE_REMOTES.forEach(function (r) {
+        var bat = sNum(r.id + '.battery');
+        if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+    });
     issues.sort(function (a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); });
     return issues;
 }
 // the right column shares 596 px with the 9 Adapter rows — dense rows buy a 4th slot:
-// all issues when they fit, otherwise the 3 worst + a "+n weitere" pointer to the CCU.
+// all issues when they fit, otherwise the 3 worst + a "+n weitere" count.
 var DEV_MAX_ROWS = 4;
 function buildDevices() {
     enumerateHmDevices();
+    enumerateBatteryDevices();
     var issues = deviceIssues();
-    var h = '<div class="card"><div class="card-h">Geräte · HomeMatic</div><div class="rows dense">';
+    var total = HM_DEVICES.length + NETATMO_MODULES.length + HUE_REMOTES.length;
+    var h = '<div class="card"><div class="card-h">Geräte</div><div class="rows dense">';
     if (!issues.length) {
         h += '<div class="drow">' + dot(GREEN)
-            + '<span class="nm">' + HM_DEVICES.length + ' Geräte</span>'
+            + '<span class="nm">' + total + ' Geräte</span>'
             + '<span class="ag sub" style="color:var(--mute)">alle ok</span></div>';
     } else {
         var shown = issues.length <= DEV_MAX_ROWS ? issues : issues.slice(0, DEV_MAX_ROWS - 1);
@@ -307,7 +357,7 @@ function buildDevices() {
         });
         if (issues.length > DEV_MAX_ROWS)
             h += '<div class="drow">' + dot(AMBER) + '<span class="nm">+ ' + (issues.length - shown.length)
-                + ' weitere</span><span class="ag sub" style="color:var(--mute)">siehe CCU</span></div>';
+                + ' weitere</span><span class="ag sub" style="color:var(--mute)">ausgeblendet</span></div>';
     }
     return h + '</div></div>';
 }

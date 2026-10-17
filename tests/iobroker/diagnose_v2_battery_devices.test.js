@@ -1,0 +1,96 @@
+// Diagnose "Geräte" beyond HomeMatic (diagnose_v2.js): Netatmo modules and Hue battery remotes.
+// The rain gauge went silent on 2025-12-30 and the wind gauge on 2025-08-14 without the dashboard
+// noticing — only the base stations' temperature was watched.
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const IOB = path.join(__dirname, '..', '..', 'integrations', 'iobroker');
+const HOME = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
+const STUDIO = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
+const RAIN = HOME + '.05-00-00-05-d4-18', GARDEN = HOME + '.02-00-00-32-ae-a4', ROOF = STUDIO + '.02-00-00-c2-7e-7c';
+const HOUR = 3600000;
+
+function netatmoDate(msAgo) { return new Date(Date.now() - msAgo).toString(); }
+
+// objects: {id: name}; states: {id: val}. $ matches the selector's id glob against the state ids.
+function loadDiagnose(objects, states) {
+    const now = Date.now();
+    const st = {};
+    Object.keys(states).forEach((id) => { st[id] = { val: states[id], ts: now, lc: now }; });
+    const sent = [];
+    const ctx = {
+        console: { log() {} },
+        getState: (id) => st[id] || null,
+        existsState: (id) => id in st,
+        getObject: (id) => (id in objects ? { common: { name: objects[id] } } : null),
+        getEnums: () => [],
+        $: (sel) => {
+            const glob = sel.match(/id=([^\]]+)\]/)[1];
+            const re = new RegExp('^' + glob.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+            return { each: (fn) => Object.keys(st).filter((id) => re.test(id)).forEach(fn) };
+        },
+        sendTo: (inst, msg) => sent.push({ inst, msg }),
+        setState: (id, val) => { st[id.replace(/^javascript\.0\./, 'javascript.0.')] = { val, ts: now, lc: now }; },
+        createState() {}, on() {}, schedule() {}, setTimeout() {}
+    };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(IOB, 'vis_card.js'), 'utf8'), ctx);
+    vm.runInContext(fs.readFileSync(path.join(IOB, 'diagnose_v2.js'), 'utf8'), ctx);
+    ctx.sent = sent;
+    ctx.st = st;
+    return ctx;
+}
+
+test('netatmo: a module silent for months is listed as still', () => {
+    const ctx = loadDiagnose({ [RAIN]: 'Regenmesser' }, { [RAIN + '.LastUpdate']: netatmoDate(200 * 24 * HOUR), [RAIN + '.BatteryStatus']: 60 });
+    const h = ctx.buildDevices();
+    assert.match(h, /Regenmesser<\/span><span class="ag" style="color:#F1BE3D">still seit 200 Tg/);
+});
+
+test('netatmo: a module that reported minutes ago with a good battery raises nothing', () => {
+    const ctx = loadDiagnose({ [GARDEN]: 'Gartenhaus' }, { [GARDEN + '.LastUpdate']: netatmoDate(0.1 * HOUR), [GARDEN + '.BatteryStatus']: 38 });
+    const h = ctx.buildDevices();
+    assert.match(h, /1 Geräte/);
+    assert.match(h, /alle ok/);
+});
+
+test('netatmo: a base station is not mistaken for a module', () => {
+    const ctx = loadDiagnose({ [HOME]: 'Wohnzimmer' }, { [HOME + '.LastUpdate']: netatmoDate(500 * HOUR) });
+    const h = ctx.buildDevices();
+    assert.doesNotMatch(h, /Wohnzimmer/);
+    assert.match(h, /0 Geräte/);
+});
+
+test('netatmo: a low battery is flagged even while the module still reports', () => {
+    const ctx = loadDiagnose({ [GARDEN]: 'Gartenhaus' }, { [GARDEN + '.LastUpdate']: netatmoDate(0.1 * HOUR), [GARDEN + '.BatteryStatus']: 12 });
+    assert.match(ctx.buildDevices(), /Gartenhaus<\/span><span class="ag" style="color:#F1BE3D">Batterie schwach/);
+});
+
+test('netatmo: a module of the Studio station says which station it belongs to', () => {
+    const ctx = loadDiagnose({ [ROOF]: 'Dachterrasse' }, { [ROOF + '.LastUpdate']: netatmoDate(30 * HOUR), [ROOF + '.BatteryStatus']: 90 });
+    assert.match(ctx.buildDevices(), /Studio · Dachterrasse/);
+});
+
+test('netatmo: an unreadable last-update text is not reported as still', () => {
+    const ctx = loadDiagnose({ [GARDEN]: 'Gartenhaus' }, { [GARDEN + '.LastUpdate']: 'garbage', [GARDEN + '.BatteryStatus']: 80 });
+    assert.doesNotMatch(ctx.buildDevices(), /still/);
+});
+
+test('hue: a remote at 1 % battery is flagged by its name', () => {
+    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 1 });
+    assert.match(ctx.buildDevices(), /Claras Fernbedienung<\/span><span class="ag" style="color:#F1BE3D">Batterie schwach/);
+});
+
+test('hue: a remote that never reported a battery level raises nothing', () => {
+    const ctx = loadDiagnose({ 'hue.0.Hue_dimmer_switch_1': 'Hue dimmer switch 1' }, { 'hue.0.Hue_dimmer_switch_1.battery': null });
+    assert.doesNotMatch(ctx.buildDevices(), /Batterie/);
+});
+
+test('hue: a remote whose device object is gone is not listed', () => {
+    const ctx = loadDiagnose({}, { 'hue.0.Old_Remote.battery': 3 });
+    assert.doesNotMatch(ctx.buildDevices(), /Old/);
+});
