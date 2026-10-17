@@ -234,14 +234,25 @@ function buildAdapters() {
 // the CCU: hm-rpc deletes a removed device's objects, but its last state values linger (UNREACH stays
 // true) — only devices whose device object still exists are listed.
 var HM_DEVICES = [];
+// the CCU room (synced by hm-rega) tells which of several same-named devices is meant; it leads the
+// label so the row's ellipsis cuts the device name, never the room. Members are usually channels.
+function roomOf(dev, rooms) {
+    var room = rooms.filter(function (r) {
+        return (r.members || []).some(function (m) { return m === dev || m.indexOf(dev + '.') === 0; });
+    })[0];
+    if (!room) return '';
+    return typeof room.name === 'object' ? room.name.de || room.name.en || '' : String(room.name || '');
+}
 function enumerateHmDevices() {
     HM_DEVICES = [];
+    var rooms = getEnums('rooms');
     $('state[id=hm-rpc.*.0.UNREACH]').each(function (id) {
         var dev = id.replace(/\.0\.UNREACH$/, '');
         var obj = getObject(dev);
         if (!obj) return;
-        var name = (obj.common && obj.common.name) || dev.split('.').pop();
-        HM_DEVICES.push({ dev: dev, name: String(name) });
+        var name = String((obj.common && obj.common.name) || dev.split('.').pop());
+        var room = roomOf(dev, rooms);
+        HM_DEVICES.push({ dev: dev, name: room ? room + ' · ' + name : name });
     });
     HM_DEVICES.sort(function (a, b) { return a.name.localeCompare(b.name); });
 }

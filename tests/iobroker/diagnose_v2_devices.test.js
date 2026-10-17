@@ -12,7 +12,7 @@ const IOB = path.join(__dirname, '..', '..', 'integrations', 'iobroker');
 const PLUG = 'hm-rpc.1.0001DD89A46B91', MOTION = 'hm-rpc.1.00091A4996315B', LAMP = 'hm-rpc.1.0001DD89A46CA5';
 
 // objects = device ids whose objects exist (what $ and getObject see); states = lingering values
-function loadDiagnose(objects, names) {
+function loadDiagnose(objects, names, rooms) {
     const now = Date.now();
     const states = {};
     [PLUG, MOTION, LAMP].forEach((d) => { states[d + '.0.UNREACH'] = { val: true, ts: now, lc: now }; });
@@ -21,6 +21,7 @@ function loadDiagnose(objects, names) {
         getState: (id) => states[id] || null,
         existsState: (id) => id in states,
         getObject: (id) => (objects.includes(id) ? { common: { name: names[id] } } : null),
+        getEnums: (cat) => (cat === 'rooms' ? rooms || [] : []),
         $: (sel) => ({ each: (fn) => objects.forEach((d) => fn(d + '.0.UNREACH')) }),
         setState() {}, createState() {}, on() {}, schedule() {}, setTimeout() {}
     };
@@ -57,4 +58,30 @@ test('devices: a device added on the CCU appears on the next refresh', () => {
     ctx.buildDevices();
     objects.push(LAMP);
     assert.match(ctx.buildDevices(), /Steckdose Maxxisun Akku/);
+});
+
+// "Bewegungssensor offline" alone doesn't say which of the three motion sensors to fix
+test('devices: an offline device names the room it is assigned to on the CCU', () => {
+    const rooms = [{ id: 'enum.rooms.Eingang', name: 'Eingangsbereich', members: [MOTION + '.1'] }];
+    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    assert.match(h, /Eingangsbereich · Bewegungssensor/);
+});
+
+test('devices: a device without a room keeps its plain name, no dangling separator', () => {
+    const rooms = [{ id: 'enum.rooms.Keller', name: 'Keller', members: ['hm-rpc.1.00091BE9910C5B.1'] }];
+    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    assert.match(h, /<span class="nm">Bewegungssensor<\/span>/);
+});
+
+test('devices: a room whose name is translated shows the German name', () => {
+    const rooms = [{ id: 'enum.rooms.Keller', name: { en: 'Basement', de: 'Keller' }, members: [MOTION] }];
+    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    assert.match(h, /Keller · Bewegungssensor/);
+    assert.doesNotMatch(h, /Basement|object Object/);
+});
+
+test('devices: a sibling device whose address shares a prefix is not mistaken for a room member', () => {
+    const rooms = [{ id: 'enum.rooms.Keller', name: 'Keller', members: [MOTION + '0.1'] }];
+    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    assert.doesNotMatch(h, /Keller/);
 });
