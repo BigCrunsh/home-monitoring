@@ -362,12 +362,30 @@ function buildDevices() {
     return h + '</div></div>';
 }
 
+// One Telegram message per new device issue. Keyed by device + kind (rank), so a growing
+// "still seit 3 Tg" → "4 Tg" stays one issue; a cleared issue that recurs is sent again.
+// The alerted set is persisted so a script restart doesn't resend everything.
+var ALERTED_ID = 'javascript.0.diag_alerted';
+function alertNewIssues(issues) {
+    var alerted = {};
+    var s = getState(ALERTED_ID);
+    try { alerted = JSON.parse((s && s.val) || '{}'); } catch (e) { /* corrupt → resend once */ }
+    var current = {};
+    issues.forEach(function (i) {
+        var key = i.nm + '|' + i.rank;
+        current[key] = true;
+        if (!alerted[key]) sendTo('telegram.0', { text: 'Diagnose: ' + i.nm + ' – ' + i.txt });
+    });
+    setState(ALERTED_ID, JSON.stringify(current), true);
+}
+
 function publish() {
     setState('diag_summary', fo('sumw', 1170, 72, buildSummary()), true);
     setState('diag_left', fo('dlw', 392, 596, buildSources()), true);
     setState('diag_mid', fo('dmw', 377, 596, '<div class="mcol">' + buildSystem() + buildBackup() + '</div>'), true);
     setState('diag_right', fo('drw', 377, 596, '<div class="mcol">'
         + buildAdapters().replace('"card"', '"card grow"') + buildDevices() + '</div>'), true);
+    alertNewIssues(deviceIssues());
 }
 
 ['diag_summary', 'diag_left', 'diag_mid', 'diag_right'].forEach(function (id) {
@@ -375,6 +393,7 @@ function publish() {
 });
 // filesystem backup markers (epoch seconds), written by deps/general/bin/export_backup_states.sh
 createState('javascript.0.backup_nas_ts', 0, { type: 'number', role: 'value.time', desc: 'NAS-Pull Erfolgs-Marker' });
+createState(ALERTED_ID, '{}', { type: 'string', role: 'json', desc: 'Diagnose: bereits per Telegram gemeldete Geräte-Störungen' });
 createState('javascript.0.backup_influx_ts', 0, { type: 'number', role: 'value.time', desc: 'Influx-Dump Marker' });
 
 // freshness is time-based — refresh every minute (also catches adapter/host/device changes)
