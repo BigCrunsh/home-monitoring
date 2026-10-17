@@ -91,3 +91,17 @@ test('devices: a room already named in the device name is not repeated', () => {
     const h = loadDiagnose([MOTION], { [MOTION]: 'Bewegungsmelder Flur' }, rooms).buildDevices();
     assert.match(h, /<span class="nm">Bewegungsmelder Flur<\/span>/);
 });
+
+// mains-powered plugs have no LOW_BAT state; reading it anyway logged a warning per plug every minute
+test('devices: a device without a battery state is never asked for one', () => {
+    const ctx = loadDiagnose([PLUG], NAMES);
+    const asked = [];
+    const realGet = ctx.getState;
+    ctx.getState = (id) => {
+        asked.push(id);
+        if (id === PLUG + '.0.UNREACH') return { val: false, ts: Date.now(), lc: Date.now() };
+        return realGet(id);
+    };
+    ctx.buildDevices();
+    assert.ok(!asked.includes(PLUG + '.0.LOW_BAT'), 'getState called for missing ' + PLUG + '.0.LOW_BAT');
+});

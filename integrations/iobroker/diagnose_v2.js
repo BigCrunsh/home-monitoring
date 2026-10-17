@@ -257,7 +257,8 @@ function enumerateHmDevices() {
     });
     HM_DEVICES.sort(function (a, b) { return a.name.localeCompare(b.name); });
 }
-function sTrue(id) { var s = getState(id); return !!(s && s.val === true); }
+// existsState first: mains-powered plugs have no LOW_BAT, and getState on a missing id logs a warning
+function sTrue(id) { if (!existsState(id)) return false; var s = getState(id); return !!(s && s.val === true); }
 // a device silent for >36h is effectively offline even before the CCU flags UNREACH (dead
 // battery, radio loss) — the newest ts/lc across the channel-0 housekeeping states is the
 // best "last heard" proxy hm-rpc offers. 36h clears the slowest cyclic-report intervals.
