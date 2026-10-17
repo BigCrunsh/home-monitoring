@@ -94,3 +94,14 @@ test('hue: a remote whose device object is gone is not listed', () => {
     const ctx = loadDiagnose({}, { 'hue.0.Old_Remote.battery': 3 });
     assert.doesNotMatch(ctx.buildDevices(), /Old/);
 });
+
+// the wind gauge has no BatteryStatus state; reading it anyway logged a warning every minute
+test('netatmo: a module without a battery state is never asked for one', () => {
+    const WIND = HOME + '.06-00-00-02-a2-5c';
+    const ctx = loadDiagnose({ [WIND]: 'Windmesser' }, { [WIND + '.LastUpdate']: netatmoDate(0.1 * HOUR) });
+    const asked = [];
+    const realGet = ctx.getState;
+    ctx.getState = (id) => { asked.push(id); return realGet(id); };
+    ctx.buildDevices();
+    assert.ok(!asked.includes(WIND + '.BatteryStatus'));
+});

@@ -324,7 +324,7 @@ function deviceIssues() {
         issues.push({ nm: 'Rauchmelder', txt: 'Kammer prüfen', col: AMBER, rank: 1 });
     NETATMO_MODULES.forEach(function (m) {
         var silent = netatmoSilentMs(m.id);
-        var bat = sNum(m.id + '.BatteryStatus');
+        var bat = existsState(m.id + '.BatteryStatus') ? sNum(m.id + '.BatteryStatus') : null;   // wind gauge has none
         if (silent != null && silent > NETATMO_SILENT_MS) issues.push({ nm: m.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
         else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: m.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
     });
