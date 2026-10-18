@@ -21,7 +21,6 @@ function loadDiagnose(objects, states) {
     const now = Date.now();
     const st = {};
     Object.keys(states).forEach((id) => { st[id] = { val: states[id], ts: now, lc: now }; });
-    const sent = [];
     const ctx = {
         console: { log() {} },
         getState: (id) => st[id] || null,
@@ -33,15 +32,11 @@ function loadDiagnose(objects, states) {
             const re = new RegExp('^' + glob.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
             return { each: (fn) => Object.keys(st).filter((id) => re.test(id)).forEach(fn) };
         },
-        sendTo: (inst, msg) => sent.push({ inst, msg }),
-        setState: (id, val) => { st[id.replace(/^javascript\.0\./, 'javascript.0.')] = { val, ts: now, lc: now }; },
-        createState() {}, on() {}, schedule() {}, setTimeout() {}
+        setState() {}, createState() {}, on() {}, schedule() {}, setTimeout() {}
     };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'vis_card.js'), 'utf8'), ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'diagnose_v2.js'), 'utf8'), ctx);
-    ctx.sent = sent;
-    ctx.st = st;
     return ctx;
 }
 

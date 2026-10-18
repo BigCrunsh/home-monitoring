@@ -33,8 +33,8 @@ function loadDiagnose(objects, states) {
             const re = new RegExp('^' + glob.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
             return { each: (fn) => Object.keys(st).filter((id) => re.test(id)).forEach(fn) };
         },
-        sendTo: (inst, msg) => sent.push({ inst, msg }),
-        setState: (id, val) => { st[id.replace(/^javascript\.0\./, 'javascript.0.')] = { val, ts: now, lc: now }; },
+        sendTo: (inst, cmd, msg) => sent.push({ inst, cmd, msg }),
+        setState: (id, val) => { st[id] = { val, ts: now, lc: now }; },
         createState() {}, on() {}, schedule() {}, setTimeout() {}
     };
     vm.createContext(ctx);

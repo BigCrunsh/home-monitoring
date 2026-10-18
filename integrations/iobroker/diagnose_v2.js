@@ -375,7 +375,7 @@ function alertNewIssues(issues) {
     issues.forEach(function (i) {
         var key = i.nm + '|' + i.rank;
         current[key] = true;
-        if (!alerted[key]) sendTo('telegram.0', { text: 'Diagnose: ' + i.nm + ' – ' + i.txt });
+        if (!alerted[key]) sendTo('telegram.0', 'send', { text: 'Diagnose: ' + i.nm + ' – ' + i.txt });
     });
     setState(ALERTED_ID, JSON.stringify(current), true);
 }
