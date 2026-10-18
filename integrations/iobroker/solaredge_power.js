@@ -416,6 +416,10 @@ function recompute() {
         setState('maxxisun_status',
             maxxiApower < -5 ? 'Speist' : (maxxiApower > 5 ? 'Lädt' : 'Bereit'));
         setState('maxxisun_tile', renderMaxxiTile(maxxiApower));
+    } else {
+        // stale/unreachable plug: production already counts Maxxisun as 0, so show idle too
+        setState('power_maxxisun', 0);
+        setState('maxxisun_status', 'Bereit');
     }
 
     // Pick the SolarEdge production source: live Modbus, else newest cloud row.
@@ -465,7 +469,7 @@ function queryInfluxDB() {
                 console.error(result.error);
                 return;
             }
-            var rows = result.result[0] || [];
+            var rows = (result.result && result.result[0]) || [];
             cachedProductionRow = rows.length ? rows[0] : null;
 
             if (recompute()) {
