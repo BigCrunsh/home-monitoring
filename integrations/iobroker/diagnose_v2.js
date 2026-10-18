@@ -68,6 +68,7 @@ var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';   // Studio ba
 var NB3 = 'netatmo.0.6ac096020a296fac710a1287.70-ee-50-c3-9e-84';   // Bungalow Lübkowsee base station
 var GVALVE = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
 var HOST = 'system.host.raspberrypi';
+var REGA_UP_ID = 'hm-rega.0.info.ccuRegaUp';
 
 // [label, state id, fresh<=sec (green), amber<=sec] — age from the state's last-write ts
 var SOURCES = [
@@ -323,6 +324,10 @@ function deviceIssues() {
     // smoke detector chamber degradation — a silent safety fault, not covered by UNREACH/LOW_BAT
     if (sTrue('hm-rpc.1.000A5D89B45113.1.ERROR_DEGRADED_CHAMBER'))
         issues.push({ nm: 'Rauchmelder', txt: 'Kammer prüfen', col: AMBER, rank: 1 });
+    // the CCU's program engine (ReGaHSS) can die while radio keeps working: buttons reach the CCU but no
+    // program runs, so no light switches. hm-rpc stays connected, so only hm-rega notices.
+    if (existsState(REGA_UP_ID) && getState(REGA_UP_ID).val === false)
+        issues.push({ nm: 'CCU-Programme', txt: 'offline', col: RED, rank: 0 });
     NETATMO_MODULES.forEach(function (m) {
         var silent = netatmoSilentMs(m.id);
         var bat = existsState(m.id + '.BatteryStatus') ? sNum(m.id + '.BatteryStatus') : null;   // wind gauge has none
