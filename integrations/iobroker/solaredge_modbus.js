@@ -9,7 +9,6 @@
 // The inverter accepts only ONE Modbus TCP connection at a time, so each poll
 // opens one socket, reads, and closes; overlapping polls are skipped. Published:
 //   solaredge_modbus_production  W   inverter AC power (SunSpec 40083/40084)
-//   solaredge_modbus_grid        W   WattNode grid meter (40206/40210; +import/-export)
 //   solaredge_modbus_online      bool  last poll succeeded
 //
 // SunSpec scale factors (sunSF) are signed int16 exponents: value = raw * 10^sf.
@@ -18,7 +17,6 @@ var net = require('net');
 var HOST = 'solaredgeinv-741523F9.fritz.box', PORT = 1502, UNIT = 1, POLL_MS = 6000;
 
 createState('solaredge_modbus_production', 0, { type: 'number', role: 'value.power', unit: 'W', desc: 'SolarEdge AC-Leistung (Modbus, live)' });
-createState('solaredge_modbus_grid', 0, { type: 'number', role: 'value.power', unit: 'W', desc: 'WattNode Netzleistung (Modbus)' });
 createState('solaredge_modbus_online', false, { type: 'boolean', role: 'indicator.reachable', desc: 'SolarEdge Modbus erreichbar' });
 
 // Read `qty` holding registers from `addr` (FC3); resolves with the data Buffer.
@@ -32,18 +30,31 @@ function modbusRead(sock, addr, qty) {
         req.writeUInt8(3, 7);          // FC = read holding registers
         req.writeUInt16BE(addr, 8);
         req.writeUInt16BE(qty, 10);
-        var need = 9 + 2 * qty, buf = Buffer.alloc(0);
+        var need = 9 + 2 * qty, EXCEPTION_LEN = 9, buf = Buffer.alloc(0);
         function onData(d) {
             buf = Buffer.concat([buf, d]);
-            if (buf.length >= need) {
+            // An exception reply is only 9 bytes, shorter than any data reply.
+            var isException = buf.length >= EXCEPTION_LEN && (buf[7] & 0x80);
+            if (isException || buf.length >= need) {
                 sock.removeListener('data', onData);
-                if (buf[7] & 0x80) reject(new Error('modbus exception ' + buf[8]));
+                if (isException) reject(new Error('modbus exception ' + buf[8]));
                 else resolve(buf.slice(9, 9 + buf[8]));
             }
         }
         sock.on('data', onData);
         sock.write(req);
     });
+}
+
+// Log only the online/offline transitions: during a DNS or network outage every 6 s poll fails.
+var wasOnline = true;
+function noteFailure(message) {
+    if (wasOnline) console.warn('solaredge modbus: ' + message);
+    wasOnline = false;
+}
+function noteSuccess() {
+    if (!wasOnline) console.log('solaredge modbus: wieder erreichbar');
+    wasOnline = true;
 }
 
 var polling = false;
@@ -60,19 +71,16 @@ function poll() {
         if (!ok) setState('solaredge_modbus_online', false, true);
         try { sock.destroy(); } catch (e) {}
     }
-    sock.on('timeout', function () { done(false); });
-    sock.on('error', function (e) { console.warn('solaredge modbus: ' + e.message); done(false); });
+    sock.on('timeout', function () { noteFailure('timeout'); done(false); });
+    sock.on('error', function (e) { noteFailure(e.message); done(false); });
     sock.connect(PORT, HOST, function () {
-        modbusRead(sock, 40083, 2).then(function (inv) {            // inverter AC power + sf
+        modbusRead(sock, 40083, 2).then(function (inv) {    // inverter AC power + sf
             var prod = inv.readInt16BE(0) * Math.pow(10, inv.readInt16BE(2));
-            return modbusRead(sock, 40206, 5).then(function (mt) {  // meter power (40206) + sf (40210)
-                var grid = mt.readInt16BE(0) * Math.pow(10, mt.readInt16BE(8));
-                setState('solaredge_modbus_production', Math.round(prod), true);
-                setState('solaredge_modbus_grid', Math.round(grid), true);
-                setState('solaredge_modbus_online', true, true);
-                done(true);
-            });
-        }).catch(function (e) { console.warn('solaredge modbus read: ' + e.message); done(false); });
+            setState('solaredge_modbus_production', Math.round(prod), true);
+            setState('solaredge_modbus_online', true, true);
+            noteSuccess();
+            done(true);
+        }).catch(function (e) { noteFailure('read: ' + e.message); done(false); });
     });
 }
 
