@@ -68,6 +68,7 @@ var NB2 = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';   // Studio ba
 var NB3 = 'netatmo.0.6ac096020a296fac710a1287.70-ee-50-c3-9e-84';   // Bungalow Lübkowsee base station
 var GVALVE = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.DEVICE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c.SERVICE_VALVE_b193e1f6-2Db1bc-2D4488-2D9f9d-2Deabf9771e46c';
 var HOST = 'system.host.raspberrypi';
+var PI_CORES = 4;   // load average at the core count = fully busy
 var REGA_UP_ID = 'hm-rega.0.info.ccuRegaUp';
 
 // [label, state id, fresh<=sec (green), amber<=sec] — age from the state's last-write ts
@@ -173,14 +174,25 @@ function buildSystem() {
     var memCol = freeGB == null ? LBL : (freeGB > 0.4 ? GREEN : freeGB > 0.15 ? AMBER : RED);
     var diskCol = diskGB == null ? LBL : (diskGB > 3 ? GREEN : diskGB > 1 ? AMBER : RED);
     var upTxt = up == null ? '–' : (up < 86400 ? Math.round(up / 3600) + ' h' : Math.round(up / 86400) + ' d');
+    // bars show the USED share of each capacity, like CPU: a full bar means tight. Host .mem is the
+    // used-RAM percentage; a missing total gets no bar rather than a guessed one.
+    var memUsed = sNum(HOST + '.mem'), diskSize = sNum(HOST + '.diskSize');
+    var loadFrac = load != null ? Math.min(1, load / PI_CORES) : null;
+    var memFrac = memUsed != null ? memUsed / 100 : null;
+    var diskFrac = disk != null && diskSize ? 1 - disk / diskSize : null;
 
     var h = '<div class="card grow"><div class="card-h">System · Pi</div><div class="sys">';
-    h += '<div class="srow"><div class="top"><span class="l">CPU</span><span class="v" style="color:' + cpuCol + '">' + (cpu != null ? Math.round(cpu) : '–') + '<span class="u">%</span></span></div>' + bar((cpu || 0) / 100, cpuCol) + '</div>';
-    h += '<div class="srow plain"><span class="l">Last (1 min)</span><span class="v" style="color:' + loadCol + '">' + comma(load, 2) + '</span></div>';
-    h += '<div class="srow plain"><span class="l">RAM frei</span><span class="v" style="color:' + memCol + '">' + (freeGB != null ? comma(freeGB, 1) : '–') + '<span class="u">GB</span></span></div>';
-    h += '<div class="srow plain"><span class="l">Disk frei</span><span class="v" style="color:' + diskCol + '">' + (diskGB != null ? comma(diskGB, 1) : '–') + '<span class="u">GB</span></span></div>';
+    h += barRow('CPU', cpu != null ? Math.round(cpu) : '–', '%', cpuCol, cpu != null ? cpu / 100 : null);
+    h += barRow('Last (1 min)', comma(load, 2), '', loadCol, loadFrac);
+    h += barRow('RAM frei', freeGB != null ? comma(freeGB, 1) : '–', 'GB', memCol, memFrac);
+    h += barRow('Disk frei', diskGB != null ? comma(diskGB, 1) : '–', 'GB', diskCol, diskFrac);
     h += '<div class="srow plain"><span class="l">Uptime</span><span class="v">' + upTxt + '</span></div>';
     return h + '</div></div>';
+}
+function barRow(label, value, unit, col, frac) {
+    return '<div class="srow"><div class="top"><span class="l">' + label + '</span><span class="v" style="color:' + col + '">'
+        + value + (unit ? '<span class="u">' + unit + '</span>' : '') + '</span></div>'
+        + (frac != null ? bar(frac, col) : '') + '</div>';
 }
 
 // ===== BACKUP =====
