@@ -29,7 +29,6 @@ createState('moonset', '', {type: 'string'});
 function getStats() {
    const now = new Date()
    var mond = suncalc.getMoonIllumination(now);
-   suncalc.getMoonIllumination()
    var mp = mond.phase;
    var state = 0; 
    if(mp > 0.05) state = 1;
@@ -53,14 +52,13 @@ function getStats() {
       longitude,
    );
 
-   var sunrise = new Date(sunTimes.sunrise.getTime())
-   var sunset = new Date(sunTimes.sunset.getTime())
-   var moonrise = new Date(moonTimes.rise.getTime())
-   var moonset = new Date(moonTimes.set.getTime())
-   setState('sunrise', sunrise.toLocaleString('de-DE', {hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'}), true);
-   setState('sunset', sunset.toLocaleString('de-DE', {hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'}), true);
-   setState('moonrise', moonrise.toLocaleString('de-DE', {hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'}), true);
-   setState('moonset', moonset.toLocaleString('de-DE', {hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'}), true);
+   const hhmm = {hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'};
+   // suncalc omits rise/set on days the moon never crosses the horizon
+   const clock = (date) => date ? date.toLocaleString('de-DE', hhmm) : '–';
+   setState('sunrise', clock(sunTimes.sunrise), true);
+   setState('sunset', clock(sunTimes.sunset), true);
+   setState('moonrise', clock(moonTimes.rise), true);
+   setState('moonset', clock(moonTimes.set), true);
 }
  
 getStats(); // Skriptstart
