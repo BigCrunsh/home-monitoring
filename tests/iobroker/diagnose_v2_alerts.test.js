@@ -1,6 +1,8 @@
-// Diagnose device alerts (diagnose_v2.js): a Telegram message once per new device issue. The hallway
-// motion sensor reported a low battery for two weeks and then sat offline for twelve days before anyone
-// noticed the entrance light had stopped switching off.
+// Diagnose device alerts (diagnose_v2.js): a Telegram message once per new device issue, and a short
+// "wieder ok" when an alerted issue clears. The hallway motion sensor reported a low battery for two
+// weeks and then sat offline for twelve days before anyone noticed the entrance light had stopped
+// switching off. "offline" waits 10 min first: the siren dropped off the radio for 2 min on 2026-10-18
+// after a command and an instant alert for that was noise.
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,14 +12,21 @@ const vm = require('node:vm');
 
 const IOB = path.join(__dirname, '..', '..', 'integrations', 'iobroker');
 const HOME = 'netatmo.0.5eafe7e5e6268b245ee4d8ae.70-ee-50-32-c3-4c';
-const STUDIO = 'netatmo.0.6a48fde5178fa8d8cd09bd27.70-ee-50-c2-86-aa';
-const RAIN = HOME + '.05-00-00-05-d4-18', GARDEN = HOME + '.02-00-00-32-ae-a4', ROOF = STUDIO + '.02-00-00-c2-7e-7c';
-const HOUR = 3600000;
+const RAIN = HOME + '.05-00-00-05-d4-18';
+const SIREN = 'hm-rpc.1.00245D898FEEF1';
+const MIN = 60000, HOUR = 60 * MIN;
+const RealDate = Date;
 
 function netatmoDate(msAgo) { return new Date(Date.now() - msAgo).toString(); }
 
 // objects: {id: name}; states: {id: val}. $ matches the selector's id glob against the state ids.
+// ctx.advance(ms) moves the script's clock forward.
 function loadDiagnose(objects, states) {
+    let offset = 0;
+    class FakeDate extends RealDate {
+        constructor(...args) { if (args.length) super(...args); else super(RealDate.now() + offset); }
+        static now() { return RealDate.now() + offset; }
+    }
     const now = Date.now();
     const st = {};
     Object.keys(states).forEach((id) => { st[id] = { val: states[id], ts: now, lc: now }; });
@@ -35,13 +44,15 @@ function loadDiagnose(objects, states) {
         },
         sendTo: (inst, cmd, msg) => sent.push({ inst, cmd, msg }),
         setState: (id, val) => { st[id] = { val, ts: now, lc: now }; },
-        createState() {}, on() {}, schedule() {}, setTimeout() {}
+        createState() {}, on() {}, schedule() {}, setTimeout() {},
+        Date: FakeDate
     };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'vis_card.js'), 'utf8'), ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'diagnose_v2.js'), 'utf8'), ctx);
     ctx.sent = sent;
     ctx.st = st;
+    ctx.advance = (ms) => { offset += ms; };
     return ctx;
 }
 
@@ -69,14 +80,60 @@ test('alerts: a growing "still seit" age is the same issue, not a new one', () =
     assert.equal(ctx.sent.length, 1);
 });
 
-test('alerts: an issue that clears and comes back is sent again', () => {
+test('alerts: an alerted issue that clears sends "wieder ok", and is sent again if it comes back', () => {
     const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 1 });
     ctx.publish();
     ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 100;
     ctx.publish();
     ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 2;
     ctx.publish();
-    assert.equal(ctx.sent.length, 2);
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), [
+        'Diagnose: Claras Fernbedienung – Batterie schwach',
+        'Diagnose: Claras Fernbedienung – wieder ok',
+        'Diagnose: Claras Fernbedienung – Batterie schwach'
+    ]);
+});
+
+test('alerts: a device offline for less than 10 minutes is not sent', () => {
+    const ctx = loadDiagnose({ [SIREN]: 'Alarmsirene' }, { [SIREN + '.0.UNREACH']: true });
+    ctx.publish();
+    ctx.advance(9 * MIN);
+    ctx.publish();
+    assert.equal(ctx.sent.length, 0);
+});
+
+test('alerts: a device still offline after 10 minutes is sent once', () => {
+    const ctx = loadDiagnose({ [SIREN]: 'Alarmsirene' }, { [SIREN + '.0.UNREACH']: true });
+    ctx.publish();
+    ctx.advance(10 * MIN);
+    ctx.publish();
+    ctx.advance(MIN);
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), ['Diagnose: Alarmsirene – offline']);
+});
+
+test('alerts: a device back within 10 minutes sends neither the alert nor "wieder ok"', () => {
+    const ctx = loadDiagnose({ [SIREN]: 'Alarmsirene' }, { [SIREN + '.0.UNREACH']: true });
+    ctx.publish();
+    ctx.advance(2 * MIN);
+    ctx.st[SIREN + '.0.UNREACH'].val = false;
+    ctx.publish();
+    ctx.advance(20 * MIN);
+    ctx.publish();
+    assert.equal(ctx.sent.length, 0);
+});
+
+// the live state was written as {"<name>|<rank>": true} before "wieder ok" existed
+test('alerts: issues alerted in the old stored format are neither resent nor lost', () => {
+    const objects = { 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' };
+    const ctx = loadDiagnose(objects, {
+        'hue.0.Claras_Fernbedienung.battery': 1,
+        'javascript.0.diag_alerted': JSON.stringify({ 'Claras Fernbedienung|2': true })
+    });
+    ctx.publish();
+    ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 100;
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), ['Diagnose: Claras Fernbedienung – wieder ok']);
 });
 
 test('alerts: issues already alerted before a script restart are not sent again', () => {

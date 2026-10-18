@@ -368,19 +368,36 @@ function buildDevices() {
     return h + '</div></div>';
 }
 
-// One Telegram message per new device issue. Keyed by device + kind (rank), so a growing
-// "still seit 3 Tg" → "4 Tg" stays one issue; a cleared issue that recurs is sent again.
-// The alerted set is persisted so a script restart doesn't resend everything.
+// One Telegram message per new device issue, and "wieder ok" when an alerted one clears. Keyed by
+// device + kind (rank), so a growing "still seit 3 Tg" → "4 Tg" stays one issue. "offline" (rank 0)
+// waits OFFLINE_GRACE_MS first: a battery device that misses one command acknowledgement is flagged
+// unreachable for a minute or two (the siren, 2026-10-18) — not worth a message.
+// The tracked issues are persisted so a script restart neither resends nor forgets them.
 var ALERTED_ID = 'javascript.0.diag_alerted';
+var OFFLINE_GRACE_MS = 10 * 60000;
+function sendAlert(text) { sendTo('telegram.0', 'send', { text: 'Diagnose: ' + text }); }
+function loadTracked() {
+    var s = getState(ALERTED_ID), raw = {};
+    try { raw = JSON.parse((s && s.val) || '{}'); } catch (e) { /* corrupt → start fresh */ }
+    // before "wieder ok" existed, alerted issues were stored as {"<name>|<rank>": true}
+    Object.keys(raw).forEach(function (key) {
+        if (raw[key] === true) raw[key] = { nm: key.split('|')[0], since: 0, sent: true };
+    });
+    return raw;
+}
 function alertNewIssues(issues) {
-    var alerted = {};
-    var s = getState(ALERTED_ID);
-    try { alerted = JSON.parse((s && s.val) || '{}'); } catch (e) { /* corrupt → resend once */ }
-    var current = {};
+    var tracked = loadTracked(), now = Date.now(), current = {};
     issues.forEach(function (i) {
         var key = i.nm + '|' + i.rank;
-        current[key] = true;
-        if (!alerted[key]) sendTo('telegram.0', 'send', { text: 'Diagnose: ' + i.nm + ' – ' + i.txt });
+        var t = tracked[key] || { nm: i.nm, since: now, sent: false };
+        if (!t.sent && (i.rank !== 0 || now - t.since >= OFFLINE_GRACE_MS)) {
+            sendAlert(i.nm + ' – ' + i.txt);
+            t.sent = true;
+        }
+        current[key] = t;
+    });
+    Object.keys(tracked).forEach(function (key) {
+        if (!current[key] && tracked[key].sent) sendAlert(tracked[key].nm + ' – wieder ok');
     });
     setState(ALERTED_ID, JSON.stringify(current), true);
 }

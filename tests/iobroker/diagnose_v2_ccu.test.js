@@ -10,8 +10,15 @@ const vm = require('node:vm');
 
 const IOB = path.join(__dirname, '..', '..', 'integrations', 'iobroker');
 const REGA_UP = 'hm-rega.0.info.ccuRegaUp';
+const MIN = 60000;
+const RealDate = Date;
 
 function loadDiagnose(states) {
+    let offset = 0;
+    class FakeDate extends RealDate {
+        constructor(...args) { if (args.length) super(...args); else super(RealDate.now() + offset); }
+        static now() { return RealDate.now() + offset; }
+    }
     const now = Date.now();
     const st = {};
     Object.keys(states).forEach((id) => { st[id] = { val: states[id], ts: now, lc: now }; });
@@ -25,12 +32,14 @@ function loadDiagnose(states) {
         $: () => ({ each() {} }),
         sendTo: (inst, cmd, msg) => sent.push({ inst, cmd, msg }),
         setState: (id, val) => { st[id] = { val, ts: now, lc: now }; },
-        createState() {}, on() {}, schedule() {}, setTimeout() {}
+        createState() {}, on() {}, schedule() {}, setTimeout() {},
+        Date: FakeDate
     };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'vis_card.js'), 'utf8'), ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'diagnose_v2.js'), 'utf8'), ctx);
     ctx.sent = sent;
+    ctx.advance = (ms) => { offset += ms; };
     return ctx;
 }
 
@@ -49,8 +58,10 @@ test('ccu: no engine state yet (hm-rega not installed or still starting) raises 
     assert.doesNotMatch(h, /CCU-Programme/);
 });
 
-test('ccu: a dead program engine is sent to Telegram', () => {
+test('ccu: a program engine dead for 10 minutes is sent to Telegram', () => {
     const ctx = loadDiagnose({ [REGA_UP]: false });
+    ctx.publish();
+    ctx.advance(10 * MIN);
     ctx.publish();
     assert.equal(ctx.sent.length, 1);
     assert.match(ctx.sent[0].msg.text, /CCU-Programme – offline/);
