@@ -68,10 +68,6 @@ design system, see `DESIGN_SYSTEM.md`):
 | `mqtt_shelly.js` | Bridges the Shelly 3EM MQTT topics into `javascript.0.mqtt_shelly.*` states |
 | `tankerkoenig_quantiles.js` | Fuel-price quantiles for dashboard color coding |
 | `sam_digital.js` | SAM Digital heating states |
-| `gardena_valve.js` | Gardena valve activity states (currently idle — adapter has no data) |
-| `netatmo_wind.js` | Netatmo wind states (currently idle — no wind module) |
-| `openweathermap_weather.js` | OpenWeatherMap supplementary weather states |
-| `ical_events.js` | Calendar events for the dashboard agenda |
 | `suncalc_phases.js` | Sun phase times (sunrise/sunset) |
 | `reset_lock_target_state.js` | Resets a lock's target state after actuation |
 | `bungalow_watch.js` | Dead man's switch for the Bungalow Lübkowsee: Telegram alert when its Netatmo station goes silent (details below) |

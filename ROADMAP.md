@@ -85,7 +85,9 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 
 - **Gardena**: keep (re-auth the `smartgarden` adapter) or retire (remove adapter,
   `gardena_valve` script, Python service, dashboard tiles)? Blocks part of
-  `improve-dashboard-data-states`.
+  `improve-dashboard-data-states`. Partly answered 2026-10-18: the dashboard (Klima,
+  Steuerung) reads the `smartgarden` adapter directly, so `gardena_valve.js` was
+  retired as unused; the adapter stays.
 - **Router port forwarding**: is anything forwarded to the Pi? (`monitoring.sawade.me`
   is actively updated.) Answered as part of `harden-network-services`.
 - **First controlled load for evcc**: which device (hot-water, dishwasher, other)?
