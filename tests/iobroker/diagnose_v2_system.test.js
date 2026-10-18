@@ -81,3 +81,15 @@ test('system: without a RAM usage share the free value still shows, but no bar i
     assert.match(r, /1,9/);
     assert.equal(barWidth(r), null);
 });
+
+test('layout: the middle column holds Adapter + Backup, the right one System · Pi + Geräte, both 691 px tall', () => {
+    const ctx = loadDiagnose(HEALTHY);
+    ctx.publish();
+    const mid = ctx.written.diag_mid, right = ctx.written.diag_right;
+    assert.match(mid, /height="691"/);
+    assert.match(right, /height="691"/);
+    assert.ok(mid.indexOf('>Adapter<') >= 0 && mid.indexOf('>Backup<') > mid.indexOf('>Adapter<'), 'mid: Adapter then Backup');
+    assert.ok(right.indexOf('>System · Pi<') >= 0 && right.indexOf('>Geräte<') > right.indexOf('>System · Pi<'), 'right: System then Geräte');
+    assert.doesNotMatch(mid, />System · Pi</);
+    assert.doesNotMatch(right, />Adapter</);
+});

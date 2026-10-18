@@ -39,7 +39,7 @@ function isoAgo(ms) { return new Date(Date.now() - ms).toISOString(); }
 
 test('garden: a soil sensor silent for 174 days is listed as still, named as a garden sensor', () => {
     const ctx = loadDiagnose({ [TS_ID]: isoAgo(174 * 24 * HOUR), [BAT_ID]: 0 });
-    assert.match(ctx.buildDevices(), /Bodensensor Hochbeet<\/span><span class="ag" style="color:#F1BE3D">still seit 174 Tg/);
+    assert.match(ctx.buildDevices(), /Boden Hochbeet<\/span><span class="ag" style="color:#F1BE3D">still seit 174 Tg/);
 });
 
 test('garden: a sensor that reported an hour ago with a good battery raises nothing', () => {
@@ -51,7 +51,7 @@ test('garden: a sensor that reported an hour ago with a good battery raises noth
 
 test('garden: a fresh sensor with a low battery says Batterie schwach', () => {
     const ctx = loadDiagnose({ [TS_ID]: isoAgo(HOUR), [BAT_ID]: 15 });
-    assert.match(ctx.buildDevices(), /Bodensensor Hochbeet<\/span><span class="ag" style="color:#F1BE3D">Batterie schwach/);
+    assert.match(ctx.buildDevices(), /Boden Hochbeet<\/span><span class="ag" style="color:#F1BE3D">Batterie schwach/);
 });
 
 test('garden: silence outranks the empty battery of a dead sensor', () => {
@@ -68,7 +68,7 @@ test('garden: a report just under 24 h old is not stale', () => {
 
 test('garden: a missing timestamp neither throws nor flags the sensor', () => {
     const ctx = loadDiagnose({ [BAT_ID]: 0 });
-    assert.doesNotMatch(ctx.buildDevices(), /Bodensensor/);
+    assert.doesNotMatch(ctx.buildDevices(), /Boden /);
     assert.deepEqual(ctx.reads.filter((id) => id === TS_ID), []);
 });
 
@@ -79,6 +79,6 @@ test('garden: an unparseable timestamp is not flagged as still', () => {
 
 test('garden: a missing battery state is never read', () => {
     const ctx = loadDiagnose({ [TS_ID]: isoAgo(HOUR) });
-    assert.doesNotMatch(ctx.buildDevices(), /Bodensensor/);
+    assert.doesNotMatch(ctx.buildDevices(), /Boden /);
     assert.deepEqual(ctx.reads.filter((id) => id === BAT_ID), []);
 });

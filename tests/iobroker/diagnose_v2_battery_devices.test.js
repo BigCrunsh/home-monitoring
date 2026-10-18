@@ -100,3 +100,24 @@ test('netatmo: a module without a battery state is never asked for one', () => {
     ctx.buildDevices();
     assert.ok(!asked.includes(WIND + '.BatteryStatus'));
 });
+
+// the Geräte card runs down to the nav panel's bottom edge since 2026-10-18 — room for 8 rows
+function remotes(n) {
+    const objects = {}, states = {};
+    for (let i = 1; i <= n; i++) { objects['hue.0.Remote_' + i] = 'Remote ' + i; states['hue.0.Remote_' + i + '.battery'] = 5; }
+    return [objects, states];
+}
+
+test('devices: eight issues are all listed, nothing folded away', () => {
+    const ctx = loadDiagnose(...remotes(8));
+    const h = ctx.buildDevices();
+    assert.equal((h.match(/Batterie schwach/g) || []).length, 8);
+    assert.doesNotMatch(h, /weitere/);
+});
+
+test('devices: nine issues show the seven worst and a "+ 2 weitere" row', () => {
+    const ctx = loadDiagnose(...remotes(9));
+    const h = ctx.buildDevices();
+    assert.equal((h.match(/Batterie schwach/g) || []).length, 7);
+    assert.match(h, /\+ 2 weitere/);
+});

@@ -24,8 +24,8 @@ var CSS_BASE = `
 }
 .mv2.sumw{width:1170px; height:72px}
 .mv2.dlw{width:392px; height:596px}
-.mv2.dmw{width:377px; height:596px}
-.mv2.drw{width:377px; height:596px}
+.mv2.dmw{width:377px; height:691px}
+.mv2.drw{width:377px; height:691px}
 .mv2 *{margin:0; padding:0; box-sizing:border-box}
 .mv2 .u{font-size:12px; color:var(--muted); font-weight:500; margin-left:.1em}
 .mv2 .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--r2); padding:var(--s3) var(--s4); height:100%; overflow:hidden; display:flex; flex-direction:column}
@@ -46,6 +46,7 @@ var CSS_BASE = `
 .mv2 .drow .sub{font-size:var(--t-cap); color:var(--mute)}
 .mv2 .rows.dense{gap:4px}
 .mv2 .rows.dense .drow{padding:5px var(--s3)}
+.mv2 .rows.spread{justify-content:space-evenly}
 
 /* SYSTEM bars */
 .mv2 .sys{flex:1; display:flex; flex-direction:column; justify-content:space-evenly}
@@ -181,7 +182,7 @@ function buildSystem() {
     var memFrac = memUsed != null ? memUsed / 100 : null;
     var diskFrac = disk != null && diskSize ? 1 - disk / diskSize : null;
 
-    var h = '<div class="card grow"><div class="card-h">System · Pi</div><div class="sys">';
+    var h = '<div class="card"><div class="card-h">System · Pi</div><div class="sys">';
     h += barRow('CPU', cpu != null ? Math.round(cpu) : '–', '%', cpuCol, cpu != null ? cpu / 100 : null);
     h += barRow('Last (1 min)', comma(load, 2), '', loadCol, loadFrac);
     h += barRow('RAM frei', freeGB != null ? comma(freeGB, 1) : '–', 'GB', memCol, memFrac);
@@ -230,7 +231,7 @@ function buildBackup() {
 
 // ===== ADAPTER =====
 function buildAdapters() {
-    var h = '<div class="card"><div class="card-h">Adapter</div><div class="rows">';
+    var h = '<div class="card"><div class="card-h">Adapter</div><div class="rows spread">';
     ADAPTERS.forEach(function (a) {
         var hh = adapterHealth(a[1]);
         h += '<div class="drow">' + dot(hh.col)
@@ -330,7 +331,7 @@ function lastHeardMs(dev) {
 var GARDEN_LOC = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.';
 function soilSensor(name, uuid) {
     var dev = GARDEN_LOC + 'DEVICE_' + uuid + '.';
-    return { name: 'Bodensensor ' + name, tsId: dev + 'SERVICE_SENSOR_' + uuid + '.soilHumidity_timestamp', batId: dev + 'SERVICE_COMMON_' + uuid + '.batteryLevel_value' };
+    return { name: 'Boden ' + name, tsId: dev + 'SERVICE_SENSOR_' + uuid + '.soilHumidity_timestamp', batId: dev + 'SERVICE_COMMON_' + uuid + '.batteryLevel_value' };
 }
 var SOIL_SENSORS = [
     soilSensor('Gemüsebeet', '747c45b4-2Da2d0-2D4eb5-2D84f3-2D38f37e85bdc5'),
@@ -380,9 +381,9 @@ function deviceIssues() {
     issues.sort(function (a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); });
     return issues;
 }
-// the right column shares 596 px with the 9 Adapter rows — dense rows buy a 4th slot:
-// all issues when they fit, otherwise the 3 worst + a "+n weitere" count.
-var DEV_MAX_ROWS = 4;
+// the card fills the right column below System · Pi down to the nav panel's bottom edge — room for
+// 8 dense rows: all issues when they fit, otherwise the 7 worst + a "+n weitere" count.
+var DEV_MAX_ROWS = 8;
 function buildDevices() {
     enumerateHmDevices();
     enumerateBatteryDevices();
@@ -445,9 +446,11 @@ function alertNewIssues(issues) {
 function publish() {
     setState('diag_summary', fo('sumw', 1170, 72, buildSummary()), true);
     setState('diag_left', fo('dlw', 392, 596, buildSources()), true);
-    setState('diag_mid', fo('dmw', 377, 596, '<div class="mcol">' + buildSystem() + buildBackup() + '</div>'), true);
-    setState('diag_right', fo('drw', 377, 596, '<div class="mcol">'
-        + buildAdapters().replace('"card"', '"card grow"') + buildDevices() + '</div>'), true);
+    // the nav panel sits under the left column only — middle and right run down to its bottom (y=775)
+    setState('diag_mid', fo('dmw', 377, 691, '<div class="mcol">'
+        + buildAdapters().replace('"card"', '"card grow"') + buildBackup() + '</div>'), true);
+    setState('diag_right', fo('drw', 377, 691, '<div class="mcol">'
+        + buildSystem() + buildDevices().replace('"card"', '"card grow"') + '</div>'), true);
     alertNewIssues(deviceIssues());
 }
 
