@@ -15,7 +15,7 @@
 //
 // Widgets on the vis Energy view (page margin 4px, gutter 12px, nav at y=688):
 //   et3_flow   (4,4)     1170x158   et3_curve  (4,174)    778x292   et3_bilanz (792,174) 382x252
-//   et3_heiz   (792,438)  382x110   et3_price  (4,478)    778x206   et3_period (792,564) 382x124
+//   et3_heiz   (792,438)  382x110   et3_price  (4,478)    778x206   et3_period (792,564) 382x211
 //
 // Data: javascript.0.power_* (reconciled, solaredge_power.js), tibber_states.*, sam_digital.*,
 // InfluxDB (adapter DB `iobroker` for the self-logged power curve; home_monitoring.autogen.
@@ -82,17 +82,19 @@ var CSS = `
 .et3 .hz .ht .t2{width:58px;text-align:right}
 .et3 .hz .hb{width:44px;height:5px;border-radius:3px;background:var(--inset);overflow:hidden;flex-shrink:0}
 .et3 .hz .hv{width:58px;text-align:right;font-size:15px;font-weight:600;flex-shrink:0}
-/* kosten rows — label | forecast | ▲/▼ change | bisher, over a bar: bisher · Prognose · ▏previous period */
-.et3 .pr{display:flex;flex-direction:column;gap:4px}
-.et3 .pr .top{display:flex;align-items:baseline;gap:8px}
-.et3 .pr .pl{width:44px;font-size:15px;color:var(--muted);flex-shrink:0}
-.et3 .pr .pv{font-size:20px;font-weight:700;white-space:nowrap}
-.et3 .pr .pd{font-size:13px;font-weight:600;white-space:nowrap}
-.et3 .pr .pb{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
-.et3 .pr .trk{position:relative;height:6px;border-radius:3px;background:var(--inset);margin-left:52px}
-.et3 .pr .fc{position:absolute;left:0;top:0;height:6px;border-radius:3px;opacity:.35}
-.et3 .pr .done{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--text);opacity:.55}
-.et3 .pr .mk{position:absolute;top:-3px;width:2px;height:12px;background:var(--text);border-radius:1px}
+/* kosten rows — label · bisher, then forecast + ▲/▼ change, then a full-width bar (same width and
+   height as the Bilanz bars): bisher (solid) inside Prognose (tinted), ▏previous period */
+.et3 .pr{display:flex;flex-direction:column;gap:3px}
+.et3 .pr .top{display:flex;align-items:baseline;justify-content:space-between}
+.et3 .pr .pl{font-size:14px;color:var(--muted)}
+.et3 .pr .pb{font-size:13px;color:var(--muted);white-space:nowrap}
+.et3 .pr .mid{display:flex;align-items:baseline;gap:10px}
+.et3 .pr .pv{font-size:22px;font-weight:700;line-height:1;white-space:nowrap}
+.et3 .pr .pd{font-size:14px;font-weight:600;white-space:nowrap}
+.et3 .pr .trk{position:relative;height:14px;border-radius:7px;background:var(--inset)}
+.et3 .pr .fc{position:absolute;left:0;top:0;height:14px;border-radius:7px;opacity:.35}
+.et3 .pr .done{position:absolute;left:0;top:0;height:14px;border-radius:7px;background:var(--text);opacity:.55}
+.et3 .pr .mk{position:absolute;top:-3px;width:2px;height:20px;background:var(--text);border-radius:1px}
 /* bilanz bottom rows — label | value | note columns, same table grammar as the other right cards */
 .et3 .brow{display:flex;align-items:baseline;gap:8px}
 .et3 .brow .bl{width:104px;font-size:15px;color:var(--muted);flex-shrink:0}
@@ -507,7 +509,7 @@ function buildPrice() {
     return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex">' + svg + '</div></div>');
 }
 
-// ===== KOSTEN · NETZBEZUG (382x124) — forecast + change vs. the previous period first =====
+// ===== KOSTEN · NETZBEZUG (382x211, down to the nav panel's bottom edge) — forecast + change first =====
 // The year forecast is what's spent so far + the rest of this month + LAST year's remaining months.
 // A linear extrapolation underestimates the autumn: Nov/Dec are the dearest months (little sun, more
 // grid) — in Oct 2026 linear said 305 €, with last year's Nov+Dec it is ~447 €.
@@ -553,13 +555,13 @@ function costRow(label, cur, prog, prev, vsLabel) {
     var delta = '';
     if (prog != null && hasPrev) {
         var pct = Math.round((prog / prev - 1) * 100);
-        delta = '<span class="pd" style="color:' + col + '">' + (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(pct) + ' % vs. ' + vsLabel + '</span>';
+        delta = '<span class="pd" style="color:' + col + '">' + (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(pct) + ' % vs. ' + vsLabel + ' · ' + eur0(prev) + '</span>';
     }
     var scale = Math.max(prog || 0, hasPrev ? prev : 0, cur || 0);
     function at(v) { return scale > 0 ? Math.min(100, v / scale * 100).toFixed(1) : '0'; }
     return '<div class="pr"><div class="top"><span class="pl">' + label + '</span>'
-        + '<span class="pv" style="color:' + col + '">' + eur0(prog) + '</span>' + delta
         + '<span class="pb">bisher ' + eur0(cur) + '</span></div>'
+        + '<div class="mid"><span class="pv" style="color:' + col + '">' + eur0(prog) + '</span>' + delta + '</div>'
         + '<div class="trk">'
         + (prog != null ? '<span class="fc" style="width:' + at(prog) + '%;background:' + col + '"></span>' : '')
         + '<span class="done" style="width:' + at(cur || 0) + '%"></span>'
@@ -579,11 +581,15 @@ function buildPeriod() {
     if (progY == null && curY != null && yElapsed > 0.1) progY = curY / yElapsed;
     var short = function (m) { return MONTHS[m].slice(0, 3); };
     var body = '<div class="card">' + cardH('Kosten · Netzbezug', 'Prognose vs. Vorperiode')
-        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">'
+        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px">'
         + costRow(short(b.getMonth()), curM, progM, tibber('cost_last_month'), short((b.getMonth() + 11) % 12))
         + costRow(String(b.getFullYear()), curY, progY, tibber('cost_last_year'), String(b.getFullYear() - 1))
-        + '</div></div>';
-    return fo(382, 124, body);
+        + '</div>'
+        + '<div class="chips"><span class="chip"><i style="background:' + TEXT + ';opacity:.55"></i>bisher</span>'
+        + '<span class="chip"><i style="background:' + TEXT + ';opacity:.35"></i>Prognose</span>'
+        + '<span class="chip"><i style="width:2px;height:12px;border-radius:1px;background:' + TEXT + '"></i>Vorperiode</span></div>'
+        + '</div>';
+    return fo(382, 211, body);
 }
 
 // ===== publish =====

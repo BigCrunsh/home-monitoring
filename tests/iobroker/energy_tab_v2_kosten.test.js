@@ -132,10 +132,27 @@ test('kosten: without a previous period there is no change label and no marker',
     assert.doesNotMatch(h, /class="mk"/);
 });
 
-test('kosten: whole euros, short month names, and the card fills its 124 px widget', () => {
+test('kosten: whole euros, short month names, and the card fills its 211 px widget', () => {
     const ctx = load('2026-10-16T12:00:00', Object.assign({}, COSTS, { cost_this_month: 21.93 }), LY);
     const h = ctx.buildPeriod();
-    assert.match(h, /height="124"/);
+    assert.match(h, /height="211"/);
     assert.doesNotMatch(h, /September|Oktober/);
     assert.doesNotMatch(h, /\d,\d\d €/);
+});
+
+// the widget runs down to the nav panel's bottom edge (y=775) since 2026-10-18; with the room the bars
+// span the full card width like the Bilanz bars above, and a legend says what their parts mean
+test('kosten: a legend names the bar parts, and the previous period shows its amount', () => {
+    const ctx = load('2026-10-16T12:00:00', COSTS, LY);
+    const h = ctx.buildPeriod();
+    assert.match(h, /class="chips"/);
+    assert.match(h, />bisher</);
+    assert.match(h, />Prognose</);
+    assert.match(h, />Vorperiode</);
+    assert.match(rowOf(h, 'Okt'), /vs\. Sep · 30 €/);
+});
+
+test('kosten: the bars are not indented past the row label', () => {
+    const ctx = load('2026-10-16T12:00:00', COSTS, LY);
+    assert.doesNotMatch(ctx.buildPeriod(), /\.trk\{[^}]*margin-left/);
 });
