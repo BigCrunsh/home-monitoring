@@ -312,6 +312,26 @@ function lastHeardMs(dev) {
     });
     return newest ? Date.now() - newest : null;
 }
+// Gardena soil sensors (smartgarden.0): same ids as klima_v2's SOIL list (scripts share no code).
+// They report several times a day all year, so a day of silence means a dead battery or lost link.
+// Battery lives on the sibling COMMON service.
+var GARDEN_LOC = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d7.';
+function soilSensor(name, uuid) {
+    var dev = GARDEN_LOC + 'DEVICE_' + uuid + '.';
+    return { name: 'Bodensensor ' + name, tsId: dev + 'SERVICE_SENSOR_' + uuid + '.soilHumidity_timestamp', batId: dev + 'SERVICE_COMMON_' + uuid + '.batteryLevel_value' };
+}
+var SOIL_SENSORS = [
+    soilSensor('Gemüsebeet', '747c45b4-2Da2d0-2D4eb5-2D84f3-2D38f37e85bdc5'),
+    soilSensor('Hochbeet', 'c080e523-2De083-2D49d5-2D98d8-2D004a9a2ed9b1'),
+    soilSensor('Dachterrasse', 'daa34269-2D042f-2D4657-2D9a59-2D1e9ca9d1e9c2')
+];
+var SOIL_SILENT_MS = 24 * 3600000;
+function soilSilentMs(sensor) {
+    if (!existsState(sensor.tsId)) return null;
+    var s = getState(sensor.tsId);
+    var t = s ? Date.parse(s.val) : NaN;
+    return isNaN(t) ? null : Date.now() - t;
+}
 function agoShort(ms) { return ms >= 172800000 ? Math.round(ms / 86400000) + ' Tg' : Math.round(ms / 3600000) + ' h'; }
 function deviceIssues() {
     var issues = [];
@@ -338,6 +358,13 @@ function deviceIssues() {
         var bat = sNum(r.id + '.battery');
         if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
     });
+    SOIL_SENSORS.forEach(function (z) {
+        var silent = soilSilentMs(z);
+        if (silent == null) return;
+        var bat = existsState(z.batId) ? sNum(z.batId) : null;
+        if (silent > SOIL_SILENT_MS) issues.push({ nm: z.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
+        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: z.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+    });
     issues.sort(function (a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); });
     return issues;
 }
@@ -348,7 +375,8 @@ function buildDevices() {
     enumerateHmDevices();
     enumerateBatteryDevices();
     var issues = deviceIssues();
-    var total = HM_DEVICES.length + NETATMO_MODULES.length + HUE_REMOTES.length;
+    var total = HM_DEVICES.length + NETATMO_MODULES.length + HUE_REMOTES.length
+        + SOIL_SENSORS.filter(function (z) { return existsState(z.tsId); }).length;
     var h = '<div class="card"><div class="card-h">Geräte</div><div class="rows dense">';
     if (!issues.length) {
         h += '<div class="drow">' + dot(GREEN)
