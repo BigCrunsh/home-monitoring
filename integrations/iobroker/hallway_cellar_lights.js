@@ -1,7 +1,7 @@
 // ioBroker JavaScript: hallway + cellar lights straight from the HomeMatic events, in under a second.
 // Mirrors the CCU programs LICHT_Kellervorraum bei Bewegung an/aus, LICHT_Eingang bei Bewegung aus,
 // LICHT_Eingang an/aus and LICHT_Eingang alles an/aus. Those stay active on the CCU as a fallback (both
-// paths set the same target state), but take ~10 s and stop entirely when the CCU's program engine dies
+// paths set the same target state), but are slower and stop entirely when the CCU's program engine dies
 // (2026-10-18 02:48: buttons reached the CCU, no light switched until a reboot).
 //
 //   Keller motion        on → Kellervorraumlicht on      off → Kellervorraumlicht off

@@ -1,5 +1,5 @@
 // Hallway + cellar lights straight from ioBroker (hallway_cellar_lights.js). The CCU programs that did this
-// take ~10 s and stop entirely when the CCU's program engine dies (2026-10-18 02:48 — no light by button
+// are slower and stop entirely when the CCU's program engine dies (2026-10-18 02:48 — no light by button
 // until a reboot). The script mirrors those programs; the CCU ones stay active as a fallback.
 'use strict';
 const test = require('node:test');
