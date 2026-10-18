@@ -95,6 +95,33 @@ test('incident: while blind, an ongoing bungalow outage is neither recovered nor
     assert.ok(b.msgs.every((m) => !/Bungalow wieder online/.test(m)));
     assert.equal(b.state.offline.active, true);
 });
+const outdoorSilent = { ...fresh, bungalowOutdoor: 95 };
+const baseSilent = { bungalowBase: 95, bungalowOutdoor: 95, homeBase: 8 };
+test('incident: while the base is offline, an active outdoor incident is frozen — no false recovery', () => {
+    const ctx = load();
+    const a = run(ctx, ctx.initialState(), outdoorSilent, 3);
+    const b = run(ctx, a.state, baseSilent, 2, T0 + 15 * MIN);
+    assert.ok(b.msgs.every((m) => !/Außenmodul meldet wieder/.test(m)));
+    assert.equal(b.state.outdoor.active, true);
+    assert.equal(b.state.outdoor.since, a.state.outdoor.since);
+});
+test('incident: base recovers while the outdoor module is still silent — no outdoor message, same since', () => {
+    const ctx = load();
+    const a = run(ctx, ctx.initialState(), outdoorSilent, 3);
+    const b = run(ctx, a.state, baseSilent, 3, T0 + 15 * MIN);
+    const c = run(ctx, b.state, outdoorSilent, 2, T0 + 30 * MIN);
+    assert.ok(c.msgs.every((m) => !/Außenmodul/.test(m)));
+    assert.equal(c.state.outdoor.active, true);
+    assert.equal(c.state.outdoor.since, a.state.outdoor.since);
+});
+test('incident: base recovers and the outdoor module reports again — exactly one outdoor recovery', () => {
+    const ctx = load();
+    const a = run(ctx, ctx.initialState(), outdoorSilent, 3);
+    const b = run(ctx, a.state, baseSilent, 3, T0 + 15 * MIN);
+    const c = run(ctx, b.state, fresh, 3, T0 + 30 * MIN);
+    assert.equal(c.msgs.filter((m) => /Außenmodul meldet wieder/.test(m)).length, 1);
+    assert.equal(c.state.outdoor.active, false);
+});
 test('incident: watcher blind alerts once and announces when monitoring works again', () => {
     const ctx = load();
     const a = run(ctx, ctx.initialState(), { bungalowBase: 50, bungalowOutdoor: 50, homeBase: 50 }, 4);

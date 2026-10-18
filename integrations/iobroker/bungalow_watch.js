@@ -83,10 +83,11 @@ var TEXTS = {
 };
 
 // one check: advance all incidents → next state + messages. While blind the bungalow incidents are
-// frozen — the silence says nothing about the bungalow.
+// frozen — the silence says nothing about the bungalow. While the base is offline the outdoor incident
+// is frozen too: a silent base says nothing about whether its module reports.
 function step(state, obs, now) {
     var next = { blind: state.blind, offline: state.offline, outdoor: state.outdoor }, messages = [];
-    var keys = obs.blind ? ['blind'] : ['blind', 'offline', 'outdoor'];
+    var keys = obs.blind ? ['blind'] : obs.offline ? ['blind', 'offline'] : ['blind', 'offline', 'outdoor'];
     keys.forEach(function (k) {
         var r = track(state[k], obs[k], now);
         next[k] = r.inc;
