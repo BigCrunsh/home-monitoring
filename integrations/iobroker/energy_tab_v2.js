@@ -82,12 +82,17 @@ var CSS = `
 .et3 .hz .ht .t2{width:58px;text-align:right}
 .et3 .hz .hb{width:44px;height:5px;border-radius:3px;background:var(--inset);overflow:hidden;flex-shrink:0}
 .et3 .hz .hv{width:58px;text-align:right;font-size:15px;font-weight:600;flex-shrink:0}
-/* kosten rows — fixed right-aligned value columns: label | bisher | → | Prognose | Vorperiode */
-.et3 .kr{display:flex;align-items:baseline;gap:8px}
-.et3 .kr .kl{width:52px;font-size:15px;color:var(--muted);flex-shrink:0}
-.et3 .kr .kv{width:72px;text-align:right;font-size:17px;font-weight:600;white-space:nowrap;flex-shrink:0}
-.et3 .kr .ka{width:16px;text-align:center;font-size:13px;color:var(--muted);flex-shrink:0}
-.et3 .kr .kp{margin-left:auto;font-size:14px;color:var(--muted);white-space:nowrap}
+/* kosten rows — label | forecast | ▲/▼ change | bisher, over a bar: bisher · Prognose · ▏previous period */
+.et3 .pr{display:flex;flex-direction:column;gap:4px}
+.et3 .pr .top{display:flex;align-items:baseline;gap:8px}
+.et3 .pr .pl{width:44px;font-size:15px;color:var(--muted);flex-shrink:0}
+.et3 .pr .pv{font-size:20px;font-weight:700;white-space:nowrap}
+.et3 .pr .pd{font-size:13px;font-weight:600;white-space:nowrap}
+.et3 .pr .pb{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.et3 .pr .trk{position:relative;height:6px;border-radius:3px;background:var(--inset);margin-left:52px}
+.et3 .pr .fc{position:absolute;left:0;top:0;height:6px;border-radius:3px;opacity:.35}
+.et3 .pr .done{position:absolute;left:0;top:0;height:6px;border-radius:3px;background:var(--text);opacity:.55}
+.et3 .pr .mk{position:absolute;top:-3px;width:2px;height:12px;background:var(--text);border-radius:1px}
 /* bilanz bottom rows — label | value | note columns, same table grammar as the other right cards */
 .et3 .brow{display:flex;align-items:baseline;gap:8px}
 .et3 .brow .bl{width:104px;font-size:15px;color:var(--muted);flex-shrink:0}
@@ -502,7 +507,65 @@ function buildPrice() {
     return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex">' + svg + '</div></div>');
 }
 
-// ===== KOSTEN · NETZBEZUG (382x124) — Monat/Jahr, bisher → Prognose · Vorperiode =====
+// ===== KOSTEN · NETZBEZUG (382x124) — forecast + change vs. the previous period first =====
+// The year forecast is what's spent so far + the rest of this month + LAST year's remaining months.
+// A linear extrapolation underestimates the autumn: Nov/Dec are the dearest months (little sun, more
+// grid) — in Oct 2026 linear said 305 €, with last year's Nov+Dec it is ~447 €.
+// LY_MONTHS = last year's totals for this month … December (index 0 = this month, null where unknown),
+// read daily from the last_month value Tibber stores at the start of each following month. The months
+// after this one must all be known; this month's is only needed before it has a forecast of its own.
+var LY_MONTHS = null, LY_KEY = null;
+function monthKey(b) { return b.getFullYear() * 12 + b.getMonth(); }
+function queryYearTail() {
+    var b = berlinNow(), y = b.getFullYear(), m0 = b.getMonth(), key = monthKey(b);
+    var months = [], got = 0, n = 12 - m0;
+    for (var m = m0; m < 12; m++) {
+        (function (i, m) {
+            // month m of last year is stored as last_month at the first day of the month after it
+            var start = (m === 11 ? y : y - 1) + '-' + ('0' + (m === 11 ? 1 : m + 2)).slice(-2) + '-01T00:00:00Z';
+            sendTo('influxdb.0', 'query',
+                "SELECT last(cost) AS cost FROM home_monitoring.autogen.electricity_costs_euro WHERE period = 'last_month'"
+                + " AND time >= '" + start + "' AND time < '" + start + "' + 5d",
+                function (result) {
+                    var row = !result.error && result.result && result.result[0] && result.result[0][0];
+                    months[i] = row && typeof row.cost === 'number' ? row.cost : null;
+                    if (++got < n) return;
+                    LY_MONTHS = months;
+                    LY_KEY = key;
+                    setState(EN + 'et3_period', buildPeriod(), true);
+                });
+        })(m - m0, m);
+    }
+}
+function yearForecast(b, curYear, curMonth, monthProg) {
+    if (!LY_MONTHS || LY_KEY !== monthKey(b) || curYear == null) return null;
+    var later = LY_MONTHS.slice(1);
+    var thisMonth = monthProg != null ? monthProg : LY_MONTHS[0];
+    if (thisMonth == null || later.some(function (v) { return v == null; })) return null;   // never a partial sum
+    return curYear + Math.max(0, thisMonth - (curMonth || 0)) + later.reduce(function (s, v) { return s + v; }, 0);
+}
+function eur0(v) { return v == null ? '–' : Math.round(v) + ' €'; }
+// one period: forecast in its verdict color + ▲/▼ change vs. the previous period, "bisher" right;
+// the bar shares one scale per row: bisher (solid) inside Prognose (tinted), previous period = tick
+function costRow(label, cur, prog, prev, vsLabel) {
+    var hasPrev = prev != null && prev > 0.01;
+    var col = (prog == null || !hasPrev) ? TEXT : (prog < prev ? GREEN : (prog > prev * 1.05 ? AMBER : TEXT));
+    var delta = '';
+    if (prog != null && hasPrev) {
+        var pct = Math.round((prog / prev - 1) * 100);
+        delta = '<span class="pd" style="color:' + col + '">' + (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(pct) + ' % vs. ' + vsLabel + '</span>';
+    }
+    var scale = Math.max(prog || 0, hasPrev ? prev : 0, cur || 0);
+    function at(v) { return scale > 0 ? Math.min(100, v / scale * 100).toFixed(1) : '0'; }
+    return '<div class="pr"><div class="top"><span class="pl">' + label + '</span>'
+        + '<span class="pv" style="color:' + col + '">' + eur0(prog) + '</span>' + delta
+        + '<span class="pb">bisher ' + eur0(cur) + '</span></div>'
+        + '<div class="trk">'
+        + (prog != null ? '<span class="fc" style="width:' + at(prog) + '%;background:' + col + '"></span>' : '')
+        + '<span class="done" style="width:' + at(cur || 0) + '%"></span>'
+        + (hasPrev ? '<span class="mk" style="left:' + at(prev) + '%"></span>' : '')
+        + '</div></div>';
+}
 function buildPeriod() {
     var b = berlinNow();
     var daysInMonth = new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate();
@@ -510,24 +573,17 @@ function buildPeriod() {
     var mElapsed = (b.getDate() - 1 + dayFrac) / daysInMonth;
     var yDays = ((b.getFullYear() % 4 === 0 && b.getFullYear() % 100 !== 0) || b.getFullYear() % 400 === 0) ? 366 : 365;
     var yElapsed = ((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(b.getFullYear(), 0, 1)) / 86400000 + dayFrac) / yDays;
-    function fmtProg(v) { return v == null ? '–' : (v >= 100 ? Math.round(v) + ' €' : eur2(v)); }
-    function krow(label, period, frac, vorLabel) {
-        var cur = tibber('cost_this_' + period), prev = tibber('cost_last_' + period);
-        var prog = (cur != null && frac > 0.1) ? cur / frac : null;   // suppressed early in the period
-        var pCol = (prog == null || prev == null || prev <= 0.01) ? TEXT : (prog < prev ? GREEN : (prog > prev * 1.05 ? AMBER : TEXT));
-        return '<div class="kr"><span class="kl">' + label + '</span>'
-            + '<span class="kv" style="color:' + TEXT + '">' + eur2(cur) + '</span>'
-            + '<span class="ka">→</span>'
-            + '<span class="kv" style="color:' + pCol + '">' + fmtProg(prog) + '</span>'
-            + '<span class="kp">' + vorLabel + ' ' + (prev != null ? (prev >= 100 ? Math.round(prev) + ' €' : eur2(prev)) : '–') + '</span></div>';
-    }
-    var prevMonth = MONTHS[(b.getMonth() + 11) % 12];
-    var body = '<div class="card">' + cardH('Kosten · Netzbezug', 'bisher → Prognose · Vorperiode')
+    var curM = tibber('cost_this_month'), curY = tibber('cost_this_year');
+    var progM = (curM != null && mElapsed > 0.1) ? curM / mElapsed : null;   // suppressed early in the month
+    var progY = yearForecast(b, curY, curM, progM);
+    if (progY == null && curY != null && yElapsed > 0.1) progY = curY / yElapsed;
+    var short = function (m) { return MONTHS[m].slice(0, 3); };
+    var body = '<div class="card">' + cardH('Kosten · Netzbezug', 'Prognose vs. Vorperiode')
         + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">'
-        + krow('Monat', 'month', mElapsed, prevMonth)
-        + krow('Jahr', 'year', yElapsed, (b.getFullYear() - 1) + ':')
+        + costRow(short(b.getMonth()), curM, progM, tibber('cost_last_month'), short((b.getMonth() + 11) % 12))
+        + costRow(String(b.getFullYear()), curY, progY, tibber('cost_last_year'), String(b.getFullYear() - 1))
         + '</div></div>';
-    return fo(382, 112, body);
+    return fo(382, 124, body);
 }
 
 // ===== publish =====
@@ -549,7 +605,7 @@ INTEGRALS.forEach(function (e) {
 });
 createState(EN + 'energy_today_day', '', { type: 'string', role: 'value', desc: 'Berlin-Tag der energy_today_* Integration' }, function () {
     _lastTick = Date.now();
-    setTimeout(function () { integrateTick(); renderFast(); renderSlow(); queryCurve(); queryForecast(); }, 2000);
+    setTimeout(function () { integrateTick(); renderFast(); renderSlow(); queryCurve(); queryForecast(); queryYearTail(); }, 2000);
 });
 
 // ===== subscriptions & schedules =====
@@ -567,5 +623,6 @@ createState(EN + 'energy_today_day', '', { type: 'string', role: 'value', desc: 
 });
 schedule('* * * * *', function () { integrateTick(); renderSlow(); });
 schedule('*/5 * * * *', function () { queryCurve(); queryForecast(); });
+schedule('5 0 * * *', queryYearTail);   // daily, so a new month picks up its own tail
 schedule('*/30 * * * * *', renderFast);
 console.log('[Energie v4] initialized');
