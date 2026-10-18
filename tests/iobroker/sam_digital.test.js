@@ -13,10 +13,10 @@ const BASE = 'javascript.0.sam_digital';
 
 // reply(sql) returns the Influx response for that query
 function load(reply) {
-    const queries = [], written = [];
+    const queries = [], written = [], created = [];
     const ctx = {
         console: { log() {}, error() {} },
-        createState() {},
+        createState: (id) => { created.push(id); },
         schedule() {},
         setState: (id, val) => { written.push([id, val]); },
         sendTo: (adapter, cmd, sql, cb) => { queries.push(sql); cb(reply(sql)); }
@@ -25,6 +25,7 @@ function load(reply) {
     vm.runInContext(fs.readFileSync(path.join(IOB, 'sam_digital.js'), 'utf8'), ctx);
     ctx.queries = queries;
     ctx.written = written;
+    ctx.created = created;
     return ctx;
 }
 
@@ -79,4 +80,23 @@ test('plausible readings are written through', () => {
     assert.equal(valueOf(ctx, 'heating_flow_temperature'), 45);
     assert.equal(valueOf(ctx, 'hotwater_storage_temperature'), 55);
     assert.equal(valueOf(ctx, 'heating_valve_signal'), 30);
+});
+
+test('only the current-value queries run, no 30-day statistics', () => {
+    const ctx = load(normal);
+    assert.equal(ctx.queries.length, 2);
+    ctx.queries.forEach((sql) => assert.doesNotMatch(sql, /PERCENTILE|MIN\(|MAX\(/));
+});
+
+test('only the five states a consumer reads are created', () => {
+    const ctx = load(normal);
+    assert.deepEqual(ctx.created.sort(), [
+        'heating_flow_temperature', 'heating_return_temperature', 'heating_valve_signal',
+        'hotwater_storage_temperature', 'hotwater_valve_signal'
+    ].map((n) => `${BASE}.${n}`));
+});
+
+test('unused outdoor and hotwater-return readings are not written', () => {
+    const ctx = load(() => rows({ ...GOOD_TEMPS, ...GOOD_VALVES, outdoor: 8, hotwater_return: 40 }));
+    assert.equal(ctx.written.filter((w) => /outdoor|hotwater_return|_30d_/.test(w[0])).length, 0);
 });

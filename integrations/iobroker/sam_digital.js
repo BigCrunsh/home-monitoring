@@ -3,15 +3,9 @@ var stateBasePath = 'javascript.0.sam_digital';
 var tempMeasurement = 'home_monitoring.autogen.heat_temperature_celsius';
 var valveMeasurement = 'home_monitoring.autogen.heat_valve_signal_percentage';
 
-var timeWindowDays = 30
-
 // Older rows mean the collector is down. The queries then return nothing and no state is written, so
 // the state timestamps age and diagnose_v2 can flag SAM Heizung as stale.
 var freshnessWindow = '30m';
-
-function numberOrNull(v) {
-    return typeof v === 'number' ? v : null;
-}
 
 // Reject implausible sensor readings (a faulty/disconnected probe reports e.g.
 // -60 °C). Returns null so the dashboard shows no value instead of a fake one.
@@ -19,241 +13,19 @@ function plausibleTemp(v, lo, hi) {
     return (typeof v === 'number' && v >= lo && v <= hi) ? v : null;
 }
 
-// --- States: Außentemperatur AF1 ---
+function numberOrNull(v) {
+    return typeof v === 'number' ? v : null;
+}
 
-createState(`${stateBasePath}.outdoor_temperature`, null, {
-    desc: 'Außentemperatur AF1',
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
+function createNumberState(name, desc, role, unit) {
+    createState(`${stateBasePath}.${name}`, null, { desc: desc, type: 'number', role: role, unit: unit });
+}
 
-createState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_min`, null, {
-    desc: `Minimale Außentemperatur der letzten ${timeWindowDays} Tage`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_max`, null, {
-    desc: `Maximale Außentemperatur der letzten ${timeWindowDays} Tage`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_p20`, null, {
-    desc: `20 Perzentil der Außentemperatur der letzten ${timeWindowDays} Tage`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_p50`, null, {
-    desc: `50 Perzentil der Außentemperatur der letzten ${timeWindowDays} Tage`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_p80`, null, {
-    desc: `80 Perzentil der Außentemperatur der letzten ${timeWindowDays} Tage`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-// --- States: Heizkreislauf – Vorlauftemperatur VF1 (heating_flow) ---
-
-createState(`${stateBasePath}.heating_flow_temperature`, null, {
-    desc: 'Vorlauftemperatur VF1 (Heizkreislauf)',
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_min`, null, {
-    desc: `Minimale Vorlauftemperatur der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_max`, null, {
-    desc: `Maximale Vorlauftemperatur der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_p20`, null, {
-    desc: `20 Perzentil der Vorlauftemperatur der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_p50`, null, {
-    desc: `50 Perzentil der Vorlauftemperatur der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_p80`, null, {
-    desc: `80 Perzentil der Vorlauftemperatur der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-// --- States: Warmwasserkreislauf – Rücklauftemperatur RüF2 (hotwater_return) ---
-
-createState(`${stateBasePath}.hotwater_return_temperature`, null, {
-    desc: 'Rücklauftemperatur RüF2 (Warmwasserkreislauf)',
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_min`, null, {
-    desc: `Minimale Rücklauftemperatur der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_max`, null, {
-    desc: `Maximale Rücklauftemperatur der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_p20`, null, {
-    desc: `20 Perzentil der Rücklauftemperatur der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_p50`, null, {
-    desc: `50 Perzentil der Rücklauftemperatur der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_p80`, null, {
-    desc: `80 Perzentil der Rücklauftemperatur der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-// --- States: Warmwasserkreislauf – Speichertemperatur SF1 (hotwater_storage) ---
-
-createState(`${stateBasePath}.hotwater_storage_temperature`, null, {
-    desc: 'Speichertemperatur SF1 (Warmwasserkreislauf)',
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_min`, null, {
-    desc: `Minimale Speichertemperatur SF1 der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_max`, null, {
-    desc: `Maximale Speichertemperatur SF1 der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_p20`, null, {
-    desc: `20 Perzentil der  Speichertemperatur SF1 der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_p50`, null, {
-    desc: `50 Perzentil der  Speichertemperatur SF1 der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_p80`, null, {
-    desc: `80 Perzentil der  Speichertemperatur SF1 der letzten ${timeWindowDays} Tage (Warmwasserkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-// --- States: Heizkreislauf – Rücklauftemperatur RüF1 (heating_return) ---
-
-createState(`${stateBasePath}.heating_return_temperature`, null, {
-    desc: 'Rücklauftemperatur RüF1 (Heizkreislauf)',
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_min`, null, {
-    desc: `Minimale Rücklauftemperatur RüF1 der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_max`, null, {
-    desc: `Maximale Rücklauftemperatur RüF1 der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_p20`, null, {
-    desc: `20 Perzentil der Rücklauftemperatur RüF1 der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_p50`, null, {
-    desc: `50 Perzentil der Rücklauftemperatur RüF1 der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-createState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_p80`, null, {
-    desc: `80 Perzentil der Rücklauftemperatur RüF1 der letzten ${timeWindowDays} Tage (Heizkreislauf)`,
-    type: 'number',
-    role: 'value.temperature',
-    unit: '°C'
-});
-
-// --- States: Ventilsignale HK1 / HK2 ---
-
-createState(`${stateBasePath}.heating_valve_signal`, null, {
-    desc: 'Stellsignal HK1 (Heizkreislauf)',
-    type: 'number',
-    role: 'value',
-    unit: '%'
-});
-
-createState(`${stateBasePath}.hotwater_valve_signal`, null, {
-    desc: 'Stellsignal HK2 (Warmwasserkreislauf)',
-    type: 'number',
-    role: 'value',
-    unit: '%'
-});
+createNumberState('heating_flow_temperature', 'Vorlauftemperatur VF1 (Heizkreislauf)', 'value.temperature', '°C');
+createNumberState('heating_return_temperature', 'Rücklauftemperatur RüF1 (Heizkreislauf)', 'value.temperature', '°C');
+createNumberState('hotwater_storage_temperature', 'Speichertemperatur SF1 (Warmwasserkreislauf)', 'value.temperature', '°C');
+createNumberState('heating_valve_signal', 'Stellsignal HK1 (Heizkreislauf)', 'value', '%');
+createNumberState('hotwater_valve_signal', 'Stellsignal HK2 (Warmwasserkreislauf)', 'value', '%');
 
 function queryInfluxDB() {
     // Aktuelle Temperaturen
@@ -267,106 +39,9 @@ function queryInfluxDB() {
             } else if (result.result && result.result[0] && result.result[0][0]) {
                 var row = result.result[0][0];
 
-                setState(`${stateBasePath}.outdoor_temperature`, plausibleTemp(row.outdoor, -40, 55), true);
                 setState(`${stateBasePath}.heating_flow_temperature`, plausibleTemp(row.heating_flow, -5, 120), true);
                 setState(`${stateBasePath}.heating_return_temperature`, plausibleTemp(row.heating_return, -5, 120), true);
-                setState(`${stateBasePath}.hotwater_return_temperature`, plausibleTemp(row.hotwater_return, -5, 120), true);
                 setState(`${stateBasePath}.hotwater_storage_temperature`, plausibleTemp(row.hotwater_storage, 0, 110), true);
-            }
-        }
-    );
-
-    // Aussentemperatur Statistik 7d (field: outdoor_temperature)
-    sendTo(
-        'influxdb.0',
-        'query',
-        `SELECT MIN(outdoor) AS min_temp, MAX(outdoor) AS max_temp, PERCENTILE(outdoor, 20) AS p20_temp, PERCENTILE(outdoor, 50) AS p50_temp, PERCENTILE(outdoor, 80) AS p80_temp FROM ${tempMeasurement} WHERE time >= now() - ${timeWindowDays}d`,
-        function (result) {
-            if (result.error) {
-                console.error(result.error);
-            } else if (result.result && result.result[0] && result.result[0][0]) {
-                var stats = result.result[0][0];
-                setState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_min`, stats.min_temp || 0, true);
-                setState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_max`, stats.max_temp || 0, true);
-                setState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_p20`, stats.p20_temp || 0, true);
-                setState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_p50`, stats.p50_temp || 0, true);
-                setState(`${stateBasePath}.outdoor_temperature_${timeWindowDays}d_p80`, stats.p80_temp || 0, true);
-            }
-        }
-    );
-
-    // Vorlauftemperatur VF1 Statistik 7d (field: heating_flow)
-    sendTo(
-        'influxdb.0',
-        'query',
-        `SELECT MIN(heating_flow) AS min_temp, MAX(heating_flow) AS max_temp, PERCENTILE(heating_flow, 20) AS p20_temp, PERCENTILE(heating_flow, 50) AS p50_temp, PERCENTILE(heating_flow, 80) AS p80_temp FROM ${tempMeasurement} WHERE time >= now() - ${timeWindowDays}d`,
-        function (result) {
-            if (result.error) {
-                console.error(result.error);
-            } else if (result.result && result.result[0] && result.result[0][0]) {
-                var stats = result.result[0][0];
-                setState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_min`, stats.min_temp || 0, true);
-                setState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_max`, stats.max_temp || 0, true);
-                setState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_p20`, stats.p20_temp || 0, true);
-                setState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_p50`, stats.p50_temp || 0, true);
-                setState(`${stateBasePath}.heating_flow_temperature_${timeWindowDays}d_p80`, stats.p80_temp || 0, true);
-            }
-        }
-    );
-
-    // Rücklauftemperatur RüF2 Statistik 7d (field: hotwater_return)
-    sendTo(
-        'influxdb.0',
-        'query',
-        `SELECT MIN(hotwater_return) AS min_temp, MAX(hotwater_return) AS max_temp, PERCENTILE(hotwater_return, 20) AS p20_temp, PERCENTILE(hotwater_return, 50) AS p50_temp, PERCENTILE(hotwater_return, 80) AS p80_temp FROM ${tempMeasurement} WHERE time >= now() - ${timeWindowDays}d`,
-        function (result) {
-            if (result.error) {
-                console.error(result.error);
-            } else if (result.result && result.result[0] && result.result[0][0]) {
-                var stats = result.result[0][0];
-                setState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_min`, stats.min_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_max`, stats.max_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_p20`, stats.p20_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_p50`, stats.p50_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_return_temperature_${timeWindowDays}d_p80`, stats.p80_temp || 0, true);
-            }
-        }
-    );
-
-    // Speichertemperatur SF1 Statistik 7d (field: hotwater_storage)
-    sendTo(
-        'influxdb.0',
-        'query',
-        `SELECT MIN(hotwater_storage) AS min_temp, MAX(hotwater_storage) AS max_temp, PERCENTILE(hotwater_storage, 20) AS p20_temp, PERCENTILE(hotwater_storage, 50) AS p50_temp, PERCENTILE(hotwater_storage, 80) AS p80_temp FROM ${tempMeasurement} WHERE time >= now() - ${timeWindowDays}d`,
-        function (result) {
-            if (result.error) {
-                console.error(result.error);
-            } else if (result.result && result.result[0] && result.result[0][0]) {
-                var stats = result.result[0][0];
-                setState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_min`, stats.min_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_max`, stats.max_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_p20`, stats.p20_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_p50`, stats.p50_temp || 0, true);
-                setState(`${stateBasePath}.hotwater_storage_temperature_${timeWindowDays}d_p80`, stats.p80_temp || 0, true);
-            }
-        }
-    );
-
-    // Rücklauftemperatur RüF1 Statistik 7d (field: heating_return)
-    sendTo(
-        'influxdb.0',
-        'query',
-        `SELECT MIN(heating_return) AS min_temp, MAX(heating_return) AS max_temp, PERCENTILE(heating_return, 20) AS p20_temp, PERCENTILE(heating_return, 50) AS p50_temp, PERCENTILE(heating_return, 80) AS p80_temp FROM ${tempMeasurement} WHERE time >= now() - ${timeWindowDays}d`,
-        function (result) {
-            if (result.error) {
-                console.error(result.error);
-            } else if (result.result && result.result[0] && result.result[0][0]) {
-                var stats = result.result[0][0];
-                setState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_min`, stats.min_temp || 0, true);
-                setState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_max`, stats.max_temp || 0, true);
-                setState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_p20`, stats.p20_temp || 0, true);
-                setState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_p50`, stats.p50_temp || 0, true);
-                setState(`${stateBasePath}.heating_return_temperature_${timeWindowDays}d_p80`, stats.p80_temp || 0, true);
             }
         }
     );
