@@ -57,7 +57,7 @@ function loadDiagnose(objects, states) {
 }
 
 test('alerts: a new device issue sends one Telegram message naming the device and the problem', () => {
-    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 1 });
+    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 15 });
     ctx.publish();
     assert.equal(ctx.sent.length, 1);
     assert.equal(ctx.sent[0].inst, 'telegram.0');
@@ -66,7 +66,7 @@ test('alerts: a new device issue sends one Telegram message naming the device an
 });
 
 test('alerts: an issue that persists is not sent again on the next refresh', () => {
-    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 1 });
+    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 15 });
     ctx.publish();
     ctx.publish();
     assert.equal(ctx.sent.length, 1);
@@ -81,17 +81,23 @@ test('alerts: a growing "still seit" age is the same issue, not a new one', () =
 });
 
 test('alerts: an alerted issue that clears sends "wieder ok", and is sent again if it comes back', () => {
-    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 1 });
+    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 15 });
     ctx.publish();
     ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 100;
     ctx.publish();
-    ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 2;
+    ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 12;
     ctx.publish();
     assert.deepEqual(ctx.sent.map((s) => s.msg.text), [
         'Diagnose: Claras Fernbedienung – Batterie schwach',
         'Diagnose: Claras Fernbedienung – wieder ok',
         'Diagnose: Claras Fernbedienung – Batterie schwach'
     ]);
+});
+
+test('alerts: an empty remote battery is sent at once — the 10-minute wait is only for offline flickers', () => {
+    const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 1 });
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), ['Diagnose: Claras Fernbedienung – Batterie leer']);
 });
 
 test('alerts: a device offline for less than 10 minutes is not sent', () => {
@@ -127,7 +133,7 @@ test('alerts: a device back within 10 minutes sends neither the alert nor "wiede
 test('alerts: issues alerted in the old stored format are neither resent nor lost', () => {
     const objects = { 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' };
     const ctx = loadDiagnose(objects, {
-        'hue.0.Claras_Fernbedienung.battery': 1,
+        'hue.0.Claras_Fernbedienung.battery': 15,
         'javascript.0.diag_alerted': JSON.stringify({ 'Claras Fernbedienung|2': true })
     });
     ctx.publish();

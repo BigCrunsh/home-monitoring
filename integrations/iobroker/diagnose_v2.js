@@ -299,6 +299,10 @@ function enumerateHmDevices() {
 // The base stations themselves are watched as Datenquellen; only modules are listed here.
 // Modules report every ~10 min — 2 h of silence means a dead battery or lost radio link.
 var NETATMO_SILENT_MS = 2 * 3600000, LOW_BAT_PCT = 20;
+// A Hue remote only radios when pressed: the bridge never marks it unreachable and keeps the last battery
+// level it heard, so a dead remote just sits at its last value (Claras Fernbedienung: 1 % for 9 days).
+// At this level it is as good as dead and counts as red, like an offline device.
+var HUE_EMPTY_PCT = 5;
 var STATION_LABELS = {};
 STATION_LABELS[NB2] = 'Studio';
 STATION_LABELS[NB3] = 'Lübkowsee';
@@ -390,7 +394,8 @@ function deviceIssues() {
     });
     HUE_REMOTES.forEach(function (r) {
         var bat = sNum(r.id + '.battery');
-        if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+        if (bat != null && bat <= HUE_EMPTY_PCT) issues.push({ nm: r.name, txt: 'Batterie leer', col: RED, rank: 0 });
+        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
     });
     SOIL_SENSORS.forEach(function (z) {
         var silent = soilSilentMs(z);
@@ -431,7 +436,7 @@ function buildDevices() {
 }
 
 // One Telegram message per new device issue, and "wieder ok" when an alerted one clears. Keyed by
-// device + kind (rank), so a growing "still seit 3 Tg" → "4 Tg" stays one issue. "offline" (rank 0)
+// device + kind (rank), so a growing "still seit 3 Tg" → "4 Tg" stays one issue. "offline"
 // waits OFFLINE_GRACE_MS first: a battery device that misses one command acknowledgement is flagged
 // unreachable for a minute or two (the siren, 2026-10-18) — not worth a message.
 // The tracked issues are persisted so a script restart neither resends nor forgets them.
@@ -452,7 +457,7 @@ function alertNewIssues(issues) {
     issues.forEach(function (i) {
         var key = i.nm + '|' + i.rank;
         var t = tracked[key] || { nm: i.nm, since: now, sent: false };
-        if (!t.sent && (i.rank !== 0 || now - t.since >= OFFLINE_GRACE_MS)) {
+        if (!t.sent && (i.txt !== 'offline' || now - t.since >= OFFLINE_GRACE_MS)) {
             sendAlert(i.nm + ' – ' + i.txt);
             t.sent = true;
         }
