@@ -123,6 +123,16 @@ test('system: no outage recorded yet says so', () => {
     assert.match(outageRow(undefined), /keiner erfasst/);
 });
 
+test('system: before power_outage.js has created its state, the card does not read the missing state', () => {
+    // the javascript adapter logs a warning with a stack trace for every getState on a missing id
+    const ctx = loadDiagnose(HEALTHY);
+    const read = [];
+    const getState = ctx.getState;
+    ctx.getState = (id) => { read.push(id); return getState(id); };
+    ctx.buildSystem();
+    assert.ok(!read.includes(OUTAGE), 'read the missing outage state');
+});
+
 test('system: the empty initial value counts as no outage recorded', () => {
     assert.match(outageRow(''), /keiner erfasst/);
 });

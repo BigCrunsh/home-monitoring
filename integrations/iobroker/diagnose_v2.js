@@ -196,7 +196,9 @@ function buildSystem() {
 var LAST_OUTAGE_ID = 'javascript.0.power.last_outage';
 function lastOutageText() {
     var o = null;
-    try { o = JSON.parse(getState(LAST_OUTAGE_ID).val); } catch (e) { /* none recorded yet */ }
+    if (existsState(LAST_OUTAGE_ID)) {
+        try { o = JSON.parse(getState(LAST_OUTAGE_ID).val); } catch (e) { /* none recorded yet */ }
+    }
     if (!o || !o.start || !o.end) return 'keiner erfasst';
     var berlin = { timeZone: 'Europe/Berlin' };
     var day = new Date(o.start).toLocaleDateString('de-DE', Object.assign({ day: '2-digit', month: '2-digit' }, berlin));
