@@ -16,7 +16,7 @@ const HOUR = 3600000;
 
 function netatmoDate(msAgo) { return new Date(Date.now() - msAgo).toString(); }
 
-// objects: {id: name}; states: {id: val}. $ matches the selector's id glob against the state ids.
+// objects: {id: name} or {id: object}; states: {id: val}. $ matches the selector's id glob against the state ids.
 function loadDiagnose(objects, states) {
     const now = Date.now();
     const st = {};
@@ -25,7 +25,10 @@ function loadDiagnose(objects, states) {
         console: { log() {} },
         getState: (id) => st[id] || null,
         existsState: (id) => id in st,
-        getObject: (id) => (id in objects ? { common: { name: objects[id] } } : null),
+        getObject: (id) => {
+            if (!(id in objects)) return null;
+            return typeof objects[id] === 'string' ? { common: { name: objects[id] } } : objects[id];
+        },
         getEnums: () => [],
         $: (sel) => {
             const glob = sel.match(/id=([^\]]+)\]/)[1];
@@ -73,6 +76,39 @@ test('netatmo: a module of the Studio station says which station it belongs to',
 test('netatmo: an unreadable last-update text is not reported as still', () => {
     const ctx = loadDiagnose({ [GARDEN]: 'Gartenhaus' }, { [GARDEN + '.LastUpdate']: 'garbage', [GARDEN + '.BatteryStatus']: 80 });
     assert.doesNotMatch(ctx.buildDevices(), /still/);
+});
+
+// A module never named in the Netatmo app is called by its radio address: the wind gauge reached
+// Telegram as "Diagnose: 06:00:00:02:a2:5c – still seit 2 h" (2026-10-28), unreadable.
+function unnamedModule(address, type) {
+    return { common: { name: address }, native: { type: type, id: address } };
+}
+
+test('netatmo: an unnamed wind gauge is called Windmesser, not by its address', () => {
+    const WIND = HOME + '.06-00-00-02-a2-5c';
+    const ctx = loadDiagnose({ [WIND]: unnamedModule('06:00:00:02:a2:5c', 'NAModule2') }, { [WIND + '.LastUpdate']: netatmoDate(3 * HOUR) });
+    const h = ctx.buildDevices();
+    assert.match(h, /Windmesser<\/span><span class="ag" style="color:#F1BE3D">still seit 3 h/);
+    assert.doesNotMatch(h, /06:00:00/);
+});
+
+test('netatmo: an unnamed module of the Studio station keeps the station prefix', () => {
+    const STUDIO_RAIN = STUDIO + '.05-00-00-0a-0b-0c';
+    const ctx = loadDiagnose({ [STUDIO_RAIN]: unnamedModule('05:00:00:0a:0b:0c', 'NAModule3') }, { [STUDIO_RAIN + '.LastUpdate']: netatmoDate(3 * HOUR) });
+    assert.match(ctx.buildDevices(), /Studio · Regenmesser/);
+});
+
+test('netatmo: a name given in the Netatmo app wins over the type', () => {
+    const ctx = loadDiagnose({ [GARDEN]: { common: { name: 'Gartenhaus' }, native: { type: 'NAModule1' } } }, { [GARDEN + '.LastUpdate']: netatmoDate(3 * HOUR) });
+    const h = ctx.buildDevices();
+    assert.match(h, /Gartenhaus/);
+    assert.doesNotMatch(h, /Außenmodul/);
+});
+
+test('netatmo: an unnamed module of an unknown type keeps its address rather than a blank name', () => {
+    const ODD = HOME + '.09-00-00-01-02-03';
+    const ctx = loadDiagnose({ [ODD]: unnamedModule('09:00:00:01:02:03', 'NAModule9') }, { [ODD + '.LastUpdate']: netatmoDate(3 * HOUR) });
+    assert.match(ctx.buildDevices(), /09:00:00:01:02:03<\/span>/);
 });
 
 // A Hue remote only radios when pressed, so the bridge never marks it unreachable, and it keeps the last

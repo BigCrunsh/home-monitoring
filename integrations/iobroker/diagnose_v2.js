@@ -312,6 +312,13 @@ function nameOf(obj, fallback) {
     if (n && typeof n === 'object') n = n.de || n.en;
     return String(n || fallback);
 }
+// a module never named in the Netatmo app is called by its radio address (06:00:00:02:a2:5c)
+var NETATMO_TYPE_NAMES = { NAModule1: 'Außenmodul', NAModule2: 'Windmesser', NAModule3: 'Regenmesser', NAModule4: 'Innenmodul' };
+function netatmoModuleName(obj, fallback) {
+    var name = nameOf(obj, fallback);
+    var typeName = obj.native && NETATMO_TYPE_NAMES[obj.native.type];
+    return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(name) && typeName ? typeName : name;
+}
 function enumerateBatteryDevices() {
     NETATMO_MODULES = [];
     $('state[id=netatmo.0.*.LastUpdate]').each(function (id) {
@@ -320,7 +327,7 @@ function enumerateBatteryDevices() {
         var mod = parts.slice(0, 5).join('.'), station = parts.slice(0, 4).join('.');
         var obj = getObject(mod);
         if (!obj) return;
-        var name = nameOf(obj, parts[4]);
+        var name = netatmoModuleName(obj, parts[4]);
         NETATMO_MODULES.push({ id: mod, name: STATION_LABELS[station] ? STATION_LABELS[station] + ' · ' + name : name });
     });
     HUE_REMOTES = [];
