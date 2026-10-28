@@ -93,3 +93,40 @@ test('layout: the middle column holds Adapter + Backup, the right one System · 
     assert.doesNotMatch(mid, />System · Pi</);
     assert.doesNotMatch(right, />Adapter</);
 });
+
+// Last power outage (written by power_outage.js as {start, end} in ms): when it began, Berlin time, and how long
+const OUTAGE = 'javascript.0.power.last_outage';
+function outageRow(value) {
+    const states = Object.assign({}, HEALTHY);
+    if (value !== undefined) states[OUTAGE] = value;
+    return row(loadDiagnose(states).buildSystem(), 'Stromausfall');
+}
+const SEP26 = Date.UTC(2026, 8, 25, 22, 36);   // 26.09. 00:36 in Berlin (summer time)
+
+test('system: the last power outage shows its start in Berlin time and its length', () => {
+    const r = outageRow(JSON.stringify({ start: SEP26, end: SEP26 + 6 * 60000 }));
+    assert.match(r, /26\.09\. 00:36 · 6 min/);
+    assert.equal(barWidth(r), null);
+});
+
+test('system: an outage of an hour or more reads in hours and minutes', () => {
+    const r = outageRow(JSON.stringify({ start: SEP26, end: SEP26 + 95 * 60000 }));
+    assert.match(r, /· 1 h 35 min/);
+});
+
+test('system: an outage shorter than a minute does not read as 0 min', () => {
+    const r = outageRow(JSON.stringify({ start: SEP26, end: SEP26 + 40000 }));
+    assert.match(r, /· &lt; 1 min/);
+});
+
+test('system: no outage recorded yet says so', () => {
+    assert.match(outageRow(undefined), /keiner erfasst/);
+});
+
+test('system: the empty initial value counts as no outage recorded', () => {
+    assert.match(outageRow(''), /keiner erfasst/);
+});
+
+test('system: an unreadable outage record counts as none rather than breaking the card', () => {
+    assert.match(outageRow('{not json'), /keiner erfasst/);
+});

@@ -56,6 +56,7 @@ var CSS_BASE = `
 .mv2 .track{height:7px; border-radius:4px; background:var(--inset); overflow:hidden}
 .mv2 .fill{height:7px; border-radius:4px; min-width:3px; display:block}
 .mv2 .srow.plain{display:flex; align-items:baseline; justify-content:space-between}
+.mv2 .srow .v.txt{font-size:var(--t-sub)}
 
 /* mid column stacks two cards (System · Pi fills, Backup keeps its natural height) */
 .mv2 .mcol{height:100%; display:flex; flex-direction:column; gap:8px}
@@ -188,7 +189,25 @@ function buildSystem() {
     h += barRow('RAM frei', freeGB != null ? comma(freeGB, 1) : '–', 'GB', memCol, memFrac);
     h += barRow('Disk frei', diskGB != null ? comma(diskGB, 1) : '–', 'GB', diskCol, diskFrac);
     h += '<div class="srow plain"><span class="l">Uptime</span><span class="v">' + upTxt + '</span></div>';
+    h += '<div class="srow plain"><span class="l">Stromausfall</span><span class="v txt">' + esc(lastOutageText()) + '</span></div>';
     return h + '</div></div>';
+}
+// written by power_outage.js as {start, end} in ms
+var LAST_OUTAGE_ID = 'javascript.0.power.last_outage';
+function lastOutageText() {
+    var o = null;
+    try { o = JSON.parse(getState(LAST_OUTAGE_ID).val); } catch (e) { /* none recorded yet */ }
+    if (!o || !o.start || !o.end) return 'keiner erfasst';
+    var berlin = { timeZone: 'Europe/Berlin' };
+    var day = new Date(o.start).toLocaleDateString('de-DE', Object.assign({ day: '2-digit', month: '2-digit' }, berlin));
+    var time = new Date(o.start).toLocaleTimeString('de-DE', Object.assign({ hour: '2-digit', minute: '2-digit' }, berlin));
+    return day + ' ' + time + ' · ' + outageLength(o.end - o.start);
+}
+function outageLength(ms) {
+    if (ms < 60000) return '< 1 min';
+    var min = Math.round(ms / 60000);
+    if (min < 60) return min + ' min';
+    return Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '');
 }
 function barRow(label, value, unit, col, frac) {
     return '<div class="srow"><div class="top"><span class="l">' + label + '</span><span class="v" style="color:' + col + '">'
