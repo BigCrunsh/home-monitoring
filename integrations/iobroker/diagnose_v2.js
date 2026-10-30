@@ -396,7 +396,7 @@ function deviceIssues() {
     NETATMO_MODULES.forEach(function (m) {
         var silent = netatmoSilentMs(m.id);
         var bat = existsState(m.id + '.BatteryStatus') ? sNum(m.id + '.BatteryStatus') : null;   // wind gauge has none
-        if (silent != null && silent > NETATMO_SILENT_MS) issues.push({ nm: m.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
+        if (silent != null && silent > NETATMO_SILENT_MS) issues.push({ nm: m.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1, netatmoSilent: true });
         else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: m.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
     });
     HUE_REMOTES.forEach(function (r) {
@@ -411,9 +411,9 @@ function deviceIssues() {
         if (silent > SOIL_SILENT_MS) issues.push({ nm: z.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
         else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: z.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
     });
-    issues.sort(function (a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); });
-    return issues;
+    return issues.sort(worstFirst);
 }
+function worstFirst(a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); }
 // the card fills the right column below System · Pi down to the nav panel's bottom edge — room for
 // 8 dense rows: all issues when they fit, otherwise the 7 worst + a "+n weitere" count.
 var DEV_MAX_ROWS = 8;
@@ -459,11 +459,25 @@ function loadTracked() {
     });
     return raw;
 }
+// A stalled Netatmo feed silences every module within the same hours (seven messages overnight on
+// 2026-10-30), so two or more silent modules are one message. The Geräte card still lists each one.
+function groupSilentNetatmo(issues) {
+    var silent = issues.filter(function (i) { return i.netatmoSilent; });
+    if (silent.length < 2) return issues;
+    var names = silent.map(function (i) { return i.nm; }).sort();
+    var grouped = issues.filter(function (i) { return !i.netatmoSilent; });
+    grouped.push({ nm: 'Netatmo', txt: names.length + ' Module still: ' + names.join(', '), rank: 1, members: names });
+    return grouped.sort(worstFirst);
+}
 function alertNewIssues(issues) {
-    var tracked = loadTracked(), now = Date.now(), current = {};
-    issues.forEach(function (i) {
+    var tracked = loadTracked(), now = Date.now(), current = {}, absorbed = {};
+    groupSilentNetatmo(issues).forEach(function (i) {
         var key = i.nm + '|' + i.rank;
-        var t = tracked[key] || { nm: i.nm, since: now, sent: false };
+        var memberKeys = (i.members || []).map(function (nm) { return nm + '|' + i.rank; });
+        memberKeys.forEach(function (k) { absorbed[k] = true; });
+        // modules alerted one by one before they were grouped need no second message
+        var alreadySent = memberKeys.length > 0 && memberKeys.every(function (k) { return tracked[k] && tracked[k].sent; });
+        var t = tracked[key] || { nm: i.nm, since: now, sent: alreadySent };
         if (!t.sent && (i.txt !== 'offline' || now - t.since >= OFFLINE_GRACE_MS)) {
             sendAlert(i.nm + ' – ' + i.txt);
             t.sent = true;
@@ -471,7 +485,7 @@ function alertNewIssues(issues) {
         current[key] = t;
     });
     Object.keys(tracked).forEach(function (key) {
-        if (!current[key] && tracked[key].sent) sendAlert(tracked[key].nm + ' – wieder ok');
+        if (!current[key] && !absorbed[key] && tracked[key].sent) sendAlert(tracked[key].nm + ' – wieder ok');
     });
     setState(ALERTED_ID, JSON.stringify(current), true);
 }

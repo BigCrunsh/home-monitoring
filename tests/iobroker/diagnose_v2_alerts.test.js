@@ -151,3 +151,66 @@ test('alerts: issues already alerted before a script restart are not sent again'
     restarted.publish();
     assert.equal(restarted.sent.length, 0);
 });
+
+// When the Netatmo feed stalls, every module goes silent within the same hours: on 2026-10-30 seven
+// modules each sent their own "still seit" message overnight. Two or more silent modules are one
+// Telegram message; the Geräte card still lists each module.
+const GARDEN = HOME + '.02-00-00-32-ae-a4', CLARA = HOME + '.03-00-00-0f-01-6e';
+const SILENT_TRIO = { [RAIN]: 'Regenmesser', [GARDEN]: 'Gartenhaus', [CLARA]: 'Kinderzimmer Clara' };
+function silentStates(ids, msAgo) {
+    const states = {};
+    ids.forEach((id) => { states[id + '.LastUpdate'] = netatmoDate(msAgo); });
+    return states;
+}
+
+test('alerts: several silent Netatmo modules are one message naming them all', () => {
+    const ctx = loadDiagnose(SILENT_TRIO, silentStates([RAIN, GARDEN, CLARA], 3 * HOUR));
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), [
+        'Diagnose: Netatmo – 3 Module still: Gartenhaus, Kinderzimmer Clara, Regenmesser'
+    ]);
+});
+
+test('alerts: a single silent Netatmo module is still reported by its own name', () => {
+    const ctx = loadDiagnose({ [RAIN]: 'Regenmesser' }, silentStates([RAIN], 3 * HOUR));
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), ['Diagnose: Regenmesser – still seit 3 h']);
+});
+
+test('alerts: a further module going silent does not resend the Netatmo message', () => {
+    const ctx = loadDiagnose(SILENT_TRIO, Object.assign(silentStates([RAIN, GARDEN], 3 * HOUR), silentStates([CLARA], 0.1 * HOUR)));
+    ctx.publish();
+    ctx.st[CLARA + '.LastUpdate'].val = netatmoDate(3 * HOUR);
+    ctx.publish();
+    assert.equal(ctx.sent.length, 1);
+});
+
+test('alerts: when the Netatmo modules report again, one "wieder ok" is sent, not one per module', () => {
+    const ctx = loadDiagnose(SILENT_TRIO, silentStates([RAIN, GARDEN, CLARA], 3 * HOUR));
+    ctx.publish();
+    [RAIN, GARDEN, CLARA].forEach((id) => { ctx.st[id + '.LastUpdate'].val = netatmoDate(0.1 * HOUR); });
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text).slice(1), ['Diagnose: Netatmo – wieder ok']);
+});
+
+// the live state already held each module as alerted when grouping was introduced
+test('alerts: modules already alerted one by one are neither re-sent as a group nor cleared', () => {
+    const alerted = {};
+    ['Regenmesser', 'Gartenhaus', 'Kinderzimmer Clara'].forEach((nm) => { alerted[nm + '|1'] = { nm, since: 0, sent: true }; });
+    const ctx = loadDiagnose(SILENT_TRIO, Object.assign(silentStates([RAIN, GARDEN, CLARA], 3 * HOUR), {
+        'javascript.0.diag_alerted': JSON.stringify(alerted)
+    }));
+    ctx.publish();
+    assert.equal(ctx.sent.length, 0);
+});
+
+test('alerts: a low Netatmo battery is not folded into the silent-modules message', () => {
+    const ctx = loadDiagnose(SILENT_TRIO, Object.assign(silentStates([RAIN, GARDEN], 3 * HOUR), silentStates([CLARA], 0.1 * HOUR), {
+        [CLARA + '.BatteryStatus']: 10
+    }));
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), [
+        'Diagnose: Netatmo – 2 Module still: Gartenhaus, Regenmesser',
+        'Diagnose: Kinderzimmer Clara – Batterie schwach'
+    ]);
+});
