@@ -390,7 +390,9 @@ async def collect_last_month_data(
 
         if monthly_data:
             node = monthly_data[0]
-            cost = node.get("totalCost")
+            # ``cost`` (energy, ex-tax) like this_month and last_year — ``totalCost``
+            # made the previous month ~20 % dearer than the month it is compared with.
+            cost = node.get("cost")
             consumption = node.get("consumption")
 
             if cost is None or consumption is None:

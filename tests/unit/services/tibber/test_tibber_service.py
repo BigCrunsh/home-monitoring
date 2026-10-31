@@ -45,7 +45,8 @@ async def test_collect_and_store_success(
             [],  # This day hourly production (no solar)
             [mock_consumption_node_hourly],  # This hour consumption
             [],  # This hour production (no solar)
-            [mock_consumption_node_daily],  # Last month consumption
+            # Last month: a real MONTHLY node carries ``cost`` next to ``totalCost``
+            [{"cost": 6.40, "totalCost": 7.65, "consumption": 25.5}],
             [],  # Last month production (no solar)
             # Last year: ANNUAL history returns one node per *completed* year.
             # A home with a single completed year gets exactly one node; the
