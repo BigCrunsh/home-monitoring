@@ -268,8 +268,8 @@ function integrateTick() {
 }
 
 // ===== TIER 2 RIGHT: HEUTE · BILANZ (642x188) — segmented balance bars left, autarky + cost right =====
-// One colour per quantity across the tab: green = own solar (shades = where it went; the battery
-// holds stored solar), white = Haus, amber = Netz.
+// One colour per quantity across the tab, the same as the curve: green = own solar, white = Haus,
+// blue = Akku (charged / drawn), amber = Netz.
 function buildBilanz() {
     var prod = sNum(EN + 'energy_today_production') || 0, cons = sNum(EN + 'energy_today_consumption') || 0;
     var pur = sNum(EN + 'energy_today_purchased') || 0, feed = sNum(EN + 'energy_today_feedin') || 0;
@@ -308,11 +308,11 @@ function buildBilanz() {
         + '<div style="flex:1;display:flex;gap:20px;min-height:0">'
         + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-width:0">'
         + barBlock('Erzeugt', prod, GREEN,
-            seg(eDirekt, GREEN, '1') + seg(chg, GREEN, '.55') + seg(feed, GREEN, '.28'),
-            chip(GREEN, '1', 'direkt genutzt ' + kwh1(eDirekt)) + chip(GREEN, '.55', 'geladen ' + kwh1(chg)) + chip(GREEN, '.28', 'eingespeist ' + kwh1(feed)))
+            seg(eDirekt, GREEN, '1') + seg(chg, BLUE, '.8') + seg(feed, GREEN, '.28'),
+            chip(GREEN, '1', 'direkt genutzt ' + kwh1(eDirekt)) + chip(BLUE, '.8', 'geladen ' + kwh1(chg)) + chip(GREEN, '.28', 'eingespeist ' + kwh1(feed)))
         + barBlock('Verbraucht', cons, TEXT,
-            seg(vSolar, GREEN, '1') + seg(dis, GREEN, '.55') + seg(pur, AMBER, '1'),
-            chip(GREEN, '1', 'Solar ' + kwh1(vSolar)) + chip(GREEN, '.55', 'aus Akku ' + kwh1(dis)) + chip(AMBER, '1', 'Netz ' + kwh1(pur)))
+            seg(vSolar, GREEN, '1') + seg(dis, BLUE, '.8') + seg(pur, AMBER, '1'),
+            chip(GREEN, '1', 'Solar ' + kwh1(vSolar)) + chip(BLUE, '.8', 'aus Akku ' + kwh1(dis)) + chip(AMBER, '1', 'Netz ' + kwh1(pur)))
         + '</div>'
         + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>'
         + '<div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-evenly">'

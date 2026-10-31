@@ -96,9 +96,14 @@ test('bilanz: today above the average is green, below it stays neutral — never
     assert.match(autarkRow(below.buildBilanz()), new RegExp('color:' + TEXT + '">0'));
 });
 
-test('bilanz: Verbraucht is Haus-white and the battery share is a solar green, not blue', () => {
-    const ctx = load('2026-10-31T12:00:00', { energy_today_consumption: 4, energy_today_purchased: 2, energy_today_maxxidischarge: 1 });
+// the battery is the blue series in the curve since 2026-10-31, so its shares here are blue too
+test('bilanz: Verbraucht is Haus-white and the battery shares are the curve\'s Akku blue', () => {
+    const ctx = load('2026-10-31T12:00:00', {
+        energy_today_production: 3, energy_today_maxxicharge: 1,
+        energy_today_consumption: 4, energy_today_purchased: 2, energy_today_maxxidischarge: 1
+    });
     const h = ctx.buildBilanz().split('</style>')[1];
     assert.match(h, new RegExp('color:' + TEXT + '">4,0'));
-    assert.doesNotMatch(h, new RegExp(BLUE));
+    assert.match(h, new RegExp('background:' + BLUE + '[^"]*"></i>geladen'));
+    assert.match(h, new RegExp('background:' + BLUE + '[^"]*"></i>aus Akku'));
 });
