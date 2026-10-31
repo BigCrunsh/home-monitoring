@@ -284,10 +284,11 @@ function buildBilanz() {
     var chg = sNum(EN + 'energy_today_maxxicharge') || 0, dis = sNum(EN + 'energy_today_maxxidischarge') || 0;
     var price = tibber('energy_price_euro');
     // reconciled segments (clamped ≥0 so rounding noise can't create negative slivers)
-    // Erzeugt = SolarEdge + Maxxisun output, so its house share is what Verbraucht splits by source:
-    // im Haus (eDirekt) = von SolarEdge (vSolar) + von Maxxisun (dis)
-    var eDirekt = Math.max(0, prod - chg - feed);
-    var vSolar = Math.max(0, cons - pur - dis);              // Verbrauch aus Solar direkt
+    // Erzeugt = SolarEdge + Maxxisun output, so its house share is what Verbraucht splits by source.
+    // The bars are integrated separately (2,04 vs. 1,24 + 0,86) — "im Haus" is the sum of the two
+    // sources as shown, so the figures a reader adds up always agree
+    var vSolar = Math.max(0, cons - pur - dis);              // Verbrauch von SolarEdge
+    var eHaus = Math.round(vSolar * 10) / 10 + Math.round(dis * 10) / 10;
     var KMAX = Math.max(prod, cons, 0.1);
     function seg(kwhL, col, op) {
         var w = clamp01(kwhL / KMAX) * 100;
@@ -318,11 +319,11 @@ function buildBilanz() {
         + '<div style="flex:1;display:flex;gap:20px;min-height:0">'
         + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-width:0">'
         + barBlock('Erzeugt', prod, GREEN,
-            seg(eDirekt, GREEN, '1') + seg(chg, BLUE, '.8') + seg(feed, GREEN, '.28'),
-            chip(GREEN, '1', 'im Haus ' + kwh1(eDirekt)) + chip(BLUE, '.8', 'in Maxxisun geladen ' + kwh1(chg)) + chip(GREEN, '.28', 'ins Netz ' + kwh1(feed)))
+            seg(eHaus, GREEN, '1') + seg(chg, BLUE, '.8') + seg(feed, GREEN, '.28'),
+            chip(GREEN, '1', 'im Haus ' + kwh1(eHaus)) + chip(BLUE, '.8', 'in Maxxisun ' + kwh1(chg)) + chip(GREEN, '.28', 'ins Netz ' + kwh1(feed)))
         + barBlock('Verbraucht', cons, TEXT,
             seg(vSolar, GREEN, '1') + seg(dis, BLUE, '.8') + seg(pur, AMBER, '1'),
-            chip(GREEN, '1', 'von SolarEdge ' + kwh1(vSolar)) + chip(BLUE, '.8', 'von Maxxisun ' + kwh1(dis)) + chip(AMBER, '1', 'aus dem Netz ' + kwh1(pur)))
+            chip(GREEN, '1', 'von SolarEdge ' + kwh1(vSolar)) + chip(BLUE, '.8', 'von Maxxisun ' + kwh1(dis)) + chip(AMBER, '1', 'vom Netz ' + kwh1(pur)))
         + '</div>'
         + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>'
         + '<div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-evenly">'
