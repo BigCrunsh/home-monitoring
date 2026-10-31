@@ -80,7 +80,8 @@ test('verlauf: a charging battery dips below the zero line, a feeding one rises 
 test('verlauf: no text inside the plot — only axis ticks and the legend', () => {
     const ctx = load({ curve: SUNNY });
     ctx.queryCurve();
-    const h = plotOf(ctx.buildCurve());
+    const full = ctx.buildCurve();
+    const h = full.slice(full.indexOf('<svg width'));   // the plot itself; the legend above may name the series
     assert.doesNotMatch(h, />Erzeugung [\d,]+ kW</);
     assert.doesNotMatch(h, />Haus [\d,]+ kW</);
     assert.doesNotMatch(h, /speist|lädt|>Maxxisun</);
@@ -92,7 +93,7 @@ test('verlauf: the legend names the three series and drops "jetzt"', () => {
     const head = ctx.buildCurve().split('class="card-h"')[1].split('</div>')[0];
     assert.match(head, />Erzeugung</);
     assert.match(head, />Haus</);
-    assert.match(head, />Akku</);
+    assert.match(head, />Akku ↑ speist ↓ lädt</);
     assert.doesNotMatch(head, /jetzt/);
 });
 

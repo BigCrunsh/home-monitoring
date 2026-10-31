@@ -110,6 +110,23 @@ test('bilanz: Verbraucht is Haus-white and the battery shares are the curve\'s A
     });
     const h = ctx.buildBilanz().split('</style>')[1];
     assert.match(h, new RegExp('color:' + TEXT + '">4,0'));
-    assert.match(h, new RegExp('background:' + BLUE + '[^"]*"></i>geladen'));
-    assert.match(h, new RegExp('background:' + BLUE + '[^"]*"></i>aus Akku'));
+    assert.match(h, new RegExp('background:' + BLUE + '[^"]*"></i>in Maxxisun geladen'));
+    assert.match(h, new RegExp('background:' + BLUE + '[^"]*"></i>von Maxxisun'));
+});
+
+// owner question 2026-10-31: "direkt genutzt 2,1" vs. "Solar 1,2" read as the same thing with two values.
+// Erzeugt counts SolarEdge + Maxxisun, so its house share is what Verbraucht splits by source — the chips
+// now say so, with the Energiefluss names: im Haus = von SolarEdge + von Maxxisun
+test('bilanz: the house share of Erzeugt equals what Verbraucht takes from SolarEdge and Maxxisun', () => {
+    const ctx = load('2026-10-31T12:00:00', {
+        energy_today_production: 3.2, energy_today_feedin: 1.1, energy_today_maxxicharge: 0,
+        energy_today_consumption: 6.6, energy_today_purchased: 4.5, energy_today_maxxidischarge: 0.9
+    });
+    const h = ctx.buildBilanz().split('</style>')[1];
+    assert.match(h, /im Haus 2,1</);
+    assert.match(h, /von SolarEdge 1,2</);
+    assert.match(h, /von Maxxisun 0,9</);
+    assert.match(h, /ins Netz 1,1</);
+    assert.match(h, /aus dem Netz 4,5</);
+    assert.doesNotMatch(h, /direkt genutzt|>Solar |aus Akku/);
 });

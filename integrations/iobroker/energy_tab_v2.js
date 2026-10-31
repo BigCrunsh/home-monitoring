@@ -284,7 +284,9 @@ function buildBilanz() {
     var chg = sNum(EN + 'energy_today_maxxicharge') || 0, dis = sNum(EN + 'energy_today_maxxidischarge') || 0;
     var price = tibber('energy_price_euro');
     // reconciled segments (clamped ≥0 so rounding noise can't create negative slivers)
-    var eDirekt = Math.max(0, prod - chg - feed);            // Erzeugung direkt genutzt
+    // Erzeugt = SolarEdge + Maxxisun output, so its house share is what Verbraucht splits by source:
+    // im Haus (eDirekt) = von SolarEdge (vSolar) + von Maxxisun (dis)
+    var eDirekt = Math.max(0, prod - chg - feed);
     var vSolar = Math.max(0, cons - pur - dis);              // Verbrauch aus Solar direkt
     var KMAX = Math.max(prod, cons, 0.1);
     function seg(kwhL, col, op) {
@@ -317,10 +319,10 @@ function buildBilanz() {
         + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-width:0">'
         + barBlock('Erzeugt', prod, GREEN,
             seg(eDirekt, GREEN, '1') + seg(chg, BLUE, '.8') + seg(feed, GREEN, '.28'),
-            chip(GREEN, '1', 'direkt genutzt ' + kwh1(eDirekt)) + chip(BLUE, '.8', 'geladen ' + kwh1(chg)) + chip(GREEN, '.28', 'eingespeist ' + kwh1(feed)))
+            chip(GREEN, '1', 'im Haus ' + kwh1(eDirekt)) + chip(BLUE, '.8', 'in Maxxisun geladen ' + kwh1(chg)) + chip(GREEN, '.28', 'ins Netz ' + kwh1(feed)))
         + barBlock('Verbraucht', cons, TEXT,
             seg(vSolar, GREEN, '1') + seg(dis, BLUE, '.8') + seg(pur, AMBER, '1'),
-            chip(GREEN, '1', 'Solar ' + kwh1(vSolar)) + chip(BLUE, '.8', 'aus Akku ' + kwh1(dis)) + chip(AMBER, '1', 'Netz ' + kwh1(pur)))
+            chip(GREEN, '1', 'von SolarEdge ' + kwh1(vSolar)) + chip(BLUE, '.8', 'von Maxxisun ' + kwh1(dis)) + chip(AMBER, '1', 'aus dem Netz ' + kwh1(pur)))
         + '</div>'
         + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>'
         + '<div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-evenly">'
@@ -375,7 +377,7 @@ function buildCurve() {
             + col + ';border-radius:2px;display:inline-block"></span>' + label + '</span>';
     }
     var legend = '<span class="bdg" style="display:inline-flex;gap:14px;align-items:center">'
-        + swatch(GREEN, 'Erzeugung') + swatch(TEXT, 'Haus') + swatch(BLUE, 'Akku') + '</span>';
+        + swatch(GREEN, 'Erzeugung') + swatch(TEXT, 'Haus') + swatch(BLUE, 'Akku ↑ speist ↓ lädt') + '</span>';
     var head = cardH('Verlauf · 24 h').replace('</div>', legend + '</div>');
     if (!CURVE.ready || (prod.length < 2 && cons.length < 2)) {
         return fo(W, H, '<div class="card">' + head
