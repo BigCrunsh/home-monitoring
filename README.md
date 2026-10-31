@@ -25,7 +25,7 @@ Active:
 - [Tibber](https://tibber.com/) - Dynamic electricity tariff: hourly prices, consumption, costs
 - SAM Digital - Heating system gateway (flow/return/storage temperatures, valve signals)
 - Shelly 3EM - Live grid power at the connection point (via MQTT into ioBroker; anchors the real-time energy states)
-- [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart irrigation: 6 watering zones + soil sensors. Runs as a **systemd service** (`home-monitoring-gardena`, a long-running WebSocket daemon — not cron); the redundant ioBroker `smartgarden` adapter is disabled (single path, one client for the rate-limited API). Dashboard: the Bewässerung panel on the Weather view.
+- [Gardena](https://www.gardena.com/de/produkte/smart/) - Smart irrigation: 6 watering zones + soil sensors. Two clients share the rate-limited Gardena API: the **systemd service** `home-monitoring-gardena` (a long-running WebSocket daemon — not cron) writes the `garden_*` history to InfluxDB, and the ioBroker `smartgarden` adapter is what the dashboard uses — Steuerung starts/stops watering through it, Klima and Diagnose read its soil sensors and valve. Neither has shown throttling; the adapter's `monitoringRateLimits` is on (2026-10-31) so it would show in the ioBroker log. Dashboard: the Bewässerung panel on the Weather view.
 
 Currently disabled (cron entries commented out):
 
@@ -338,7 +338,7 @@ High-level categories (live schema, 2026-06):
 - **Heating** (SAM Digital): `heat_temperature_celsius`, `heat_valve_signal_percentage` (`heat_energy_watthours` only when the Techem collector is enabled)
 - **Fuel prices**: `gas_prices_euro`
 - **Weather** (Netatmo): `weather_temperature_celsius`, `weather_humidity_percentage`, `weather_pressure_mbar`, `weather_co2_ppm`, `weather_noise_db`, `weather_rain_mm`, `weather_system_battery_percentage` (wind/gust measurements exist in the schema but have no source module)
-- **Garden & irrigation** (Gardena, currently empty — collector disabled): `garden_temperature_celsius`, `garden_humidity_percentage`, `garden_light_intensity_lux`, `garden_rf_link_level_percentage`, `garden_system_battery_percentage`, `garden_valves_activity`
+- **Garden & irrigation** (Gardena, written every 60 s by the `home-monitoring-gardena` service): `garden_temperature_celsius`, `garden_humidity_percentage`, `garden_light_intensity_lux`, `garden_rf_link_level_percentage`, `garden_system_battery_percentage`, `garden_valves_activity`
 
 For full details (fields, tags, update frequency) see
 `INFLUXDB_MEASUREMENTS_DOCUMENTATION.md`.
