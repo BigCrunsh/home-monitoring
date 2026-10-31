@@ -147,10 +147,19 @@ function cardH(title, badge) {
 }
 
 // ===== TIER 1: ENERGIEFLUSS · JETZT (1170x158) =====
+// the tab's one-line takeaway: where the month is heading, with the Kosten card's verdict
+function takeaway(b) {
+    var m = monthStats(b), month = MONTHS[b.getMonth()];
+    function val(text, col) { return '<span style="color:' + col + ';font-weight:700">' + text + '</span>'; }
+    var line = m.prog == null
+        ? month + ' bisher: ' + val(eur0(m.cur), TEXT)
+        : month + ' auf Kurs: ' + val(eur0(m.prog) + (m.yoy ? ' · ' + change(m.pct) + ' vs. Vorjahr' : ''), m.col);
+    return '<span style="font-size:15px;color:' + TEXT + '">' + line + '</span>';
+}
 function buildFlow() {
     var prod = sNum(EN + 'power_production') || 0, haus = sNum(EN + 'power_consumption') || 0;
     var pur = sNum(EN + 'power_purchased') || 0, feed = sNum(EN + 'power_feedin') || 0;
-    var maxxi = sNum(EN + 'power_maxxisun') || 0, selfc = sNum(EN + 'power_selfconsumption') || 0;
+    var maxxi = sNum(EN + 'power_maxxisun') || 0;
     var staleS = getState(EN + 'power_data_stale'), stale = !!(staleS && staleS.val === true);
     var price = tibber('energy_price_euro'), p20 = tibber('energy_price_euro_p20'), p80 = tibber('energy_price_euro_p80');
     var pMin = tibber('energy_price_euro_min'), pMax = tibber('energy_price_euro_max');
@@ -184,7 +193,6 @@ function buildFlow() {
     if (grid > 50 && !(price != null && price > 0)) fcSem = 'warn';   // importing w/o price ≠ break-even
     var fc = vcSemColor(PAL, fcSem);
     var netCol = netZero ? LBL : fc;
-    var gespart = (selfc / 1000) * (price || 0);
     var pb = priceBand(price, p20, p80);
     var priceBlock = '<div class="stat"><span class="sl">Strompreis</span>'
         + '<span class="sv" style="color:' + pb.col + '">' + comma(price, 2) + '<span class="u"> €/kWh</span></span>'
@@ -199,11 +207,10 @@ function buildFlow() {
     var stats = '<div style="display:flex;align-items:center;gap:26px;padding:0 4px 0 18px;flex-shrink:0">'
         + priceBlock
         + stat('Netto', netSign + comma(Math.abs(net), 2), '€/h', grid >= 0 ? 'Bezug' : 'Einspeisung', netCol)
-        + stat('Eigenverbrauch gespart', comma(gespart, 2), '€/h', 'vs. Netzbezug', gespart > 0.01 ? GREEN : LBL)
         + '</div>';
 
     var body = '<div class="card" style="' + frameStyle(fcSem) + '">'
-        + cardH('Energiefluss · Jetzt', stale ? '≈ Schätzwert (Cloud-Verzögerung)' : '')
+        + cardH('Energiefluss · Jetzt', takeaway(berlinNow()) + (stale ? '&nbsp;&nbsp;·&nbsp;&nbsp;≈ Schätzwert (Cloud-Verzögerung)' : ''))
         + '<div style="flex:1;display:flex;align-items:stretch;gap:14px">' + flows
         + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>' + stats + '</div></div>';
     return fo(1170, 158, body);
@@ -741,7 +748,7 @@ createState(EN + 'energy_today_day', '', { type: 'string', role: 'value', desc: 
 
 // ===== subscriptions & schedules =====
 ['power_production', 'power_consumption', 'power_purchased', 'power_feedin', 'power_maxxisun',
- 'power_selfconsumption', 'power_data_stale', 'tibber_states.energy_price_euro'].forEach(function (s) {
+ 'power_data_stale', 'tibber_states.energy_price_euro'].forEach(function (s) {
     on({ id: EN + s, change: 'ne' }, renderFast);
 });
 ['sam_digital.heating_valve_signal', 'sam_digital.hotwater_valve_signal',
