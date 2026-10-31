@@ -105,6 +105,27 @@ test('flow: a two-digit net rate renders in the same column as a one-digit one',
     assert.match(big, />\+12,60</);
 });
 
+// review finding 2026-10-31: Haus was a red bar here but the white series everywhere else; the bars now
+// carry each quantity's colour from the curve and the Bilanz, the verdict stays on the number
+test('flow: bars carry the series colours, the numbers keep their verdict', () => {
+    const h = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER,
+        { power_purchased: 2500, power_consumption: 2900, power_production: 300, power_maxxisun: -240 }).buildFlow();
+    const row = (label) => h.slice(h.indexOf('>' + label), h.indexOf('</div>', h.indexOf('>' + label)));
+    assert.match(row('Netz'), /class="fill" style="width:\d+%;background:#F1BE3D"/);
+    assert.match(row('Haus'), /class="fill" style="width:\d+%;background:#CCCCCC"/);
+    assert.match(row('SolarEdge'), new RegExp('class="fill" style="width:\\d+%;background:' + GREEN + '"'));
+    assert.match(row('Maxxisun'), /class="fill" style="width:\d+%;background:#5080AC"/);
+    // a high Haus draw is still flagged on the number
+    assert.match(row('Haus'), /class="fv" style="color:#A00629"/);
+});
+
+test('flow: a stale reading greys the Haus number but keeps the bar in its series colour', () => {
+    const h = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER, { power_consumption: 900, power_data_stale: true }).buildFlow();
+    const row = h.slice(h.indexOf('>Haus'), h.indexOf('</div>', h.indexOf('>Haus')));
+    assert.match(row, /class="fill" style="width:\d+%;background:#CCCCCC"/);
+    assert.match(row, /class="fv" style="color:#8A8A8A">≈ /);
+});
+
 test('flow: a stale power reading is still flagged next to the takeaway', () => {
     const h = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER, { power_data_stale: true }).buildFlow();
     assert.match(header(h), /Schätzwert/);

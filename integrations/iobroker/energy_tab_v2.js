@@ -175,19 +175,20 @@ function buildFlow() {
     // battery was charging. The colour argument below is separate and already correct.
     var mxWord = vcMaxxiWord(maxxi);
 
+    // bar + icon in the quantity's series colour (as in the curve and the Bilanz); the number carries the verdict
     var rows = [
-        { ico: 'grid', label: 'Netz' + (Math.abs(grid) >= 75 ? (grid > 0 ? ' · Bezug' : ' · Einspeisung') : ''), val: grid, col: enRoleCol(grid, grid < 0) },
-        { ico: 'house', label: 'Haus', val: haus, col: stale ? LBL : enRoleCol(haus, false), approx: stale },
-        { ico: 'sun', label: 'SolarEdge', val: se, col: enRoleCol(se, true) },
-        { ico: 'battery', label: 'Maxxisun' + (mxWord ? ' · ' + mxWord : ''), val: maxxi, col: enRoleCol(maxxi, maxxi < 0, 500) }
+        { ico: 'grid', label: 'Netz' + (Math.abs(grid) >= 75 ? (grid > 0 ? ' · Bezug' : ' · Einspeisung') : ''), val: grid, series: AMBER, col: enRoleCol(grid, grid < 0) },
+        { ico: 'house', label: 'Haus', val: haus, series: TEXT, col: stale ? LBL : enRoleCol(haus, false), approx: stale },
+        { ico: 'sun', label: 'SolarEdge', val: se, series: GREEN, col: enRoleCol(se, true) },
+        { ico: 'battery', label: 'Maxxisun' + (mxWord ? ' · ' + mxWord : ''), val: maxxi, series: BLUE, col: enRoleCol(maxxi, maxxi < 0, 500) }
     ];
     var maxV = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.val); }).concat([1]));
     var flows = '<div class="flows" style="width:520px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-evenly;padding:0 4px">'
         + rows.map(function (r) {
             var frac = clamp01(Math.abs(r.val) / maxV) * 100;
-            return '<div class="frow"><span class="fi">' + enIco(r.ico, r.col) + '</span>'
+            return '<div class="frow"><span class="fi">' + enIco(r.ico, r.series) + '</span>'
                 + '<span class="fl">' + r.label + '</span>'
-                + '<span class="track"><span class="fill" style="width:' + frac.toFixed(0) + '%;background:' + r.col + '"></span></span>'
+                + '<span class="track"><span class="fill" style="width:' + frac.toFixed(0) + '%;background:' + r.series + '"></span></span>'
                 + '<span class="fv" style="color:' + r.col + '">' + (r.approx ? '≈ ' : '') + watts(r.val) + '</span></div>';
         }).join('') + '</div>';
 
