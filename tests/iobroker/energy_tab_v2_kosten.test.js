@@ -163,6 +163,21 @@ test('kosten: every month bar carries its amount, so the chart reads without an 
     assert.match(h, /class="mb past"[^>]*><span class="mv">100 €</);
 });
 
+// owner idea 2026-10-31: a dashed line at last year's month runs across the chart, so this month's bar
+// reads against it at a glance — above the line dearer than a year ago, below it cheaper
+test('kosten: a dashed line at last year\'s month runs across all thirteen bars', () => {
+    const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
+    const lines = h.match(/class="yl" style="bottom:([\d.]+)%"/g) || [];
+    assert.equal(lines.length, 13);
+    const yoyHeight = h.match(/class="mb yoy" style="height:([\d.]+)%"/)[1];
+    lines.forEach((l) => assert.equal(l.match(/bottom:([\d.]+)%/)[1], yoyHeight));
+});
+
+test('kosten: without last year\'s month there is no comparison line', () => {
+    const h = booted('2026-10-16T12:00:00', NOW, Object.assign({}, HISTORY, { '2025-10': undefined })).buildPeriod();
+    assert.doesNotMatch(h, /class="yl"/);
+});
+
 test('kosten: the month and year lines sit above and below the chart', () => {
     const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
     assert.ok(h.indexOf('class="ksum"') < h.indexOf('class="mchart"'));

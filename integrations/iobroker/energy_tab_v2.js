@@ -98,7 +98,9 @@ var CSS = `
 .et3 .mchart{flex:1;display:flex;min-height:0}
 .et3 .mbars{flex:1;display:flex;gap:8px;align-items:stretch}
 .et3 .mcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-.et3 .mslot{flex:1;width:100%;display:flex;align-items:flex-end;padding-top:18px}
+.et3 .mslot{flex:1;width:100%;display:flex;padding-top:18px}
+.et3 .mplot{position:relative;flex:1;display:flex;align-items:flex-end}
+.et3 .yl{position:absolute;left:-4px;right:-4px;height:0;border-top:2px dashed var(--text);opacity:.55}
 .et3 .mb{position:relative;width:100%;border-radius:3px 3px 0 0}
 .et3 .mb.past{background:var(--muted);opacity:.45}
 .et3 .mb.past .mv{color:var(--muted)}
@@ -642,6 +644,8 @@ function monthChart(b, m) {
         if (v != null) maxV = Math.max(maxV, v);
     }
     function h(v) { return maxV > 0 ? Math.max(2, v / maxV * 100).toFixed(1) : '0'; }
+    // last year's month as a dashed line across every bar: above it dearer than a year ago, below it cheaper
+    var lyCost = cols[0].v, yl = lyCost != null ? '<span class="yl" style="bottom:' + h(lyCost) + '%"></span>' : '';
     var bars = cols.map(function (c) {
         var bar;
         if (c.mk === key) {
@@ -656,7 +660,7 @@ function monthChart(b, m) {
         } else {
             bar = '<div class="mb past" style="height:' + h(c.v) + '%"><span class="mv">' + eur0(c.v) + '</span></div>';
         }
-        return '<div class="mcol"><div class="mslot">' + bar + '</div><span class="mm">' + MONTHS[c.mk % 12].charAt(0) + '</span></div>';
+        return '<div class="mcol"><div class="mslot"><div class="mplot">' + bar + yl + '</div></div><span class="mm">' + MONTHS[c.mk % 12].charAt(0) + '</span></div>';
     }).join('');
     return '<div class="mchart"><div class="mbars">' + bars + '</div></div>';
 }
