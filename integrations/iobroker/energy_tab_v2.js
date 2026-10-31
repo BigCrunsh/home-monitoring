@@ -2,13 +2,13 @@
 // The tab is the drill-down of the Overview's Energie card: identical entity names
 // (Netz / Haus / SolarEdge / Maxxisun), watts() formatting, enRoleCol/priceBand/spectrum/
 // energyFrame semantics. v4 fixes (owner review of the deployed v3, 2026-07-07):
-//   Verlauf  — rolling 24h window, two totals only (Erzeugung area + Haus line, 30-min smoothing, FIXED 0-4 kW axis)
-//              + a separate slim Maxxisun ±lane below the plot (speist ↑ / lädt ↓)
+//   Verlauf  — rolling 24h window, 30-min smoothing; Erzeugung (green), Haus (white) and Akku (blue, feeding
+//              in above zero, charging below) on ONE kW axis (0–4 kW unless exceeded), no text in the plot
 //   Bilanz   — segmented balance bars on one shared kWh scale (Erzeugt = direkt+geladen+eingespeist;
 //              Verbraucht = Solar+aus Akku+Netz) so autarky is VISIBLE and the balance closes;
 //              + "Kosten heute · gespart" (the Tag row moved here from the Kosten card)
-//   Heizung  — a ribbon beside the nav (2026-10-31), both circuits on one line
-//   Kosten   — month vs. the same month last year (+ usage/price split), year forecast, 13-month bars
+//   Heizung  — a ribbon beside the nav (2026-10-31), the two circuits stacked
+//   Kosten   — 13-month bars as the main figure; month line (vs. same month last year + usage/price split) above, year line below
 //   Preis    — native 15-min step-LINE, tier-colored via p20/p80 (guide lines); a line is
 //              legitimate on a truncated axis — the v3 bars-from-0,20 baseline error is gone
 // Concept + mockups: claude.ai/code/artifact/3ef9905f (session private-home-monitoring).
