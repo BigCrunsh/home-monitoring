@@ -291,7 +291,7 @@ function buildBilanz() {
     return fo(382, 252, body);
 }
 
-// ===== TIER 2 LEFT: VERLAUF · 24 H (778x292) — totals + Maxxisun lane, rolling window =====
+// ===== TIER 2 LEFT: VERLAUF · 24 H (516x246) — totals + Maxxisun lane, rolling window =====
 var CURVE = { t0: null, prod: [], cons: [], mx: [], ready: false };
 function rollMean(rows, win) {
     return rows.map(function (r, i) {
@@ -322,13 +322,13 @@ function queryCurve() {
     });
 }
 function buildCurve() {
-    var W = 778, H = 292, PW = 700, X0 = 36;
-    var MY = 8, MH = 140;              // main plot
-    var LY = MY + MH + 24, LH = 38;    // Maxxisun lane
+    var W = 516, H = 246, PW = W - 78, X0 = 36;
+    var MY = 8, MH = 102;              // main plot
+    var LY = MY + MH + 24, LH = 30;    // Maxxisun lane
     var prod = CURVE.prod, cons = CURVE.cons, mx = CURVE.mx;
     var legend = '<span class="bdg" style="display:inline-flex;gap:14px;align-items:center">'
         + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + GREEN + ';border-radius:2px;display:inline-block"></span>Erzeugung</span>'
-        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + BLUE + ';border-radius:2px;display:inline-block"></span>Haus</span>'
+        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + TEXT + ';border-radius:2px;display:inline-block"></span>Haus</span>'
         + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:1px;height:10px;background:' + TEXT + ';display:inline-block"></span>jetzt</span></span>';
     var head = cardH('Verlauf · 24 h').replace('</div>', legend + '</div>');
     if (!CURVE.ready || (prod.length < 2 && cons.length < 2)) {
@@ -387,8 +387,8 @@ function buildCurve() {
         + '<circle cx="' + nowX.toFixed(1) + '" cy="' + syM(lastP.v).toFixed(1) + '" r="4" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
         + '<text x="' + tx + '" y="' + yP.toFixed(1) + '" fill="' + GREEN + '" font-size="13" font-weight="600"' + ta + '>Erzeugung ' + comma(lastP.v / 1000, 1) + ' kW</text>';
     if (lastC) {
-        lbl += '<circle cx="' + nowX.toFixed(1) + '" cy="' + syM(lastC.v).toFixed(1) + '" r="4" fill="' + BLUE + '" stroke="' + SURF + '" stroke-width="2"/>'
-            + '<text x="' + tx + '" y="' + yC.toFixed(1) + '" fill="' + BLUE + '" font-size="13" font-weight="600"' + ta + '>Haus ' + comma(lastC.v / 1000, 1) + ' kW</text>';
+        lbl += '<circle cx="' + nowX.toFixed(1) + '" cy="' + syM(lastC.v).toFixed(1) + '" r="4" fill="' + TEXT + '" stroke="' + SURF + '" stroke-width="2"/>'
+            + '<text x="' + tx + '" y="' + yC.toFixed(1) + '" fill="' + TEXT + '" font-size="13" font-weight="600"' + ta + '>Haus ' + comma(lastC.v / 1000, 1) + ' kW</text>';
     }
     // lane chrome + endpoint
     var lane = '<line x1="' + X0 + '" y1="' + syL(0).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + syL(0).toFixed(1) + '" stroke="' + LBL + '" stroke-width="1" opacity="0.5"/>'
@@ -408,7 +408,7 @@ function buildCurve() {
         + grid + ticks
         + '<path d="' + prodA + '" fill="' + GREEN + '" opacity="0.13"/>'
         + '<path d="' + prodP + '" fill="none" stroke="' + GREEN + '" stroke-width="2.5"/>'
-        + (consP ? '<path d="' + consP + '" fill="none" stroke="' + BLUE + '" stroke-width="2.5"/>' : '')
+        + (consP ? '<path d="' + consP + '" fill="none" stroke="' + TEXT + '" stroke-width="2.5"/>' : '')
         + lane + lbl + '</svg>';
     return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex;align-items:stretch">' + svg + '</div></div>');
 }
@@ -433,7 +433,7 @@ function buildHeiz() {
     return fo(382, 110, body);
 }
 
-// ===== STROMPREIS · VORSCHAU (778x206) — native 15-min step-line =====
+// ===== STROMPREIS · VORSCHAU (516x244) — native 15-min step-line =====
 var FORECAST = { rows: [], ready: false };
 function queryForecast() {
     sendTo('influxdb.0', 'query',
@@ -446,10 +446,10 @@ function queryForecast() {
         });
 }
 function buildPrice() {
-    var W = 778, H = 198;
-    var price = tibber('energy_price_euro'), p20 = tibber('energy_price_euro_p20'), p80 = tibber('energy_price_euro_p80');
-    var badge = 'jetzt <span style="color:' + priceBand(price, p20, p80).col + ';font-weight:700">' + comma(price, 2) + ' €/kWh</span>'
-        + '&nbsp;&nbsp;·&nbsp;&nbsp;15-min-Preise&nbsp;&nbsp;·&nbsp;&nbsp;<span style="color:' + GREEN + '">■</span> günstig&nbsp;&nbsp;'
+    var W = 516, H = 244;
+    var p20 = tibber('energy_price_euro_p20'), p80 = tibber('energy_price_euro_p80');
+    // the current price already leads the Energiefluss card — the header keeps only the tier legend
+    var badge = '<span style="color:' + GREEN + '">■</span> günstig&nbsp;&nbsp;'
         + '<span style="color:' + AMBER + '">■</span> mittel&nbsp;&nbsp;<span style="color:' + RED + '">■</span> teuer';
     var head = cardH('Strompreis · Vorschau', badge);
     var rows = FORECAST.rows;
@@ -458,7 +458,7 @@ function buildPrice() {
             + '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:' + LBL + ';font-size:14px">'
             + (FORECAST.ready ? 'Keine Vorschau-Daten' : 'Lade Vorschau…') + '</div></div>');
     }
-    var SW = 700, SH = 96, SX0 = 36, SY0 = 8;
+    var SW = W - 78, SH = 140, SX0 = 36, SY0 = 8;
     var t0 = rows[0].ts, t1 = rows[rows.length - 1].ts + 900e3;
     var vals = rows.map(function (r) { return r.total; });
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
