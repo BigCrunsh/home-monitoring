@@ -74,7 +74,9 @@ var CSS = `
 .et3 .chip{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
 .et3 .chip i{width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0}
 /* heizung one-line rows — temps sit in fixed value|arrow|value columns so both lines align */
-.et3 .hz{display:flex;align-items:center;gap:10px}
+.et3 .rib-h{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.et3 .hzrow{flex:1;display:flex;align-items:center;gap:24px}
+.et3 .hz{flex:1;display:flex;align-items:center;gap:10px}
 .et3 .hz .hn{width:104px;font-size:15px;color:var(--text);font-weight:600;flex-shrink:0}
 .et3 .hz .ht{flex:1;display:flex;align-items:baseline;justify-content:flex-end;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden}
 .et3 .hz .ht .t1{width:58px;text-align:right}
@@ -439,24 +441,26 @@ function buildCurve() {
     return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex;align-items:stretch">' + svg + '</div></div>');
 }
 
-// ===== HEIZUNG (382x110) — one line per circuit =====
+// ===== HEIZUNG (766x87) — a ribbon beside the nav, where the Overview keeps its HAUS ribbon =====
 function buildHeiz() {
     var hkV = sam('heating_valve_signal'), wwV = sam('hotwater_valve_signal');
     var hkF = sam('heating_flow_temperature'), hkR = sam('heating_return_temperature');
     var wwS = sam('hotwater_storage_temperature');
-    function row(name, temps, v) {
+    function circuit(name, temps, v) {
         var on = v != null && v > 5, col = on ? AMBER : LBL, pct = v != null ? Math.round(v) : 0;
         return '<div class="hz"><span class="hn">' + name + '</span>'
             + '<span class="ht">' + temps + '</span>'
             + '<span class="hb"><span style="display:block;height:5px;width:' + pct + '%;background:' + col + '"></span></span>'
             + '<span class="hv" style="color:' + col + '">' + (v != null ? pct : '–') + ' %</span></div>';
     }
-    var body = '<div class="card">' + cardH('Heizung', 'Ventil')
-        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly">'
-        + row('Heizkreis', '<span class="t1">' + comma(hkF, 1) + '°</span><span class="ta">→</span><span class="t2">' + comma(hkR, 1) + '°</span>', hkV)
-        + row('Warmwasser', '<span class="t1">Speicher</span><span class="ta"></span><span class="t2">' + comma(wwS, 1) + '°</span>', wwV)
+    var body = '<div class="card" style="gap:6px;padding:10px 20px">'
+        + '<div class="rib-h">Heizung · Ventil</div>'
+        + '<div class="hzrow">'
+        + circuit('Heizkreis', '<span class="t1">' + comma(hkF, 1) + '°</span><span class="ta">→</span><span class="t2">' + comma(hkR, 1) + '°</span>', hkV)
+        + '<div style="width:1px;align-self:stretch;background:' + BORD + '"></div>'
+        + circuit('Warmwasser', '<span class="t1">Speicher</span><span class="ta"></span><span class="t2">' + comma(wwS, 1) + '°</span>', wwV)
         + '</div></div>';
-    return fo(382, 110, body);
+    return fo(766, 87, body);
 }
 
 // ===== STROMPREIS · VORSCHAU (516x244) — native 15-min step-line =====
