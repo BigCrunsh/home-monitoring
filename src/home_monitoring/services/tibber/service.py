@@ -5,6 +5,7 @@ from typing import TypedDict
 
 from home_monitoring.config import Settings
 from home_monitoring.core.exceptions import APIError
+from home_monitoring.models.base import Measurement
 from home_monitoring.repositories.influxdb import InfluxDBRepository
 from home_monitoring.services.base_service import BaseService
 from home_monitoring.services.tibber import aggregation, collection
@@ -41,6 +42,48 @@ class TibberService(BaseService):
         """
         super().__init__(settings=settings, repository=repository)
         self._user_agent = user_agent
+
+    async def backfill_month_history(
+        self, months: int, dry_run: bool
+    ) -> list[Measurement]:
+        """Write Tibber's completed months as last_month points (one-off backfill).
+
+        Args:
+            months: How many months of history to request
+            dry_run: Return the points without writing them
+
+        Returns:
+            The month points that were (or would be) written
+        """
+        access_token = self._settings.tibber_access_token
+        if not access_token:
+            raise ValueError(
+                "Missing Tibber credentials. Please set TIBBER_ACCESS_TOKEN."
+            )
+        connection = tibber.Tibber(
+            access_token=access_token, user_agent=self._user_agent
+        )
+        try:
+            await connection.update_info()
+            homes = connection.get_homes()
+            if not homes:
+                self._logger.warning("no_homes_found")
+                return []
+            home = homes[0]
+            await home.update_info()
+            measurements = await collection.collect_monthly_history(
+                home, months=months, now=datetime.now(UTC)
+            )
+            if measurements and not dry_run:
+                await self._db.write_measurements(measurements)
+            self._logger.info(
+                "tibber_month_history",
+                point_count=len(measurements),
+                dry_run=dry_run,
+            )
+            return measurements
+        finally:
+            await connection.close_connection()
 
     async def collect_and_store(  # noqa: PLR0915 - refactor tracked for the tibber cleanup
         self,

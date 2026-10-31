@@ -4,7 +4,7 @@ This module contains all simple data collection functions that make
 direct API calls without complex aggregation logic.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -21,6 +21,7 @@ RANK_EXPENSIVE_THRESHOLD = 0.85
 
 
 PRICE_FORECAST_MEASUREMENT = "electricity_price_forecast_euro"
+DECEMBER = 12
 
 
 async def collect_price_forecast_data(home: Any) -> list[Measurement]:
@@ -447,6 +448,68 @@ async def collect_last_month_data(
     except Exception as e:
         logger.warning("failed_to_get_last_month_data", error=str(e))
 
+    return measurements
+
+
+def _following_month_start(node_from: str) -> datetime | None:
+    try:
+        start = datetime.fromisoformat(node_from)
+    except (TypeError, ValueError):
+        return None
+    if start.month == DECEMBER:
+        return datetime(start.year + 1, 1, 1, tzinfo=UTC)
+    return datetime(start.year, start.month + 1, 1, tzinfo=UTC)
+
+
+async def collect_monthly_history(
+    home: Any, months: int, now: datetime
+) -> list[Measurement]:
+    """Collect completed months as last_month points for a one-off backfill.
+
+    Each month is stored at 00:00 UTC on the first day of the following month —
+    the window the Energie tab reads a month's last_month value from — so a month
+    can be compared with the same month a year earlier.
+
+    Args:
+        home: Tibber home object
+        months: How many months of history to request
+        now: Current time; months not yet completed are left out
+
+    Returns:
+        Measurements for every completed month with an ex-tax cost
+    """
+    try:
+        monthly_data = await home.get_historic_data(n_data=months, resolution="MONTHLY")
+        monthly_production = await home.get_historic_data(
+            n_data=months, resolution="MONTHLY", production=True
+        )
+    except Exception as e:
+        logger.warning("failed_to_get_month_history", error=str(e))
+        return []
+
+    production_by_month = {
+        node.get("from"): node.get("production") or 0.0
+        for node in monthly_production or []
+    }
+    measurements: list[Measurement] = []
+    for node in monthly_data or []:
+        stored_at = _following_month_start(node.get("from"))
+        cost, consumption = node.get("cost"), node.get("consumption")
+        if stored_at is None or stored_at > now or cost is None or consumption is None:
+            continue
+        production = production_by_month.get(node.get("from"), 0.0)
+        grid_consumption = max(0.0, consumption - production)
+        rows: list[dict[str, Any]] = [
+            {"cost": cost, "period": "last_month"},
+            {"consumption": consumption, "period": "last_month"},
+            {"consumption": grid_consumption, "period": "last_month", "source": "grid"},
+        ]
+        if production > 0:
+            rows.append(
+                {"consumption": production, "period": "last_month", "source": "solar"}
+            )
+        for row in rows:
+            measurements.extend(TibberMapper.to_measurements(stored_at, row))
     return measurements
 
 
