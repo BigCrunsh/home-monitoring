@@ -36,10 +36,12 @@ function circuit(h, name) {
     return h.slice(i, next > 0 ? next : undefined);
 }
 
-test('heizung: the ribbon is 766 × 87 with both circuits on one line', () => {
+// owner review 2026-10-31: side by side looked sparse — the circuits now stack, one per line
+test('heizung: the ribbon is 766 × 87 with the two circuits stacked', () => {
     const h = load(RUNNING).buildHeiz();
     assert.match(h, /^<svg[^>]*width="766" height="87"/);
-    assert.match(h, /class="hzrow"/);
+    assert.match(h, /class="hzcol"/);
+    assert.doesNotMatch(h, /class="hzrow"/);
     assert.ok(h.indexOf('>Heizkreis<') < h.indexOf('>Warmwasser<'));
 });
 
