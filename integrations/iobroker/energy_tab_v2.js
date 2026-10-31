@@ -7,15 +7,15 @@
 //   Bilanz   — segmented balance bars on one shared kWh scale (Erzeugt = direkt+geladen+eingespeist;
 //              Verbraucht = Solar+aus Akku+Netz) so autarky is VISIBLE and the balance closes;
 //              + "Kosten heute · gespart" (the Tag row moved here from the Kosten card)
-//   Heizung  — one roomy line per circuit
-//   Kosten   — Monat/Jahr only, "bisher → Prognose · Vorperiode" rows
+//   Heizung  — a ribbon beside the nav (2026-10-31), both circuits on one line
+//   Kosten   — month vs. the same month last year (+ usage/price split), year forecast, 13-month bars
 //   Preis    — native 15-min step-LINE, tier-colored via p20/p80 (guide lines); a line is
 //              legitimate on a truncated axis — the v3 bars-from-0,20 baseline error is gone
 // Concept + mockups: claude.ai/code/artifact/3ef9905f (session private-home-monitoring).
 //
 // Widgets on the vis Energy view (page margin 4px, gutter 12px, nav at y=688):
-//   et3_flow   (4,4)     1170x158   et3_curve  (4,174)    778x292   et3_bilanz (792,174) 382x252
-//   et3_heiz   (792,438)  382x110   et3_price  (4,478)    778x206   et3_period (792,564) 382x211
+//   et3_flow   (4,4)     1170x158   et3_curve  (4,174)    516x246   et3_period (532,174) 642x302
+//   et3_price  (4,432)    516x244   et3_bilanz (532,488)  642x188   et3_heiz   (408,688) 766x87 (ribbon beside the nav)
 //
 // Data: javascript.0.power_* (reconciled, solaredge_power.js), tibber_states.*, sam_digital.*,
 // InfluxDB (adapter DB `iobroker` for the self-logged power curve; home_monitoring.autogen.
