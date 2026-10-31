@@ -76,7 +76,7 @@ var CSS = `
 /* heizung one-line rows — temps sit in fixed value|arrow|value columns so both lines align */
 .et3 .rib-h{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;width:150px;flex-shrink:0}
 .et3 .hzcol{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;align-self:stretch}
-.et3 .hzcol .hb{width:220px}
+.et3 .hzcol .hz .hb{width:260px}
 .et3 .hz{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
 .et3 .hz .hn{width:92px;font-size:15px;color:var(--text);font-weight:600;flex-shrink:0}
 .et3 .hz .ht{flex:1;display:flex;align-items:baseline;justify-content:flex-end;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden}
