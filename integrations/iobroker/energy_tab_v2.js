@@ -76,14 +76,14 @@ var CSS = `
 /* heizung one-line rows — temps sit in fixed value|arrow|value columns so both lines align */
 .et3 .rib-h{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
 .et3 .hzrow{flex:1;display:flex;align-items:center;gap:24px}
-.et3 .hz{flex:1;display:flex;align-items:center;gap:10px}
-.et3 .hz .hn{width:104px;font-size:15px;color:var(--text);font-weight:600;flex-shrink:0}
+.et3 .hz{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.et3 .hz .hn{width:92px;font-size:15px;color:var(--text);font-weight:600;flex-shrink:0}
 .et3 .hz .ht{flex:1;display:flex;align-items:baseline;justify-content:flex-end;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden}
-.et3 .hz .ht .t1{width:58px;text-align:right}
+.et3 .hz .ht .t1{width:52px;text-align:right}
 .et3 .hz .ht .ta{width:18px;text-align:center}
-.et3 .hz .ht .t2{width:58px;text-align:right}
-.et3 .hz .hb{width:44px;height:5px;border-radius:3px;background:var(--inset);overflow:hidden;flex-shrink:0}
-.et3 .hz .hv{width:58px;text-align:right;font-size:15px;font-weight:600;flex-shrink:0}
+.et3 .hz .ht .t2{width:52px;text-align:right}
+.et3 .hz .hb{width:40px;height:5px;border-radius:3px;background:var(--inset);overflow:hidden;flex-shrink:0}
+.et3 .hz .hv{width:48px;text-align:right;font-size:15px;font-weight:600;flex-shrink:0}
 /* kosten rows — label · bisher, then forecast + ▲/▼ change, the usage/price split, then a bar:
    bisher solid inside the forecast's tint of the same verdict colour, ▏comparison period */
 .et3 .pr{display:flex;flex-direction:column;gap:4px}
@@ -592,6 +592,7 @@ function queryMonthHistory() {
                     HIST = hist;
                     HIST_KEY = key;
                     setState(EN + 'et3_period', buildPeriod(), true);
+                    setState(EN + 'et3_flow', buildFlow(), true);   // the takeaway needs last year's month
                 });
         })(key - back);
     }

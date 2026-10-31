@@ -66,6 +66,15 @@ test('flow: early in the month the header shows what is spent so far', () => {
     assert.match(h, />2 €</);
 });
 
+// the card renders every 30 s from boot, before the month history has arrived from InfluxDB
+test('flow: the takeaway gains its verdict as soon as the month history arrives', () => {
+    const written = {};
+    const ctx = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER);
+    ctx.setState = (id, v) => { written[id] = v; };
+    ctx.queryMonthHistory();
+    assert.match(header(written['javascript.0.et3_flow']), /vs\. Vorjahr/);
+});
+
 test('flow: the saved-per-hour figure left the card; the net rate stays', () => {
     const h = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER).buildFlow();
     assert.doesNotMatch(h, /Eigenverbrauch gespart/);
