@@ -107,14 +107,14 @@ var CSS = `
 .et3 .mcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
 .et3 .mslot{flex:1;width:100%;display:flex;padding-top:18px}
 .et3 .mplot{position:relative;flex:1;display:flex;align-items:flex-end}
-.et3 .yl{position:absolute;left:-4px;right:-4px;height:0;border-top:2px dashed var(--text);opacity:.55}
+.et3 .yl{position:absolute;left:-4px;right:-4px;height:0;border-top:2px dashed var(--text);opacity:.55;z-index:0}
 .et3 .mb{position:relative;width:100%;border-radius:3px 3px 0 0}
-.et3 .mb.past{background:var(--muted);opacity:.45}
+.et3 .mb.past{background:rgba(138,138,138,.45)}
 .et3 .mb.past .mv{color:var(--muted)}
-.et3 .mb.yoy{background:var(--text);opacity:.85}
+.et3 .mb.yoy{background:rgba(204,204,204,.85)}
 .et3 .mb .mbp{position:absolute;left:0;right:0;top:0;bottom:0;border-radius:3px 3px 0 0;opacity:.35}
 .et3 .mb .mbd{position:absolute;left:0;right:0;bottom:0;border-radius:3px 3px 0 0}
-.et3 .mb .mv{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);padding-bottom:3px;font-size:12px;font-weight:600;white-space:nowrap;color:var(--text)}
+.et3 .mb .mv{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:600;white-space:nowrap;color:var(--text);z-index:1;background:var(--surface);padding:0 3px 2px;border-radius:3px;bottom:calc(100% + 2px)}
 .et3 .mm{font-size:11px;color:var(--muted)}
 /* bilanz bottom rows — label | value | note columns, same table grammar as the other right cards */
 .et3 .brow{display:flex;align-items:baseline;gap:8px}
