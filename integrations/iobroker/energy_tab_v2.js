@@ -179,7 +179,7 @@ function buildFlow() {
         { ico: 'battery', label: 'Maxxisun' + (mxWord ? ' · ' + mxWord : ''), val: maxxi, col: enRoleCol(maxxi, maxxi < 0, 500) }
     ];
     var maxV = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.val); }).concat([1]));
-    var flows = '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:0 4px">'
+    var flows = '<div class="flows" style="width:520px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-evenly;padding:0 4px">'
         + rows.map(function (r) {
             var frac = clamp01(Math.abs(r.val) / maxV) * 100;
             return '<div class="frow"><span class="fi">' + enIco(r.ico, r.col) + '</span>'
@@ -205,7 +205,7 @@ function buildFlow() {
         return '<div class="stat"><span class="sl">' + l + '</span><span class="sv" style="color:' + c + '">' + v
             + '<span class="u"> ' + u + '</span></span><span class="ss">' + s + '</span></div>';
     }
-    var stats = '<div style="display:flex;align-items:center;gap:26px;padding:0 4px 0 18px;flex-shrink:0">'
+    var stats = '<div class="stats" style="flex:1;display:grid;grid-template-columns:repeat(2, 230px);justify-content:space-evenly;align-items:center">'
         + priceBlock
         + stat('Netto', netSign + comma(Math.abs(net), 2), '€/h', grid >= 0 ? 'Bezug' : 'Einspeisung', netCol)
         + '</div>';

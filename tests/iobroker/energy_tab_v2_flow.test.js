@@ -81,6 +81,22 @@ test('flow: the saved-per-hour figure left the card; the net rate stays', () => 
     assert.match(h, />Netto</);
 });
 
+// owner review 2026-10-31: the bars took most of the card, the figures on the right were squeezed
+// and jumped sideways whenever a value grew a digit
+test('flow: the bars get a fixed share and the figures fixed-width columns', () => {
+    const h = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER).buildFlow();
+    assert.match(h, /class="flows" style="width:520px/);
+    assert.match(h, /class="stats" style="[^"]*grid-template-columns:\s*repeat\(2, 230px\)/);
+});
+
+test('flow: a two-digit net rate renders in the same column as a one-digit one', () => {
+    const small = load('2026-10-16T12:00:00', Object.assign({}, MID_OCTOBER), LAST_OCTOBER, { power_purchased: 500 }).buildFlow();
+    const big = load('2026-10-16T12:00:00', Object.assign({}, MID_OCTOBER, { energy_price_euro: 0.6 }), LAST_OCTOBER, { power_purchased: 21000 }).buildFlow();
+    const statsOf = (h) => h.match(/class="stats" style="([^"]*)"/)[1];
+    assert.equal(statsOf(small), statsOf(big));
+    assert.match(big, />\+12,60</);
+});
+
 test('flow: a stale power reading is still flagged next to the takeaway', () => {
     const h = header(load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER, { power_data_stale: true }).buildFlow());
     assert.match(h, /Schätzwert/);
