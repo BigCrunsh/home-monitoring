@@ -96,6 +96,12 @@ test('bilanz: today above the average is green, below it stays neutral — never
     assert.match(autarkRow(below.buildBilanz()), new RegExp('color:' + TEXT + '">0'));
 });
 
+// review finding 2026-10-31: the 12 px chips under the bars were unreadable from across the room
+test('bilanz: the chips under the bars are 14 px', () => {
+    const ctx = load('2026-10-31T12:00:00', { energy_today_consumption: 4, energy_today_purchased: 2 });
+    assert.match(ctx.buildBilanz(), /\.et3 \.chip\{[^}]*font-size:14px/);
+});
+
 // the battery is the blue series in the curve since 2026-10-31, so its shares here are blue too
 test('bilanz: Verbraucht is Haus-white and the battery shares are the curve\'s Akku blue', () => {
     const ctx = load('2026-10-31T12:00:00', {

@@ -78,8 +78,8 @@ var CSS = `
 .et3 .seg{height:14px;border-radius:7px;background:var(--inset);overflow:hidden;display:flex;gap:1px}
 .et3 .seg span{display:block;height:14px}
 .et3 .chips{display:flex;gap:12px;flex-wrap:wrap}
-.et3 .chip{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
-.et3 .chip i{width:9px;height:9px;border-radius:2px;display:inline-block;flex-shrink:0}
+.et3 .chip{display:inline-flex;gap:6px;align-items:center;font-size:14px;color:var(--muted);white-space:nowrap}
+.et3 .chip i{width:11px;height:11px;border-radius:2px;display:inline-block;flex-shrink:0}
 /* heizung one-line rows — temps sit in fixed value|arrow|value columns so both lines align */
 .et3 .rib-h{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;width:150px;flex-shrink:0}
 .et3 .hzcol{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;align-self:stretch}
