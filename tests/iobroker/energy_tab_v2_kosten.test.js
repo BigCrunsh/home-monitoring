@@ -67,12 +67,13 @@ const HISTORY = {
     '2026-04': { cost: 25, kwh: 70 }, '2026-05': { cost: 15, kwh: 45 }, '2026-06': { cost: 7, kwh: 20 },
     '2026-07': { cost: 7, kwh: 20 }, '2026-08': { cost: 4, kwh: 12 }, '2026-09': { cost: 19, kwh: 47 }
 };
+// owner review 2026-10-31: the 13-month chart is the card's main figure; the month sits as one
+// summary line above it (+ the usage/price split), the year as one line below it
+// the month line (with its usage/price split) runs up to the chart; the year line is the last one
 function rowOf(html, label) {
-    const i = html.indexOf('>' + label + '<');
-    assert.ok(i >= 0, 'row not found: ' + label);
-    const start = html.lastIndexOf('<div class="pr"', i);
-    const next = html.indexOf('<div class="pr"', i + 1);
-    return html.slice(start, next > 0 ? next : html.indexOf('<div class="mchart"', i));
+    assert.ok(html.indexOf('>' + label + '<') >= 0, 'row not found: ' + label);
+    if (/^\d{4}$/.test(label)) return html.slice(html.indexOf('<div class="kyear"'));
+    return html.slice(html.indexOf('<div class="ksum"'), html.indexOf('<div class="mchart"'));
 }
 function booted(isoBerlin, states, months) {
     const ctx = load(isoBerlin, states, months);
@@ -83,7 +84,7 @@ function booted(isoBerlin, states, months) {
 test('kosten: the month is judged against the same month last year', () => {
     const r = rowOf(booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod(), 'Okt');
     // 40 € forecast vs. 50 € in Oct 2025
-    assert.match(r, new RegExp('class="pv" style="color:' + GREEN + '">40 €'));
+    assert.match(r, new RegExp('class="kv" style="color:' + GREEN + '">40 €'));
     assert.match(r, /▼ 20 % vs\. Okt 25 · 50 €/);
     assert.match(r, /bisher 20 €/);
 });
@@ -98,14 +99,14 @@ test('kosten: the month line says whether usage or price moved the cost', () => 
 test('kosten: without last year\'s month the previous month is shown grey, without a verdict', () => {
     const history = Object.assign({}, HISTORY, { '2025-10': undefined });
     const r = rowOf(booted('2026-10-16T12:00:00', NOW, history).buildPeriod(), 'Okt');
-    assert.match(r, new RegExp('class="pv" style="color:#CCCCCC">40 €'));
-    assert.match(r, new RegExp('class="pd" style="color:' + MUTED + '">▲ 111 % vs\\. Sep · 19 €'));
+    assert.match(r, new RegExp('class="kv" style="color:#CCCCCC">40 €'));
+    assert.match(r, new RegExp('class="kd" style="color:' + MUTED + '">▲ 111 % vs\\. Sep · 19 €'));
     assert.doesNotMatch(r, /Ø-Preis/);
 });
 
 test('kosten: a dearer month than last year is amber once it is more than 5 % up', () => {
     const r = rowOf(booted('2026-10-16T12:00:00', Object.assign({}, NOW, { cost_this_month: 30 }), HISTORY).buildPeriod(), 'Okt');
-    assert.match(r, new RegExp('class="pv" style="color:' + AMBER + '">60 €'));
+    assert.match(r, new RegExp('class="kv" style="color:' + AMBER + '">60 €'));
     assert.match(r, /▲ 20 % vs\. Okt 25/);
 });
 
@@ -144,16 +145,29 @@ test('kosten: an Influx error falls back to linear, shows no chart bars and does
 
 test('kosten: early in the month there is no month forecast and no verdict', () => {
     const h = booted('2026-10-02T06:00:00', Object.assign({}, NOW, { cost_this_month: 2 }), HISTORY).buildPeriod();
-    assert.match(rowOf(h, 'Okt'), /class="pv"[^>]*>–</);
+    assert.match(rowOf(h, 'Okt'), /class="kv"[^>]*>–</);
     // 240 + (50 - 2) rest of October as last year + 80 + 100
     assert.match(rowOf(h, '2026'), />468 €/);
 });
 
-test('kosten: the bar shows bisher solid and the forecast as a tint of the verdict colour', () => {
-    const r = rowOf(booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod(), 'Okt');
-    assert.match(r, new RegExp('class="done" style="width:[\\d.]+%;background:' + GREEN + '"'));
-    assert.match(r, new RegExp('class="fc" style="width:[\\d.]+%;background:' + GREEN + '"'));
-    assert.match(r, /class="mk"/);
+test('kosten: this month\'s bar shows bisher solid inside the forecast tint of the verdict colour', () => {
+    const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
+    const now = h.slice(h.indexOf('class="mb now"'), h.indexOf('</div>', h.indexOf('class="mb now"')));
+    assert.match(now, new RegExp('class="mbp" style="background:' + GREEN + '"'));
+    assert.match(now, new RegExp('class="mbd" style="height:50.0%;background:' + GREEN + '"'));
+});
+
+test('kosten: every month bar carries its amount, so the chart reads without an axis', () => {
+    const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
+    assert.equal((h.match(/class="mv"/g) || []).length, 13);
+    assert.match(h, /class="mb past"[^>]*><span class="mv">100 €</);
+});
+
+test('kosten: the month and year lines sit above and below the chart', () => {
+    const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
+    assert.ok(h.indexOf('class="ksum"') < h.indexOf('class="mchart"'));
+    assert.ok(h.indexOf('class="mchart"') < h.indexOf('class="kyear"'));
+    assert.doesNotMatch(h, /class="trk"|class="chips"/);
 });
 
 test('kosten: thirteen month bars run from the same month last year to this month', () => {

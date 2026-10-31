@@ -85,28 +85,23 @@ var CSS = `
 .et3 .hz .ht .t2{width:52px;text-align:right}
 .et3 .hz .hb{width:40px;height:5px;border-radius:3px;background:var(--inset);overflow:hidden;flex-shrink:0}
 .et3 .hz .hv{width:48px;text-align:right;font-size:15px;font-weight:600;flex-shrink:0}
-/* kosten rows — label · bisher, then forecast + ▲/▼ change, the usage/price split, then a bar:
-   bisher solid inside the forecast's tint of the same verdict colour, ▏comparison period */
-.et3 .pr{display:flex;flex-direction:column;gap:4px}
-.et3 .pr .top{display:flex;align-items:baseline;justify-content:space-between}
-.et3 .pr .pl{font-size:14px;color:var(--muted)}
-.et3 .pr .pb{font-size:13px;color:var(--muted);white-space:nowrap}
-.et3 .pr .mid{display:flex;align-items:baseline;gap:10px}
-.et3 .pr .pv{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
-.et3 .pr .pd{font-size:14px;font-weight:600;white-space:nowrap}
-.et3 .pr .pk{font-size:12px;color:var(--muted);white-space:nowrap}
-.et3 .pr .trk{position:relative;height:14px;border-radius:7px;background:var(--inset);margin-top:2px}
-.et3 .pr .fc{position:absolute;left:0;top:0;height:14px;border-radius:7px;opacity:.35}
-.et3 .pr .done{position:absolute;left:0;top:0;height:14px;border-radius:7px}
-.et3 .pr .mk{position:absolute;top:-3px;width:2px;height:20px;background:var(--text);border-radius:1px}
-/* 13-month chart: past months muted, last year's month white, this month bisher + forecast tint */
-.et3 .mchart{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
-.et3 .mcap{font-size:12px;color:var(--muted);text-align:right}
-.et3 .mbars{flex:1;display:flex;gap:5px;align-items:stretch}
+/* kosten — one summary line per period (label · forecast · change · bisher) around the main figure */
+.et3 .ksum,.et3 .kyear{display:flex;align-items:baseline;gap:12px;flex-shrink:0}
+.et3 .kl{font-size:14px;color:var(--muted);width:40px;flex-shrink:0}
+.et3 .kv{font-size:26px;font-weight:700;line-height:1;white-space:nowrap}
+.et3 .kyear .kv{font-size:18px}
+.et3 .kd{font-size:14px;font-weight:600;white-space:nowrap}
+.et3 .kb{margin-left:auto;font-size:13px;color:var(--muted);white-space:nowrap}
+.et3 .kk{font-size:12px;color:var(--muted);margin:-4px 0 0 52px;flex-shrink:0}
+/* 13-month chart, the card's main figure: past months muted, last year's month white,
+   this month bisher solid inside its forecast tint; every bar carries its amount */
+.et3 .mchart{flex:1;display:flex;min-height:0}
+.et3 .mbars{flex:1;display:flex;gap:8px;align-items:stretch}
 .et3 .mcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
 .et3 .mslot{flex:1;width:100%;display:flex;align-items:flex-end;padding-top:18px}
 .et3 .mb{position:relative;width:100%;border-radius:3px 3px 0 0}
-.et3 .mb.past{background:var(--muted);opacity:.4}
+.et3 .mb.past{background:var(--muted);opacity:.45}
+.et3 .mb.past .mv{color:var(--muted)}
 .et3 .mb.yoy{background:var(--text);opacity:.85}
 .et3 .mb .mbp{position:absolute;left:0;right:0;top:0;bottom:0;border-radius:3px 3px 0 0;opacity:.35}
 .et3 .mb .mbd{position:absolute;left:0;right:0;bottom:0;border-radius:3px 3px 0 0}
@@ -630,23 +625,15 @@ function yearStats(b, monthProg) {
     }
     return s;
 }
-// one period: forecast in its verdict colour + change, "bisher" right; the bar shares one scale per
-// row: bisher solid inside the forecast's tint of the same colour, the comparison period = tick
-function costRow(label, s) {
-    var scale = Math.max(s.prog || 0, s.prev || 0, s.cur || 0);
-    function at(v) { return scale > 0 ? Math.min(100, v / scale * 100).toFixed(1) : '0'; }
-    return '<div class="pr"><div class="top"><span class="pl">' + label + '</span>'
-        + '<span class="pb">bisher ' + eur0(s.cur) + '</span></div>'
-        + '<div class="mid"><span class="pv" style="color:' + s.col + '">' + eur0(s.prog) + '</span>'
-        + (s.delta ? '<span class="pd" style="color:' + s.deltaCol + '">' + s.delta + '</span>' : '') + '</div>'
-        + (s.usage ? '<div class="pk">' + s.usage + '</div>' : '')
-        + '<div class="trk">'
-        + (s.prog != null ? '<span class="fc" style="width:' + at(s.prog) + '%;background:' + s.col + '"></span>' : '')
-        + '<span class="done" style="width:' + at(s.cur || 0) + '%;background:' + s.col + '"></span>'
-        + (s.prev != null && s.prev > 0.01 ? '<span class="mk" style="left:' + at(s.prev) + '%"></span>' : '')
-        + '</div></div>';
+// one period as one line: label · forecast in its verdict colour · change · "bisher" right
+function costLine(cls, label, s) {
+    return '<div class="' + cls + '"><span class="kl">' + label + '</span>'
+        + '<span class="kv" style="color:' + s.col + '">' + eur0(s.prog) + '</span>'
+        + (s.delta ? '<span class="kd" style="color:' + s.deltaCol + '">' + s.delta + '</span>' : '')
+        + '<span class="kb">bisher ' + eur0(s.cur) + '</span></div>';
 }
-// the 13 months from the same month last year up to this one: the outer pair is the comparison
+// the card's main figure: the 13 months from the same month last year up to this one, every bar with
+// its amount. Past months muted, last year's month white, this month bisher solid in its forecast tint.
 function monthChart(b, m) {
     var key = monthKey(b), cols = [], maxV = 0;
     for (var mk = key - 12; mk <= key; mk++) {
@@ -667,26 +654,19 @@ function monthChart(b, m) {
         } else if (c.mk === key - 12) {
             bar = '<div class="mb yoy" style="height:' + h(c.v) + '%"><span class="mv">' + eur0(c.v) + '</span></div>';
         } else {
-            bar = '<div class="mb past" style="height:' + h(c.v) + '%"></div>';
+            bar = '<div class="mb past" style="height:' + h(c.v) + '%"><span class="mv">' + eur0(c.v) + '</span></div>';
         }
         return '<div class="mcol"><div class="mslot">' + bar + '</div><span class="mm">' + MONTHS[c.mk % 12].charAt(0) + '</span></div>';
     }).join('');
-    return '<div class="mchart"><div class="mcap">' + shortMonth(key) + ' ' + String((Math.floor(key / 12) - 1) % 100)
-        + ' → ' + shortMonth(key) + ' ' + String(Math.floor(key / 12) % 100) + '</div><div class="mbars">' + bars + '</div></div>';
+    return '<div class="mchart"><div class="mbars">' + bars + '</div></div>';
 }
 function buildPeriod() {
     var b = berlinNow(), m = monthStats(b), y = yearStats(b, m.prog);
     var body = '<div class="card">' + cardH('Kosten · Netzbezug', 'Energie ohne Grundgebühr')
-        + '<div style="flex:1;display:flex;gap:20px;min-height:0">'
-        + '<div style="width:300px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-evenly">'
-        + costRow(shortMonth(m.key), m)
-        + costRow(String(b.getFullYear()), y)
-        + '</div>'
+        + costLine('ksum', shortMonth(m.key), m)
+        + (m.usage ? '<div class="kk">' + m.usage + '</div>' : '')
         + monthChart(b, m)
-        + '</div>'
-        + '<div class="chips"><span class="chip"><i style="background:' + TEXT + '"></i>bisher</span>'
-        + '<span class="chip"><i style="background:' + TEXT + ';opacity:.35"></i>Prognose</span>'
-        + '<span class="chip"><i style="width:2px;height:12px;border-radius:1px;background:' + TEXT + '"></i>Vorjahr</span></div>'
+        + costLine('kyear', String(b.getFullYear()), y)
         + '</div>';
     return fo(642, 302, body);
 }
