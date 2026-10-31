@@ -60,6 +60,8 @@ var CSS = `
 .et3 .stat .sl{font-size:13px;color:var(--muted);white-space:nowrap}
 .et3 .stat .sv{font-size:24px;font-weight:700;line-height:1;white-space:nowrap}
 .et3 .stat .ss{font-size:12px;color:var(--muted);white-space:nowrap}
+/* price caption: the cheapest window, under the plot */
+.et3 .pcap{font-size:13px;font-weight:600;flex-shrink:0;margin-top:-4px}
 /* takeaway block (Tier-1 right, first column): where the month is heading */
 .et3 .take{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
 .et3 .take .tl{font-size:13px;color:var(--muted);white-space:nowrap}
@@ -467,7 +469,7 @@ function buildPrice() {
             + '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:' + LBL + ';font-size:14px">'
             + (FORECAST.ready ? 'Keine Vorschau-Daten' : 'Lade Vorschau…') + '</div></div>');
     }
-    var SW = W - 78, SH = 140, SX0 = 36, SY0 = 8;
+    var SW = W - 78, SH = 122, SX0 = 36, SY0 = 8;
     var t0 = rows[0].ts, t1 = rows[rows.length - 1].ts + 900e3;
     var vals = rows.map(function (r) { return r.total; });
     var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
@@ -509,19 +511,18 @@ function buildPrice() {
         var sum = 0; for (var q = s; q < s + WINQ; q++) sum += rows[q].total;
         if (sum / WINQ < bestAvg) { bestAvg = sum / WINQ; bestI = s; }
     }
-    var cheap = '';
+    // the cheapest window is marked on the time axis; its words go into a caption under the plot
+    var cheap = '', caption = '';
     if (bestI >= 0) {
         var cx0 = qx(rows[bestI].ts), cx1 = qx(rows[bestI].ts + WINQ * 900e3);
         var b0 = berlinParts(rows[bestI].ts), b1 = berlinParts(rows[bestI].ts + WINQ * 900e3);
-        var cFlip = cx1 + 165 > SX0 + SW;
-        cheap = '<rect x="' + cx0.toFixed(0) + '" y="' + (SY0 + SH + 21) + '" width="' + (cx1 - cx0).toFixed(0) + '" height="3" rx="1.5" fill="' + GREEN + '"/>'
-            + '<text x="' + (cFlip ? (cx0 - 8).toFixed(0) : (cx1 + 8).toFixed(0)) + '" y="' + (SY0 + SH + 27) + '" fill="' + GREEN + '" font-size="11"' + (cFlip ? ' text-anchor="end"' : '') + '>günstig '
+        cheap = '<rect x="' + cx0.toFixed(0) + '" y="' + (SY0 + SH + 21) + '" width="' + (cx1 - cx0).toFixed(0) + '" height="3" rx="1.5" fill="' + GREEN + '"/>';
+        caption = '<div class="pcap" style="color:' + GREEN + '">günstig '
             + ('0' + b0.h).slice(-2) + (b0.m ? ':' + ('0' + b0.m).slice(-2) : '') + '–'
-            + ('0' + b1.h).slice(-2) + (b1.m ? ':' + ('0' + b1.m).slice(-2) : '') + ' · Ø ' + comma(bestAvg, 2) + ' €</text>';
+            + ('0' + b1.h).slice(-2) + (b1.m ? ':' + ('0' + b1.m).slice(-2) : '') + ' · Ø ' + comma(bestAvg, 2) + ' €</div>';
     }
     var nowX = Math.max(SX0, Math.min(SX0 + SW, qx(nowMs)));
-    var nowM = '<line x1="' + nowX.toFixed(0) + '" y1="' + (SY0 - 2) + '" x2="' + nowX.toFixed(0) + '" y2="' + (SY0 + SH) + '" stroke="' + TEXT + '" stroke-width="1.5"/>'
-        + '<text x="' + (nowX + 5).toFixed(0) + '" y="' + (SY0 + 9) + '" fill="' + TEXT + '" font-size="11" font-weight="600">jetzt</text>';
+    var nowM = '<line x1="' + nowX.toFixed(0) + '" y1="' + (SY0 - 2) + '" x2="' + nowX.toFixed(0) + '" y2="' + (SY0 + SH) + '" stroke="' + TEXT + '" stroke-width="1.5"/>';
     var guides = (p20 != null && p20 >= axLo && p20 <= axHi ? '<line x1="' + SX0 + '" y1="' + qy(p20).toFixed(1) + '" x2="' + (SX0 + SW) + '" y2="' + qy(p20).toFixed(1) + '" stroke="' + GREEN + '" stroke-width="1" opacity="0.25" stroke-dasharray="3 4"/>' : '')
         + (p80 != null && p80 >= axLo && p80 <= axHi ? '<line x1="' + SX0 + '" y1="' + qy(p80).toFixed(1) + '" x2="' + (SX0 + SW) + '" y2="' + qy(p80).toFixed(1) + '" stroke="' + RED + '" stroke-width="1" opacity="0.25" stroke-dasharray="3 4"/>' : '');
     var svg = '<svg width="' + (SW + SX0 + 10) + '" height="' + (SH + SY0 + 34) + '" style="flex:1">'
@@ -529,7 +530,7 @@ function buildPrice() {
         + '<text x="' + (SX0 - 8) + '" y="' + (SY0 + SH) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + comma(axLo, 2) + '</text>'
         + '<path d="' + area + '" fill="' + AMBER + '" opacity="0.06"/>'
         + guides + segs + boundary + ticks + cheap + nowM + '</svg>';
-    return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex">' + svg + '</div></div>');
+    return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex">' + svg + '</div>' + caption + '</div>');
 }
 
 // ===== KOSTEN · NETZBEZUG (642x302) — month vs. the same month last year, year forecast, 13 months =====

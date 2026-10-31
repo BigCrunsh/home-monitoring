@@ -124,6 +124,28 @@ test('preis: without a forecast the placeholder keeps the new size', () => {
     assert.match(h, /Vorschau/);
 });
 
+// review finding 2026-10-31: like the curve, the price plot carries no text but its axes; the cheapest
+// window is still worth acting on, so it moves into a caption under the plot
+test('preis: no "jetzt" and no window text inside the plot, the cheap window as a caption', () => {
+    const ctx = load({ forecast: Array.from({ length: 40 }, (_, i) => 0.4 + (i % 8) * 0.02) });
+    ctx.queryForecast();
+    const h = ctx.buildPrice();
+    assert.match(h, /<svg width/, 'the plot must be drawn, not the placeholder');
+    const svg = h.slice(h.indexOf('<svg width'), h.lastIndexOf('</svg>', h.lastIndexOf('</foreignObject>')));
+    assert.doesNotMatch(svg, />jetzt</);
+    assert.doesNotMatch(svg, /günstig \d/);
+    assert.match(h, /class="pcap"[^>]*>günstig \d{2}(:\d{2})?–\d{2}(:\d{2})? · Ø [\d,]+ €</);
+});
+
+test('preis: without a future window there is no caption', () => {
+    // a short forecast that has already passed: no 4 h window left
+    const ctx = load({ forecast: Array.from({ length: 8 }, () => 0.45) });
+    ctx.queryForecast();
+    const h = ctx.buildPrice();
+    assert.match(h, /<svg width/, 'the plot must be drawn, not the placeholder');
+    assert.doesNotMatch(h, /class="pcap"/);
+});
+
 test('preis: the narrower header keeps the tier legend and drops the repeated current price', () => {
     const ctx = load({ forecast: Array.from({ length: 40 }, () => 0.45) });
     const h = ctx.buildPrice();
