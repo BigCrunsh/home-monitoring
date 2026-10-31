@@ -357,94 +357,61 @@ function queryCurve() {
     });
 }
 function buildCurve() {
-    var W = 516, H = 246, PW = W - 78, X0 = 36;
-    var MY = 8, MH = 102;              // main plot
-    var LY = MY + MH + 24, LH = 30;    // Maxxisun lane
-    var prod = CURVE.prod, cons = CURVE.cons, mx = CURVE.mx;
+    var W = 516, H = 246, PW = W - 78, X0 = 36, MY = 8, MH = 150;
+    var prod = CURVE.prod, cons = CURVE.cons;
+    // power_maxxisun is negative while the battery feeds in — flipped so feeding in rises above zero
+    // like Erzeugung, and charging dips below it, on the same kW scale as the other two series
+    var akku = CURVE.mx.map(function (r) { return { h: r.h, v: -r.v }; });
+    function swatch(col, label) {
+        return '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:'
+            + col + ';border-radius:2px;display:inline-block"></span>' + label + '</span>';
+    }
     var legend = '<span class="bdg" style="display:inline-flex;gap:14px;align-items:center">'
-        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + GREEN + ';border-radius:2px;display:inline-block"></span>Erzeugung</span>'
-        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:10px;height:3px;background:' + TEXT + ';border-radius:2px;display:inline-block"></span>Haus</span>'
-        + '<span style="display:inline-flex;gap:5px;align-items:center"><span style="width:1px;height:10px;background:' + TEXT + ';display:inline-block"></span>jetzt</span></span>';
+        + swatch(GREEN, 'Erzeugung') + swatch(TEXT, 'Haus') + swatch(BLUE, 'Akku') + '</span>';
     var head = cardH('Verlauf · 24 h').replace('</div>', legend + '</div>');
     if (!CURVE.ready || (prod.length < 2 && cons.length < 2)) {
         return fo(W, H, '<div class="card">' + head
             + '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:' + LBL + ';font-size:14px">'
             + (CURVE.ready ? 'Warte auf Verlaufsdaten…' : 'Lade Verlauf…') + '</div></div>');
     }
-    // fixed frame: 4 kW unless the data genuinely exceeds it
-    var dMax = Math.max.apply(null, prod.concat(cons).map(function (r) { return r.v; }).concat([1]));
-    var YMAX = Math.max(4, Math.ceil(dMax / 1000));
-    var lMax = Math.max.apply(null, mx.map(function (r) { return Math.abs(r.v); }).concat([250]));
-    var LMAX = Math.max(0.5, Math.ceil(lMax / 500) * 0.5);   // lane scale in kW, 0.5 steps
+    // one frame for all series: 0–4 kW unless the data exceeds it, extended below zero in 0,5 kW
+    // steps only as far as the battery actually charged
+    var all = prod.concat(cons, akku).map(function (r) { return r.v / 1000; });
+    var YMAX = Math.max(4, Math.ceil(Math.max.apply(null, all.concat([1]))));
+    var YMIN = Math.min(0, Math.floor(Math.min.apply(null, all.concat([0])) * 2) / 2);
     function sx(h) { return X0 + h / 24 * PW; }
-    function syM(w) { return MY + MH - clamp01((w / 1000) / YMAX) * MH; }
-    // Lane sign: power_maxxisun is negative when the battery delivers, so the sign is INVERTED
-    // here (note the leading +, not -) to put delivering ABOVE the zero line. That keeps the
-    // lane's "up = favourable" metaphor identical to the Erzeugung plot above it, and matches
-    // the speist ↑ / lädt ↓ axis chrome below.
-    function syL(w) { return LY + LH / 2 + Math.max(-1, Math.min(1, (w / 1000) / LMAX)) * (LH / 2); }
-    function path(rows, sy) { return 'M' + rows.map(function (r) { return sx(r.h).toFixed(1) + ',' + sy(r.v).toFixed(1); }).join(' L'); }
-    var prodP = path(prod, syM);
-    var prodA = prodP + ' L' + sx(prod[prod.length - 1].h).toFixed(1) + ',' + syM(0).toFixed(1)
-        + ' L' + sx(prod[0].h).toFixed(1) + ',' + syM(0).toFixed(1) + ' Z';
-    var consP = cons.length > 1 ? path(cons, syM) : '';
-    var laneP = mx.length > 1 ? path(mx, syL) : '';
-    var laneA = mx.length > 1 ? laneP + ' L' + sx(mx[mx.length - 1].h).toFixed(1) + ',' + syL(0).toFixed(1)
-        + ' L' + sx(mx[0].h).toFixed(1) + ',' + syL(0).toFixed(1) + ' Z' : '';
+    function sy(w) { return MY + MH - ((w / 1000) - YMIN) / (YMAX - YMIN) * MH; }
+    function path(rows) { return 'M' + rows.map(function (r) { return sx(r.h).toFixed(1) + ',' + sy(r.v).toFixed(1); }).join(' L'); }
 
     var grid = '', k;
-    for (k = 1; k <= YMAX; k++) {
-        grid += '<line x1="' + X0 + '" y1="' + syM(k * 1000).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + syM(k * 1000).toFixed(1) + '" stroke="' + INSET + '" stroke-width="1"/>'
-            + '<text x="' + (X0 - 8) + '" y="' + (syM(k * 1000) + 4).toFixed(1) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + k + (k === YMAX ? ' kW' : '') + '</text>';
+    for (k = Math.ceil(YMIN); k <= YMAX; k++) {
+        if (k === 0) continue;
+        grid += '<line x1="' + X0 + '" y1="' + sy(k * 1000).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + sy(k * 1000).toFixed(1) + '" stroke="' + INSET + '" stroke-width="1"/>'
+            + '<text x="' + (X0 - 8) + '" y="' + (sy(k * 1000) + 4).toFixed(1) + '" fill="' + LBL + '" font-size="11" text-anchor="end">' + k + (k === YMAX ? ' kW' : '') + '</text>';
     }
-    // clock ticks at real Berlin hours divisible by 6; midnight gets the price chart's
-    // dashed day-boundary treatment so both time axes speak the same language.
+    var zero = '<line class="zero" x1="' + X0 + '" y1="' + sy(0).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + sy(0).toFixed(1) + '" stroke="' + LBL + '" stroke-width="1" opacity="0.6"/>'
+        + '<text x="' + (X0 - 8) + '" y="' + (sy(0) + 4).toFixed(1) + '" fill="' + LBL + '" font-size="11" text-anchor="end">0</text>';
+    // clock ticks at real Berlin hours divisible by 6; midnight dashed, like the price chart
     var ticks = '', tw0 = CURVE.t0 || (Date.now() - 24 * 3600e3);
     for (var tm = Math.ceil(tw0 / 3600e3) * 3600e3; tm <= tw0 + 24 * 3600e3; tm += 3600e3) {
         var bp = berlinParts(tm);
         if (bp.h % 6 !== 0) continue;
         var bx = sx((tm - tw0) / 3600e3);
         if (bp.h === 0) {
-            ticks += '<line x1="' + bx.toFixed(0) + '" y1="' + MY + '" x2="' + bx.toFixed(0) + '" y2="' + (LY + LH + 4) + '" stroke="' + LBL + '" stroke-width="1" stroke-dasharray="2 3"/>';
+            ticks += '<line x1="' + bx.toFixed(0) + '" y1="' + MY + '" x2="' + bx.toFixed(0) + '" y2="' + (MY + MH + 4) + '" stroke="' + LBL + '" stroke-width="1" stroke-dasharray="2 3"/>';
         }
-        ticks += '<text x="' + bx.toFixed(0) + '" y="' + (LY + LH + 15) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + bp.h).slice(-2) + '</text>';
+        ticks += '<text x="' + bx.toFixed(0) + '" y="' + (MY + MH + 17) + '" fill="' + LBL + '" font-size="11" text-anchor="middle">' + ('0' + bp.h).slice(-2) + '</text>';
     }
-
-    var lastP = prod[prod.length - 1], lastC = cons.length ? cons[cons.length - 1] : null;
-    var lastM = mx.length ? mx[mx.length - 1] : null;
-    var nowH = Math.max(lastP.h, lastC ? lastC.h : 0), nowX = sx(nowH);
-    var flip = nowX > X0 + PW - 175;
-    var tx = (flip ? nowX - 9 : nowX + 9).toFixed(1), ta = flip ? ' text-anchor="end"' : '';
-    // collision-safe endpoint labels (≥20 px apart)
-    var yP = syM(lastP.v) - 8, yC = lastC ? syM(lastC.v) + 16 : 0;
-    if (lastC && Math.abs(yP - yC) < 20) yC = yP + 20;
-    var lbl = '<line x1="' + nowX.toFixed(1) + '" y1="' + (MY - 2) + '" x2="' + nowX.toFixed(1) + '" y2="' + (LY + LH) + '" stroke="' + TEXT + '" stroke-width="1" opacity="0.5" stroke-dasharray="3 3"/>'
-        + '<circle cx="' + nowX.toFixed(1) + '" cy="' + syM(lastP.v).toFixed(1) + '" r="4" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
-        + '<text x="' + tx + '" y="' + yP.toFixed(1) + '" fill="' + GREEN + '" font-size="13" font-weight="600"' + ta + '>Erzeugung ' + comma(lastP.v / 1000, 1) + ' kW</text>';
-    if (lastC) {
-        lbl += '<circle cx="' + nowX.toFixed(1) + '" cy="' + syM(lastC.v).toFixed(1) + '" r="4" fill="' + TEXT + '" stroke="' + SURF + '" stroke-width="2"/>'
-            + '<text x="' + tx + '" y="' + yC.toFixed(1) + '" fill="' + TEXT + '" font-size="13" font-weight="600"' + ta + '>Haus ' + comma(lastC.v / 1000, 1) + ' kW</text>';
+    function line(rows, col) {
+        if (rows.length < 2) return '';
+        var last = rows[rows.length - 1];
+        return '<path d="' + path(rows) + '" fill="none" stroke="' + col + '" stroke-width="2.5"/>'
+            + '<circle cx="' + sx(last.h).toFixed(1) + '" cy="' + sy(last.v).toFixed(1) + '" r="4" fill="' + col + '" stroke="' + SURF + '" stroke-width="2"/>';
     }
-    // lane chrome + endpoint
-    var lane = '<line x1="' + X0 + '" y1="' + syL(0).toFixed(1) + '" x2="' + (X0 + PW) + '" y2="' + syL(0).toFixed(1) + '" stroke="' + LBL + '" stroke-width="1" opacity="0.5"/>'
-        + '<text x="' + (X0 + 8) + '" y="' + (LY + 12) + '" fill="' + LBL + '" font-size="11" font-weight="600">Maxxisun</text>'
-        + '<text x="' + (X0 + PW - 8) + '" y="' + (LY + 12) + '" fill="' + LBL + '" font-size="10" text-anchor="end">speist ↑</text>'
-        + '<text x="' + (X0 + PW - 8) + '" y="' + (LY + LH - 2) + '" fill="' + LBL + '" font-size="10" text-anchor="end">lädt ↓</text>';
-    if (mx.length > 1) {
-        lane += '<path d="' + laneA + '" fill="' + GREEN + '" opacity="0.25"/>'
-            + '<path d="' + laneP + '" fill="none" stroke="' + GREEN + '" stroke-width="1.5"/>';
-        if (lastM && Math.abs(lastM.v) >= 75) {
-            var word = vcMaxxiWord(lastM.v);   // shared convention; the guard is VC.roleGoodMin
-            lane += '<circle cx="' + sx(lastM.h).toFixed(1) + '" cy="' + syL(lastM.v).toFixed(1) + '" r="3.5" fill="' + GREEN + '" stroke="' + SURF + '" stroke-width="2"/>'
-                + '<text x="' + tx + '" y="' + (syL(lastM.v) + 4).toFixed(1) + '" fill="' + GREEN + '" font-size="12" font-weight="600"' + ta + '>' + word + ' ' + comma(Math.abs(lastM.v) / 1000, 1) + ' kW</text>';
-        }
-    }
-    var svg = '<svg width="' + (PW + X0 + 10) + '" height="' + (LY + LH + 20) + '" style="flex:1">'
-        + grid + ticks
-        + '<path d="' + prodA + '" fill="' + GREEN + '" opacity="0.13"/>'
-        + '<path d="' + prodP + '" fill="none" stroke="' + GREEN + '" stroke-width="2.5"/>'
-        + (consP ? '<path d="' + consP + '" fill="none" stroke="' + TEXT + '" stroke-width="2.5"/>' : '')
-        + lane + lbl + '</svg>';
+    var area = prod.length > 1 ? '<path d="' + path(prod) + ' L' + sx(prod[prod.length - 1].h).toFixed(1) + ',' + sy(0).toFixed(1)
+        + ' L' + sx(prod[0].h).toFixed(1) + ',' + sy(0).toFixed(1) + ' Z" fill="' + GREEN + '" opacity="0.13"/>' : '';
+    var svg = '<svg width="' + (PW + X0 + 10) + '" height="' + (MY + MH + 22) + '" style="flex:1">'
+        + grid + ticks + zero + area + line(prod, GREEN) + line(akku, BLUE) + line(cons, TEXT) + '</svg>';
     return fo(W, H, '<div class="card">' + head + '<div style="flex:1;display:flex;align-items:stretch">' + svg + '</div></div>');
 }
 

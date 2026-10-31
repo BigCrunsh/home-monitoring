@@ -46,13 +46,62 @@ test('verlauf: the curve card is 516 × 246', () => {
     assert.match(ctx.buildCurve(), /^<svg[^>]*width="516" height="246"/);
 });
 
-test('verlauf: Haus is drawn and labelled in neutral white, never in the cold blue', () => {
-    const ctx = load({ curve: SUNNY });
+// Owner review 2026-10-31: the curve was "clunky" — text inside the plot, the battery in its own lane
+// on its own scale. Now every series shares one kW axis and is told apart by colour only:
+// Erzeugung green, Haus white, Akku blue (feeding in above zero, charging below).
+function plotOf(h) { return h.split('</style>')[1]; }
+function pathOf(h, colour) {
+    const m = plotOf(h).match(new RegExp('<path d="([^"]+)" fill="none" stroke="' + colour + '"'));
+    assert.ok(m, 'no line drawn in ' + colour);
+    return m[1].split(/[ML]/).filter(Boolean).map((p) => p.split(',').map(Number));
+}
+
+test('verlauf: Erzeugung green, Haus white and Akku blue are lines on one shared kW scale', () => {
+    // production and battery output both 1,4 kW → the two lines end at the same height
+    const ctx = load({ curve: { power_production: 1400, power_consumption: 450, power_maxxisun: -1400 } });
     ctx.queryCurve();
     const h = ctx.buildCurve();
-    assert.match(h, new RegExp('stroke="' + TEXT + '" stroke-width="2.5"'));
-    assert.match(h, new RegExp('fill="' + TEXT + '"[^>]*>Haus 0,5 kW'));
-    assert.doesNotMatch(h.split('</style>')[1], new RegExp(BLUE));
+    const prod = pathOf(h, '#b5fb5b'), haus = pathOf(h, TEXT), akku = pathOf(h, BLUE);
+    assert.equal(akku[akku.length - 1][1], prod[prod.length - 1][1]);
+    assert.ok(haus[haus.length - 1][1] > prod[prod.length - 1][1], 'Haus (0,45 kW) sits below 1,4 kW');
+});
+
+test('verlauf: a charging battery dips below the zero line, a feeding one rises above it', () => {
+    const feeding = load({ curve: { power_production: 1400, power_consumption: 450, power_maxxisun: -500 } });
+    feeding.queryCurve();
+    const charging = load({ curve: { power_production: 1400, power_consumption: 450, power_maxxisun: 500 } });
+    charging.queryCurve();
+    const zeroOf = (h) => Number(plotOf(h).match(/class="zero" x1="[\d.]+" y1="([\d.]+)"/)[1]);
+    const up = pathOf(feeding.buildCurve(), BLUE), down = pathOf(charging.buildCurve(), BLUE);
+    assert.ok(up[up.length - 1][1] < zeroOf(feeding.buildCurve()), 'feeding in must sit above zero');
+    assert.ok(down[down.length - 1][1] > zeroOf(charging.buildCurve()), 'charging must sit below zero');
+});
+
+test('verlauf: no text inside the plot — only axis ticks and the legend', () => {
+    const ctx = load({ curve: SUNNY });
+    ctx.queryCurve();
+    const h = plotOf(ctx.buildCurve());
+    assert.doesNotMatch(h, />Erzeugung [\d,]+ kW</);
+    assert.doesNotMatch(h, />Haus [\d,]+ kW</);
+    assert.doesNotMatch(h, /speist|lädt|>Maxxisun</);
+});
+
+test('verlauf: the legend names the three series and drops "jetzt"', () => {
+    const ctx = load({ curve: SUNNY });
+    ctx.queryCurve();
+    const head = ctx.buildCurve().split('class="card-h"')[1].split('</div>')[0];
+    assert.match(head, />Erzeugung</);
+    assert.match(head, />Haus</);
+    assert.match(head, />Akku</);
+    assert.doesNotMatch(head, /jetzt/);
+});
+
+test('verlauf: without battery data the other two series still draw', () => {
+    const ctx = load({ curve: { power_production: 1400, power_consumption: 450 } });
+    ctx.queryCurve();
+    const h = ctx.buildCurve();
+    assert.ok(pathOf(h, TEXT).length > 2);
+    assert.doesNotMatch(plotOf(h), new RegExp('stroke="' + BLUE + '"'));
 });
 
 test('verlauf: without data the placeholder keeps the new size', () => {
