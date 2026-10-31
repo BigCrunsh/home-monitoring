@@ -111,9 +111,9 @@ var CSS = `
 .et3 .mm{font-size:11px;color:var(--muted)}
 /* bilanz bottom rows — label | value | note columns, same table grammar as the other right cards */
 .et3 .brow{display:flex;align-items:baseline;gap:8px}
-.et3 .brow .bl{width:104px;font-size:15px;color:var(--muted);flex-shrink:0}
-.et3 .brow .bv{width:84px;text-align:right;white-space:nowrap;flex-shrink:0}
-.et3 .brow .bn{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap;text-align:right}
+.et3 .brow .bl{flex:1;font-size:15px;color:var(--muted)}
+.et3 .brow .bv{text-align:right;white-space:nowrap;flex-shrink:0}
+.et3 .bn{font-size:12px;color:var(--muted);white-space:nowrap;text-align:right;margin-top:-6px}
 `;
 
 // ===== helpers — now sourced from the shared global vis_card.js (script.js.global.vis_card).
@@ -220,10 +220,29 @@ var INTEGRALS = [
     ['maxxidischarge', function () { return vcMaxxiSplit(sNum(EN + 'power_maxxisun')).discharge; }]
 ];
 var _lastTick = null;
+// the last seven finished days' totals, logged at midnight, for the Bilanz "Ø 7 Tage" autarky
+var DAYS_ID = EN + 'energy_days';
+function loggedDays() {
+    var s = getState(DAYS_ID);
+    try { var days = JSON.parse((s && s.val) || '[]'); return Array.isArray(days) ? days : []; } catch (e) { return []; }
+}
+function logDay(day) {
+    var days = loggedDays().filter(function (d) { return d.day !== day; });
+    days.push({ day: day, cons: sNum(EN + 'energy_today_consumption') || 0, pur: sNum(EN + 'energy_today_purchased') || 0 });
+    setState(DAYS_ID, JSON.stringify(days.slice(-7)), true);
+}
+function autarkyOfDays() {
+    var days = loggedDays().filter(function (d) { return d.cons > 0.05; });
+    if (!days.length) return null;
+    var cons = 0, pur = 0;
+    days.forEach(function (d) { cons += d.cons; pur += d.pur; });
+    return { pct: Math.round(clamp01(1 - pur / cons) * 100), n: days.length };
+}
 function integrateTick() {
     var today = dayKeyBerlin();
     var dayS = getState(EN + 'energy_today_day');
     if (!dayS || dayS.val !== today) {
+        if (dayS && dayS.val) logDay(dayS.val);
         INTEGRALS.forEach(function (e) { setState(EN + 'energy_today_' + e[0], 0, true); });
         setState(EN + 'energy_today_day', today, true);
         _lastTick = Date.now();
@@ -239,7 +258,9 @@ function integrateTick() {
     });
 }
 
-// ===== TIER 2 RIGHT: HEUTE · BILANZ (382x252) — segmented balance bars =====
+// ===== TIER 2 RIGHT: HEUTE · BILANZ (642x188) — segmented balance bars left, autarky + cost right =====
+// One colour per quantity across the tab: green = own solar (shades = where it went; the battery
+// holds stored solar), white = Haus, amber = Netz.
 function buildBilanz() {
     var prod = sNum(EN + 'energy_today_production') || 0, cons = sNum(EN + 'energy_today_consumption') || 0;
     var pur = sNum(EN + 'energy_today_purchased') || 0, feed = sNum(EN + 'energy_today_feedin') || 0;
@@ -265,30 +286,35 @@ function buildBilanz() {
             + '<div class="seg">' + segs + '</div>'
             + '<div class="chips">' + chips + '</div></div>';
     }
+    // judged against the recent days, not fixed thresholds: green when today beats them. Never amber —
+    // until the evening, a running day always trails whole days (the night is all grid).
     var autark = cons > 0.05 ? clamp01(1 - pur / cons) : null;
     var akPct = autark != null ? Math.round(autark * 100) : null;
-    var akCol = akPct == null ? LBL : (akPct >= 75 ? GREEN : (akPct >= 40 ? AMBER : LBL));
-    var a7 = sNum(EN + 'rate_autarky_7d');
+    var avg = autarkyOfDays();
+    var akCol = akPct == null ? LBL : (avg && akPct >= avg.pct ? GREEN : TEXT);
     var bezahlt = tibber('cost_this_day');
     var gespart = price != null ? Math.max(0, (cons - pur)) * price : null;
 
     var body = '<div class="card">' + cardH('Heute · Bilanz')
-        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding-top:4px">'
+        + '<div style="flex:1;display:flex;gap:20px;min-height:0">'
+        + '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-width:0">'
         + barBlock('Erzeugt', prod, GREEN,
             seg(eDirekt, GREEN, '1') + seg(chg, GREEN, '.55') + seg(feed, GREEN, '.28'),
             chip(GREEN, '1', 'direkt genutzt ' + kwh1(eDirekt)) + chip(GREEN, '.55', 'geladen ' + kwh1(chg)) + chip(GREEN, '.28', 'eingespeist ' + kwh1(feed)))
-        + barBlock('Verbraucht', cons, BLUE,
-            seg(vSolar, GREEN, '1') + seg(dis, BLUE, '.6') + seg(pur, AMBER, '1'),
-            chip(GREEN, '1', 'Solar ' + kwh1(vSolar)) + chip(BLUE, '.6', 'aus Akku ' + kwh1(dis)) + chip(AMBER, '1', 'Netz ' + kwh1(pur)))
-        + '<div style="border-top:1px solid ' + BORD + '"></div>'
+        + barBlock('Verbraucht', cons, TEXT,
+            seg(vSolar, GREEN, '1') + seg(dis, GREEN, '.55') + seg(pur, AMBER, '1'),
+            chip(GREEN, '1', 'Solar ' + kwh1(vSolar)) + chip(GREEN, '.55', 'aus Akku ' + kwh1(dis)) + chip(AMBER, '1', 'Netz ' + kwh1(pur)))
+        + '</div>'
+        + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>'
+        + '<div style="width:180px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-evenly">'
         + '<div class="brow"><span class="bl">autark</span>'
-        + '<span class="bv" style="font-size:26px;font-weight:700;color:' + akCol + '">' + (akPct != null ? akPct : '–') + '<span class="u"> %</span></span>'
-        + '<span class="bn">' + (a7 != null && a7 > 0 ? 'Ø 7 Tage: ' + Math.round(a7 * 100) + ' %' : '&nbsp;') + '</span></div>'
+        + '<span class="bv" style="font-size:26px;font-weight:700;color:' + akCol + '">' + (akPct != null ? akPct : '–') + '<span class="u"> %</span></span></div>'
+        + '<div class="bn">' + (avg ? 'Ø ' + avg.n + ' Tage: ' + avg.pct + ' %' : '&nbsp;') + '</div>'
         + '<div class="brow"><span class="bl">Kosten heute</span>'
-        + '<span class="bv" style="font-size:16px;font-weight:600;color:' + TEXT + '">' + eur2(bezahlt) + '</span>'
-        + '<span class="bn">' + (gespart != null && gespart > 0.005 ? '<span style="color:' + GREEN + ';font-weight:600">' + eur2(gespart) + ' gespart</span>' : '&nbsp;') + '</span></div>'
-        + '</div></div>';
-    return fo(382, 252, body);
+        + '<span class="bv" style="font-size:16px;font-weight:600;color:' + TEXT + '">' + eur2(bezahlt) + '</span></div>'
+        + '<div class="bn">' + (gespart != null && gespart > 0.005 ? '<span style="color:' + GREEN + ';font-weight:600">' + eur2(gespart) + ' gespart</span>' : '&nbsp;') + '</div>'
+        + '</div></div></div>';
+    return fo(642, 188, body);
 }
 
 // ===== TIER 2 LEFT: VERLAUF · 24 H (516x246) — totals + Maxxisun lane, rolling window =====
@@ -703,6 +729,7 @@ function renderSlow() {
 INTEGRALS.forEach(function (e) {
     createState(EN + 'energy_today_' + e[0], 0, { type: 'number', role: 'value.energy', unit: 'kWh', desc: 'Tages-kWh ' + e[0] + ' (Trapez-Integration)' });
 });
+createState(DAYS_ID, '[]', { type: 'string', role: 'json', desc: 'Tages-kWh der letzten 7 Tage (Bilanz Ø Autarkie)' });
 createState(EN + 'energy_today_day', '', { type: 'string', role: 'value', desc: 'Berlin-Tag der energy_today_* Integration' }, function () {
     _lastTick = Date.now();
     setTimeout(function () { integrateTick(); renderFast(); renderSlow(); queryCurve(); queryForecast(); queryMonthHistory(); }, 2000);
