@@ -92,6 +92,15 @@ make stop-docker   # stop the influxdb container
 Service:
 - InfluxDB: Time-series database (port 8086)
 
+The `home_monitoring` database keeps its data **forever** (retention `autogen` set to
+`DURATION INF` on 2026-10-31; it was 364 days, which deleted each month just before its
+year-over-year comparison needed it). The whole database grows ~120 MB per year. On a fresh
+install, set it once:
+`curl -XPOST http://127.0.0.1:8086/query --data-urlencode "q=ALTER RETENTION POLICY autogen ON home_monitoring DURATION INF"`.
+Monthly Tibber history for YoY can be (re)loaded with
+`run_home_monitoring.sh home_monitoring.scripts.backfill_tibber_months --dry-run` (drop
+`--dry-run` to write; re-running rewrites the same points).
+
 ## Data Collection
 
 ### Configuration
