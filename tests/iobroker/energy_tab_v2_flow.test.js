@@ -44,26 +44,34 @@ function load(isoBerlin, tibber, months, extra = {}) {
     return ctx;
 }
 function header(h) { return h.slice(h.indexOf('class="card-h"'), h.indexOf('</div>', h.indexOf('class="card-h"'))); }
+// owner review 2026-10-31: at 15 px in the header the takeaway was unreadable across the room — it is
+// now the first figure block of the card, the forecast as big as the price and the net rate
+function take(h) { return h.slice(h.indexOf('class="take"'), h.indexOf('class="stat"', h.indexOf('class="take"'))); }
 // keyed by the window start: October 2025 is stored at the start of November 2025
 const LAST_OCTOBER = { '2025-11': { cost: 50, kwh: 100 } };
 const MID_OCTOBER = { energy_price_euro: 0.45, cost_this_month: 20, consumption_grid_this_month: 50 };
 
-test('flow: the header says where the month is heading, judged against last year', () => {
-    const h = header(load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER).buildFlow());
-    assert.match(h, /Oktober auf Kurs:/);
-    assert.match(h, new RegExp('color:' + GREEN + '[^"]*">40 € · ▼ 20 % vs\\. Vorjahr'));
+test('flow: the takeaway says where the month is heading, judged against last year', () => {
+    const h = take(load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER).buildFlow());
+    assert.match(h, />Oktober auf Kurs</);
+    assert.match(h, new RegExp('class="tv" style="color:' + GREEN + '">40<span class="u"> €</span>'));
+    assert.match(h, new RegExp('class="ts" style="color:' + GREEN + '">▼ 20 % vs\\. Vorjahr'));
+});
+
+test('flow: the takeaway left the header line', () => {
+    assert.doesNotMatch(header(load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER).buildFlow()), /auf Kurs/);
 });
 
 test('flow: without last year\'s month the forecast stands alone, without a verdict', () => {
-    const h = header(load('2026-10-16T12:00:00', MID_OCTOBER, {}).buildFlow());
-    assert.match(h, new RegExp('color:' + TEXT + '[^"]*">40 €<'));
+    const h = take(load('2026-10-16T12:00:00', MID_OCTOBER, {}).buildFlow());
+    assert.match(h, new RegExp('class="tv" style="color:' + TEXT + '">40<'));
     assert.doesNotMatch(h, /Vorjahr/);
 });
 
-test('flow: early in the month the header shows what is spent so far', () => {
-    const h = header(load('2026-10-02T06:00:00', Object.assign({}, MID_OCTOBER, { cost_this_month: 2 }), LAST_OCTOBER).buildFlow());
-    assert.match(h, /Oktober bisher:/);
-    assert.match(h, />2 €</);
+test('flow: early in the month the takeaway shows what is spent so far', () => {
+    const h = take(load('2026-10-02T06:00:00', Object.assign({}, MID_OCTOBER, { cost_this_month: 2 }), LAST_OCTOBER).buildFlow());
+    assert.match(h, />Oktober bisher</);
+    assert.match(h, /class="tv"[^>]*>2</);
 });
 
 // the card renders every 30 s from boot, before the month history has arrived from InfluxDB
@@ -72,7 +80,7 @@ test('flow: the takeaway gains its verdict as soon as the month history arrives'
     const ctx = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER);
     ctx.setState = (id, v) => { written[id] = v; };
     ctx.queryMonthHistory();
-    assert.match(header(written['javascript.0.et3_flow']), /vs\. Vorjahr/);
+    assert.match(take(written['javascript.0.et3_flow']), /vs\. Vorjahr/);
 });
 
 test('flow: the saved-per-hour figure left the card; the net rate stays', () => {
@@ -86,7 +94,7 @@ test('flow: the saved-per-hour figure left the card; the net rate stays', () => 
 test('flow: the bars get a fixed share and the figures fixed-width columns', () => {
     const h = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER).buildFlow();
     assert.match(h, /class="flows" style="width:520px/);
-    assert.match(h, /class="stats" style="[^"]*grid-template-columns:\s*repeat\(2, 230px\)/);
+    assert.match(h, /class="stats" style="[^"]*grid-template-columns:\s*230px 200px 160px/);
 });
 
 test('flow: a two-digit net rate renders in the same column as a one-digit one', () => {
@@ -98,7 +106,7 @@ test('flow: a two-digit net rate renders in the same column as a one-digit one',
 });
 
 test('flow: a stale power reading is still flagged next to the takeaway', () => {
-    const h = header(load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER, { power_data_stale: true }).buildFlow());
-    assert.match(h, /Schätzwert/);
-    assert.match(h, /auf Kurs/);
+    const h = load('2026-10-16T12:00:00', MID_OCTOBER, LAST_OCTOBER, { power_data_stale: true }).buildFlow();
+    assert.match(header(h), /Schätzwert/);
+    assert.match(take(h), /auf Kurs/);
 });

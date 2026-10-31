@@ -60,6 +60,11 @@ var CSS = `
 .et3 .stat .sl{font-size:13px;color:var(--muted);white-space:nowrap}
 .et3 .stat .sv{font-size:24px;font-weight:700;line-height:1;white-space:nowrap}
 .et3 .stat .ss{font-size:12px;color:var(--muted);white-space:nowrap}
+/* takeaway block (Tier-1 right, first column): where the month is heading */
+.et3 .take{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.et3 .take .tl{font-size:13px;color:var(--muted);white-space:nowrap}
+.et3 .take .tv{font-size:30px;font-weight:700;line-height:1;white-space:nowrap}
+.et3 .take .ts{font-size:13px;font-weight:600;white-space:nowrap}
 /* spectrum (price min-max, Overview component) */
 .et3 .spec{width:150px;display:flex;flex-direction:column;gap:3px}
 .et3 .spec .bar{height:5px;border-radius:3px;position:relative;
@@ -148,11 +153,12 @@ function cardH(title, badge) {
 // the tab's one-line takeaway: where the month is heading, with the Kosten card's verdict
 function takeaway(b) {
     var m = monthStats(b), month = MONTHS[b.getMonth()];
-    function val(text, col) { return '<span style="color:' + col + ';font-weight:700">' + text + '</span>'; }
-    var line = m.prog == null
-        ? month + ' bisher: ' + val(eur0(m.cur), TEXT)
-        : month + ' auf Kurs: ' + val(eur0(m.prog) + (m.yoy ? ' · ' + change(m.pct) + ' vs. Vorjahr' : ''), m.col);
-    return '<span style="font-size:15px;color:' + TEXT + '">' + line + '</span>';
+    var early = m.prog == null, col = early ? TEXT : m.col;
+    var sub = !early && m.yoy ? change(m.pct) + ' vs. Vorjahr' : '&nbsp;';
+    return '<div class="take"><span class="tl">' + month + (early ? ' bisher' : ' auf Kurs') + '</span>'
+        + '<span class="tv" style="color:' + col + '">' + (early ? (m.cur != null ? Math.round(m.cur) : '–') : Math.round(m.prog))
+        + '<span class="u"> €</span></span>'
+        + '<span class="ts" style="color:' + col + '">' + sub + '</span></div>';
 }
 function buildFlow() {
     var prod = sNum(EN + 'power_production') || 0, haus = sNum(EN + 'power_consumption') || 0;
@@ -202,13 +208,14 @@ function buildFlow() {
         return '<div class="stat"><span class="sl">' + l + '</span><span class="sv" style="color:' + c + '">' + v
             + '<span class="u"> ' + u + '</span></span><span class="ss">' + s + '</span></div>';
     }
-    var stats = '<div class="stats" style="flex:1;display:grid;grid-template-columns:repeat(2, 230px);justify-content:space-evenly;align-items:center">'
+    var stats = '<div class="stats" style="flex:1;display:grid;grid-template-columns:230px 200px 160px;justify-content:space-evenly;align-items:center">'
+        + takeaway(berlinNow())
         + priceBlock
         + stat('Netto', netSign + comma(Math.abs(net), 2), '€/h', grid >= 0 ? 'Bezug' : 'Einspeisung', netCol)
         + '</div>';
 
     var body = '<div class="card" style="' + frameStyle(fcSem) + '">'
-        + cardH('Energiefluss · Jetzt', takeaway(berlinNow()) + (stale ? '&nbsp;&nbsp;·&nbsp;&nbsp;≈ Schätzwert (Cloud-Verzögerung)' : ''))
+        + cardH('Energiefluss · Jetzt', stale ? '≈ Schätzwert (Cloud-Verzögerung)' : '')
         + '<div style="flex:1;display:flex;align-items:stretch;gap:14px">' + flows
         + '<div style="width:1px;background:' + BORD + ';flex-shrink:0"></div>' + stats + '</div></div>';
     return fo(1170, 158, body);
