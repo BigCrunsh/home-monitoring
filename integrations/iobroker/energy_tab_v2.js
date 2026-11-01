@@ -582,6 +582,17 @@ function change(pct) { return pct === 0 ? '± 0 %' : (pct > 0 ? '▲ ' : '▼ ')
 function pctOf(now, before) { return Math.round((now / before - 1) * 100); }
 
 // the month in one place: the Kosten card and the Energiefluss headline read the same verdict
+// a month's cost (and kWh) judged against the same month a year earlier: verdict colour, change, and
+// whether usage or the average price moved it
+function judgeYoY(s, mk, cost, kwh, ly) {
+    s.col = verdictCol(cost, ly.cost);
+    s.deltaCol = s.col;
+    s.pct = pctOf(cost, ly.cost);
+    s.delta = change(s.pct) + ' vs. ' + shortMonth(mk) + ' ' + String((Math.floor(mk / 12) - 1) % 100) + ' · ' + eur0(ly.cost);
+    if (kwh != null && kwh > 0 && ly.kwh != null && ly.kwh > 0) {
+        s.usage = 'Verbrauch ' + change(pctOf(kwh, ly.kwh)) + ' · Ø-Preis ' + change(pctOf(cost / kwh, ly.cost / ly.kwh));
+    }
+}
 function monthStats(b) {
     var key = monthKey(b);
     var daysInMonth = new Date(b.getFullYear(), b.getMonth() + 1, 0).getDate();
@@ -594,16 +605,7 @@ function monthStats(b) {
     if (ly.cost != null && ly.cost > 0.01) {
         s.prev = ly.cost;
         s.yoy = true;
-        if (prog != null) {
-            s.col = verdictCol(prog, ly.cost);
-            s.deltaCol = s.col;
-            s.pct = pctOf(prog, ly.cost);
-            s.delta = change(s.pct) + ' vs. ' + shortMonth(key) + ' ' + String((Math.floor(key / 12) - 1) % 100) + ' · ' + eur0(ly.cost);
-            if (kwhProg != null && kwhProg > 0 && ly.kwh != null && ly.kwh > 0) {
-                s.usage = 'Verbrauch ' + change(pctOf(kwhProg, ly.kwh))
-                    + ' · Ø-Preis ' + change(pctOf(prog / kwhProg, ly.cost / ly.kwh));
-            }
-        }
+        if (prog != null) judgeYoY(s, key, prog, kwhProg, ly);
         return s;
     }
     var prevCost = histOf(key - 1, b).cost;
@@ -611,6 +613,14 @@ function monthStats(b) {
     if (prog != null && s.prev != null && s.prev > 0.01) {
         s.delta = change(pctOf(prog, s.prev)) + ' vs. ' + shortMonth(key - 1) + ' · ' + eur0(s.prev);
     }
+    return s;
+}
+// the month that just ended, for the first days of a new month while it has no forecast yet
+function endedMonthStats(b) {
+    var mk = monthKey(b) - 1, h = histOf(mk, b), ly = histOf(mk - 12, b);
+    if (h.cost == null) return null;
+    var s = { key: mk, cur: h.cost, prog: h.cost, col: TEXT, deltaCol: LBL, delta: '', usage: '', ended: true };
+    if (ly.cost != null && ly.cost > 0.01) judgeYoY(s, mk, h.cost, h.kwh, ly);
     return s;
 }
 function yearForecast(b, curYear, monthProg) {
@@ -645,11 +655,12 @@ function costLine(cls, label, s) {
     return '<div class="' + cls + '"><span class="kl">' + label + '</span>'
         + '<span class="kv" style="color:' + s.col + '">' + eur0(s.prog) + '</span>'
         + (s.delta ? '<span class="kd" style="color:' + s.deltaCol + '">' + s.delta + '</span>' : '')
-        + '<span class="kb">bisher ' + eur0(s.cur) + '</span></div>';
+        + '<span class="kb">' + (s.ended ? 'abgeschlossen' : 'bisher ' + eur0(s.cur)) + '</span></div>';
 }
 // the card's main figure: the 13 completed months and this one, every bar with
-// its amount. Past months muted, last year's month white, this month bisher solid in its forecast tint.
-function monthChart(b, m) {
+// its amount. Past months muted, the year-ago month of the line above white (and the dashed line at it),
+// this month bisher solid in its forecast tint.
+function monthChart(b, m, cmpKey) {
     var key = monthKey(b), cols = [], maxV = 0;
     for (var mk = key - HIST_MONTHS; mk <= key; mk++) {
         var v = mk === key ? (m.prog != null ? m.prog : m.cur) : histOf(mk, b).cost;
@@ -658,7 +669,7 @@ function monthChart(b, m) {
     }
     function h(v) { return maxV > 0 ? Math.max(2, v / maxV * 100).toFixed(1) : '0'; }
     // last year's month as a dashed line across every bar: above it dearer than a year ago, below it cheaper
-    var lyCost = histOf(key - 12, b).cost, yl = lyCost != null ? '<span class="yl" style="bottom:' + h(lyCost) + '%"></span>' : '';
+    var lyCost = histOf(cmpKey, b).cost, yl = lyCost != null ? '<span class="yl" style="bottom:' + h(lyCost) + '%"></span>' : '';
     var bars = cols.map(function (c) {
         var bar;
         if (c.mk === key) {
@@ -668,7 +679,7 @@ function monthChart(b, m) {
                 + '<span class="mv" style="color:' + m.col + '">' + eur0(c.v) + '</span></div>';
         } else if (c.v == null) {
             bar = '<div class="mb gap" style="height:0"></div>';
-        } else if (c.mk === key - 12) {
+        } else if (c.mk === cmpKey) {
             bar = '<div class="mb yoy" style="height:' + h(c.v) + '%"><span class="mv">' + eur0(c.v) + '</span></div>';
         } else {
             bar = '<div class="mb past" style="height:' + h(c.v) + '%"><span class="mv">' + eur0(c.v) + '</span></div>';
@@ -679,10 +690,12 @@ function monthChart(b, m) {
 }
 function buildPeriod() {
     var b = berlinNow(), m = monthStats(b), y = yearStats(b, m.prog);
+    // until the new month has a forecast, its line would only read "–": show the month just ended instead
+    var top = (m.prog == null && endedMonthStats(b)) || m;
     var body = '<div class="card">' + cardH('Kosten · Netzbezug', 'Energie ohne Grundgebühr')
-        + costLine('ksum', shortMonth(m.key), m)
-        + (m.usage ? '<div class="kk">' + m.usage + '</div>' : '')
-        + monthChart(b, m)
+        + costLine('ksum', shortMonth(top.key), top)
+        + (top.usage ? '<div class="kk">' + top.usage + '</div>' : '')
+        + monthChart(b, m, top.key - 12)
         + costLine('kyear', String(b.getFullYear()), y)
         + '</div>';
     return fo(642, 302, body);

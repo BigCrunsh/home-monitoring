@@ -146,11 +146,49 @@ test('kosten: an Influx error falls back to linear, shows no chart bars and does
     assert.doesNotMatch(h, /class="mb past"/);
 });
 
-test('kosten: early in the month there is no month forecast and no verdict', () => {
+// owner request 2026-11-01: until the new month has a forecast (~3 days) its line read "Nov –"; the month
+// that just ended is the interesting one then — judged against the same month a year earlier
+test('kosten: early in the month the line shows the month just ended against last year', () => {
     const h = booted('2026-10-02T06:00:00', Object.assign({}, NOW, { cost_this_month: 2 }), HISTORY).buildPeriod();
-    assert.match(rowOf(h, 'Okt'), /class="kv"[^>]*>–</);
+    const r = rowOf(h, 'Sep');
+    // September 2026: 19 € (47 kWh) vs. September 2025: 22 € (60 kWh)
+    assert.match(r, new RegExp('class="kv" style="color:' + GREEN + '">19 €'));
+    assert.match(r, /▼ 14 % vs\. Sep 25 · 22 €/);
+    assert.match(r, /class="kb">abgeschlossen</);
+    assert.match(r, /Verbrauch ▼ 22 % · Ø-Preis ▲ 10 %/);
     // 240 + (50 - 2) rest of October as last year + 80 + 100
     assert.match(rowOf(h, '2026'), />468 €/);
+});
+
+test('kosten: while the line shows the ended month, the white bar and the dashed line mark its year-ago month', () => {
+    const h = booted('2026-10-02T06:00:00', Object.assign({}, NOW, { cost_this_month: 2 }), HISTORY).buildPeriod();
+    // September 2025 (22 €) is the comparison now, not October 2025 (50 €)
+    const yoy = h.match(/class="mb yoy" style="height:([\d.]+)%"><span class="mv">([^<]+)</);
+    assert.equal(yoy[2], '22 €');
+    const line = h.match(/class="yl" style="bottom:([\d.]+)%"/)[1];
+    assert.equal(line, yoy[1]);
+});
+
+test('kosten: once the month has a forecast the line is back on the running month', () => {
+    const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
+    assert.doesNotMatch(h, /abgeschlossen/);
+    assert.match(rowOf(h, 'Okt'), /bisher 20 €/);
+});
+
+test('kosten: early in the month without the ended month\'s history the running month stays, unjudged', () => {
+    const history = Object.assign({}, HISTORY, { '2026-09': undefined });
+    const h = booted('2026-10-02T06:00:00', Object.assign({}, NOW, { cost_this_month: 2 }), history).buildPeriod();
+    assert.match(rowOf(h, 'Okt'), /class="kv"[^>]*>–</);
+    assert.doesNotMatch(h, /abgeschlossen/);
+});
+
+test('kosten: the ended month without a year-ago value shows its amount without a verdict', () => {
+    const history = Object.assign({}, HISTORY, { '2025-09': undefined });
+    const h = booted('2026-10-02T06:00:00', Object.assign({}, NOW, { cost_this_month: 2 }), history).buildPeriod();
+    const r = rowOf(h, 'Sep');
+    assert.match(r, new RegExp('class="kv" style="color:#CCCCCC">19 €'));
+    assert.doesNotMatch(r, /vs\./);
+    assert.match(r, /abgeschlossen/);
 });
 
 test('kosten: this month\'s bar shows bisher solid inside the forecast tint of the verdict colour', () => {
