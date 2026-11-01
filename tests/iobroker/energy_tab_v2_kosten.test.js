@@ -61,7 +61,10 @@ function load(isoBerlin, states, months) {
 }
 // on 16 Oct at noon half the month (15.5 of 31 days) is gone: 20 € so far → 40 € forecast
 const NOW = { cost_this_month: 20, consumption_grid_this_month: 50, cost_last_month: 30, cost_this_year: 240, cost_last_year: 550 };
+// owner request 2026-11-01: 13 completed months, so the month that just ended still has last year's
+// month beside it (on 1 Nov: Oct 2025 … Oct 2026 + the running November)
 const HISTORY = {
+    '2025-09': { cost: 22, kwh: 60 },
     '2025-10': { cost: 50, kwh: 100 }, '2025-11': { cost: 80, kwh: 180 }, '2025-12': { cost: 100, kwh: 250 },
     '2026-01': { cost: 90, kwh: 240 }, '2026-02': { cost: 80, kwh: 220 }, '2026-03': { cost: 55, kwh: 150 },
     '2026-04': { cost: 25, kwh: 70 }, '2026-05': { cost: 15, kwh: 45 }, '2026-06': { cost: 7, kwh: 20 },
@@ -117,12 +120,12 @@ test('kosten: the year forecast adds last year\'s remaining months to the rest o
     assert.match(r, /▼ 20 % vs\. 2025/);
 });
 
-test('kosten: the twelve completed months are read with first(), from the start of each following month', () => {
+test('kosten: the thirteen completed months are read with first(), from the start of each following month', () => {
     const ctx = booted('2026-10-16T12:00:00', NOW, HISTORY);
     const starts = ctx.queries.map((q) => (q.match(/time >= '(\d{4}-\d{2}-\d{2})/) || [])[1]);
-    assert.equal(starts.length, 12);
-    assert.equal(starts[0], '2025-11-01');
-    assert.equal(starts[11], '2026-10-01');
+    assert.equal(starts.length, 13);
+    assert.equal(starts[0], '2025-10-01');
+    assert.equal(starts[12], '2026-10-01');
     ctx.queries.forEach((q) => {
         assert.match(q, /first\(cost\)/);
         assert.doesNotMatch(q, /last\(/);
@@ -159,16 +162,16 @@ test('kosten: this month\'s bar shows bisher solid inside the forecast tint of t
 
 test('kosten: every month bar carries its amount, so the chart reads without an axis', () => {
     const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
-    assert.equal((h.match(/class="mv"/g) || []).length, 13);
+    assert.equal((h.match(/class="mv"/g) || []).length, 14);
     assert.match(h, /class="mb past"[^>]*><span class="mv">100 €</);
 });
 
 // owner idea 2026-10-31: a dashed line at last year's month runs across the chart, so this month's bar
 // reads against it at a glance — above the line dearer than a year ago, below it cheaper
-test('kosten: a dashed line at last year\'s month runs across all thirteen bars', () => {
+test('kosten: a dashed line at last year\'s month runs across all fourteen bars', () => {
     const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
     const lines = h.match(/class="yl" style="bottom:([\d.]+)%"/g) || [];
-    assert.equal(lines.length, 13);
+    assert.equal(lines.length, 14);
     const yoyHeight = h.match(/class="mb yoy" style="height:([\d.]+)%"/)[1];
     lines.forEach((l) => assert.equal(l.match(/bottom:([\d.]+)%/)[1], yoyHeight));
 });
@@ -185,9 +188,11 @@ test('kosten: the month and year lines sit above and below the chart', () => {
     assert.doesNotMatch(h, /class="trk"|class="chips"/);
 });
 
-test('kosten: thirteen month bars run from the same month last year to this month', () => {
+test('kosten: fourteen bars run from the month before last year\'s month to this month', () => {
     const h = booted('2026-10-16T12:00:00', NOW, HISTORY).buildPeriod();
-    assert.equal((h.match(/class="mb /g) || []).length, 13);
+    assert.equal((h.match(/class="mb /g) || []).length, 14);
+    // the comparison bar is last year's month, no longer the first bar
+    assert.ok(h.indexOf('class="mb past"') < h.indexOf('class="mb yoy"'));
     assert.match(h, /class="mb yoy"[^>]*>[\s\S]*?50 €/);
     assert.match(h, /class="mb now"/);
 });
@@ -195,7 +200,7 @@ test('kosten: thirteen month bars run from the same month last year to this mont
 test('kosten: a month missing from the history leaves an empty slot, the rest still draw', () => {
     const history = Object.assign({}, HISTORY, { '2026-03': undefined });
     const h = booted('2026-10-16T12:00:00', NOW, history).buildPeriod();
-    assert.equal((h.match(/class="mb past"/g) || []).length, 10);
+    assert.equal((h.match(/class="mb past"/g) || []).length, 11);
     assert.equal((h.match(/class="mb gap"/g) || []).length, 1);
 });
 

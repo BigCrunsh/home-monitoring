@@ -540,17 +540,18 @@ function buildPrice() {
 // A month is judged against the same month a year earlier: against the month before, every autumn month
 // looked alarming (October always costs more than September — less sun). Costs are Tibber's energy
 // cost without the monthly base fee, the basis this_month/this_year have always used.
-// HIST = the 12 completed months before this one ({ monthKey: { cost, kwh } }), read daily as the
+// HIST = the 13 completed months before this one ({ monthKey: { cost, kwh } }) — one more than a year,
+// so the month that just ended still has last year's month beside it — read daily as the
 // last_month value stored at the start of each following month. first(): the backfilled ex-tax value
 // sits at 00:00 UTC on the 1st, ahead of the gross totalCost the collector stored until 2026-10-31.
 // The year forecast is what's spent so far + the rest of this month + LAST year's remaining months —
 // a linear extrapolation underestimates the autumn (Oct 2026: 305 € linear vs. ~447 €).
-var HIST = null, HIST_KEY = null;
+var HIST = null, HIST_KEY = null, HIST_MONTHS = 13;
 function monthKey(b) { return b.getFullYear() * 12 + b.getMonth(); }
 function monthStart(mk) { return Math.floor(mk / 12) + '-' + ('0' + (mk % 12 + 1)).slice(-2) + '-01T00:00:00Z'; }
 function queryMonthHistory() {
     var key = monthKey(berlinNow()), hist = {}, got = 0;
-    for (var back = 12; back >= 1; back--) {
+    for (var back = HIST_MONTHS; back >= 1; back--) {
         (function (mk) {
             var start = monthStart(mk + 1);
             var where = " WHERE period = 'last_month' AND time >= '" + start + "' AND time < '" + start + "' + 5d";
@@ -564,7 +565,7 @@ function queryMonthHistory() {
                         cost: c && typeof c.cost === 'number' ? c.cost : null,
                         kwh: k && typeof k.kwh === 'number' ? k.kwh : null
                     };
-                    if (++got < 12) return;
+                    if (++got < HIST_MONTHS) return;
                     HIST = hist;
                     HIST_KEY = key;
                     setState(EN + 'et3_period', buildPeriod(), true);
@@ -646,18 +647,18 @@ function costLine(cls, label, s) {
         + (s.delta ? '<span class="kd" style="color:' + s.deltaCol + '">' + s.delta + '</span>' : '')
         + '<span class="kb">bisher ' + eur0(s.cur) + '</span></div>';
 }
-// the card's main figure: the 13 months from the same month last year up to this one, every bar with
+// the card's main figure: the 13 completed months and this one, every bar with
 // its amount. Past months muted, last year's month white, this month bisher solid in its forecast tint.
 function monthChart(b, m) {
     var key = monthKey(b), cols = [], maxV = 0;
-    for (var mk = key - 12; mk <= key; mk++) {
+    for (var mk = key - HIST_MONTHS; mk <= key; mk++) {
         var v = mk === key ? (m.prog != null ? m.prog : m.cur) : histOf(mk, b).cost;
         cols.push({ mk: mk, v: v });
         if (v != null) maxV = Math.max(maxV, v);
     }
     function h(v) { return maxV > 0 ? Math.max(2, v / maxV * 100).toFixed(1) : '0'; }
     // last year's month as a dashed line across every bar: above it dearer than a year ago, below it cheaper
-    var lyCost = cols[0].v, yl = lyCost != null ? '<span class="yl" style="bottom:' + h(lyCost) + '%"></span>' : '';
+    var lyCost = histOf(key - 12, b).cost, yl = lyCost != null ? '<span class="yl" style="bottom:' + h(lyCost) + '%"></span>' : '';
     var bars = cols.map(function (c) {
         var bar;
         if (c.mk === key) {
