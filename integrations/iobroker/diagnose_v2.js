@@ -384,7 +384,7 @@ function deviceIssues() {
         var silent = lastHeardMs(d.dev);
         if (sTrue(d.dev + '.0.UNREACH')) issues.push({ nm: d.name, txt: 'offline', col: RED, rank: 0 });
         else if (silent != null && silent > SILENT_MS) issues.push({ nm: d.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
-        else if (sTrue(d.dev + '.0.LOW_BAT')) issues.push({ nm: d.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+        else if (sTrue(d.dev + '.0.LOW_BAT')) issues.push({ nm: d.name, txt: 'Batterie schwach', col: AMBER, rank: 2, battery: true });
     });
     // smoke detector chamber degradation — a silent safety fault, not covered by UNREACH/LOW_BAT
     if (sTrue('hm-rpc.1.000A5D89B45113.1.ERROR_DEGRADED_CHAMBER'))
@@ -397,19 +397,19 @@ function deviceIssues() {
         var silent = netatmoSilentMs(m.id);
         var bat = existsState(m.id + '.BatteryStatus') ? sNum(m.id + '.BatteryStatus') : null;   // wind gauge has none
         if (silent != null && silent > NETATMO_SILENT_MS) issues.push({ nm: m.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1, netatmoSilent: true });
-        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: m.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: m.name, txt: 'Batterie schwach', col: AMBER, rank: 2, battery: true });
     });
     HUE_REMOTES.forEach(function (r) {
         var bat = sNum(r.id + '.battery');
-        if (bat != null && bat <= HUE_EMPTY_PCT) issues.push({ nm: r.name, txt: 'Batterie leer', col: RED, rank: 0 });
-        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+        if (bat != null && bat <= HUE_EMPTY_PCT) issues.push({ nm: r.name, txt: 'Batterie leer', col: RED, rank: 0, battery: true });
+        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2, battery: true });
     });
     SOIL_SENSORS.forEach(function (z) {
         var silent = soilSilentMs(z);
         if (silent == null) return;
         var bat = existsState(z.batId) ? sNum(z.batId) : null;
         if (silent > SOIL_SILENT_MS) issues.push({ nm: z.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1 });
-        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: z.name, txt: 'Batterie schwach', col: AMBER, rank: 2 });
+        else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: z.name, txt: 'Batterie schwach', col: AMBER, rank: 2, battery: true });
     });
     return issues.sort(worstFirst);
 }
@@ -449,6 +449,9 @@ function buildDevices() {
 // The tracked issues are persisted so a script restart neither resends nor forgets them.
 var ALERTED_ID = 'javascript.0.diag_alerted';
 var OFFLINE_GRACE_MS = 10 * 60000;
+// A battery near its threshold flips between low and ok with the temperature (hallway motion sensor at
+// 2,1 V, 2026-11-04). It doesn't recover on its own, so "wieder ok" waits until it has stayed ok this long.
+var BATTERY_OK_HOLD_MS = 24 * 3600000;
 function sendAlert(text) { sendTo('telegram.0', 'send', { text: 'Diagnose: ' + text }); }
 function loadTracked() {
     var s = getState(ALERTED_ID), raw = {};
@@ -478,6 +481,8 @@ function alertNewIssues(issues) {
         // modules alerted one by one before they were grouped need no second message
         var alreadySent = memberKeys.length > 0 && memberKeys.every(function (k) { return tracked[k] && tracked[k].sent; });
         var t = tracked[key] || { nm: i.nm, since: now, sent: alreadySent };
+        if (i.battery) t.battery = true;
+        delete t.okSince;
         if (!t.sent && (i.txt !== 'offline' || now - t.since >= OFFLINE_GRACE_MS)) {
             sendAlert(i.nm + ' – ' + i.txt);
             t.sent = true;
@@ -485,7 +490,13 @@ function alertNewIssues(issues) {
         current[key] = t;
     });
     Object.keys(tracked).forEach(function (key) {
-        if (!current[key] && !absorbed[key] && tracked[key].sent) sendAlert(tracked[key].nm + ' – wieder ok');
+        var t = tracked[key];
+        if (current[key] || absorbed[key] || !t.sent) return;
+        if (t.battery) {
+            t.okSince = t.okSince || now;
+            if (now - t.okSince < BATTERY_OK_HOLD_MS) { current[key] = t; return; }
+        }
+        sendAlert(t.nm + ' – wieder ok');
     });
     setState(ALERTED_ID, JSON.stringify(current), true);
 }
