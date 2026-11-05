@@ -12,6 +12,8 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 - **Address leak**: rewrite git history and stay public (exposure is two device-name
   strings in one file, one commit).
 - **Dashboard**: incremental vis-2 fixes **plus** Grafana for history/analytics.
+  Grafana dropped on 2026-11-05: the vis-2 Energie tab now carries the history views
+  (13 months of costs, year-over-year).
 - **InfluxDB 1.8 EOL**: evaluation spike first; migration is a follow-up change.
 
 ## Phases
@@ -44,15 +46,14 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 |---|---|---|
 | `improve-dashboard-data-states` | Tiles distinguish live/stale/unavailable; no rendered `NaN`; de-DE number formatting; WCAG-AA alert colors | ~2 days |
 | `add-tibber-price-curve` | 24 h hourly price curve on Main (the single highest-value visual for a dynamic tariff) | ~1 day |
-| `add-grafana-history` | Grafana on the existing InfluxDB: energy, price-vs-consumption, heating-vs-outdoor history | ~1–2 days |
 
 ### P4 — Energy automation (the money phase)
 
 | Change | Goal | Effort |
 |---|---|---|
 | `add-realtime-hybrid-energy-states` | Anchor energy states on the live Shelly grid meter: purchase/feed-in exact in seconds, autarky near-real-time (added 2026-06-10 after the 2 h SolarEdge lag surfaced) | ~½ day |
-| `add-maxxisun-integration` | **PENDING (CCU2 local API not yet open)** — capture the second PV system + battery; until then whole-house autarky is understated | blocked |
-| `deploy-evcc-energy-automation` | evcc sidecar: Tibber tariff + SolarEdge PV (incl. Modbus TCP spike for local real-time inverter data), first price/PV-surplus-controlled load; battery-aware once Maxxisun lands (~€75–150/yr upside) | ~2–3 days |
+| `add-maxxisun-integration` | Meter the second PV system + battery at its socket (Shelly plug, in the energy model since 2026-06-15); CCU integration dropped — the CCU V2 opens no local interface | remaining: persistence SLA, Main tile |
+| `deploy-evcc-energy-automation` | evcc sidecar: Tibber tariff + SolarEdge PV (incl. Modbus TCP spike for local real-time inverter data), first price/PV-surplus-controlled load (~€75–150/yr upside); the Maxxisun battery's charge state is not readable (CCU V2) | ~2–3 days |
 
 ### P5 — Platform modernization
 
@@ -66,7 +67,7 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 - `version-iobroker-scripts` should land before or with `fix-solaredge-power-metrics`
   (the fix is deployed through the new from-git workflow).
 - `fix-solaredge-power-metrics` feeds `improve-dashboard-data-states` (staleness state).
-- `harden-network-services` before `add-grafana-history` and `deploy-evcc-energy-automation`
+- `harden-network-services` before `deploy-evcc-energy-automation`
   (don't add services to an unauthenticated host).
 - `spike-tsdb-migration` outcome gates any storage migration; everything else is
   independent of it.
@@ -92,6 +93,6 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
   is actively updated.) Answered as part of `harden-network-services`.
 - **First controlled load for evcc**: which device (hot-water, dishwasher, other)?
   Decided in the `deploy-evcc-energy-automation` spike task.
-- **Maxxisun CCU2 local API**: in progress upstream, not open yet (state 2026-06-10).
-  `add-maxxisun-integration` re-checks ~monthly; community adapters
-  (ioBroker.maxxi-charge) target the older CCU and need verification against CCU2.
+- **Maxxisun CCU local API**: answered 2026-10-31 — the household's CCU is a V2, which
+  opens no local interface (MQTT control exists only on the V2+). The Maxxi is metered
+  at its socket instead; its battery charge state stays unavailable.
