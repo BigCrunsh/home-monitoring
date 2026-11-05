@@ -20,6 +20,7 @@ dashboard on a wall tablet is drawn by the version-controlled scripts in
 | Lint + format check + ioBroker script syntax and tests | `make check` |
 | Types (mypy strict) | `make type-check` |
 | No credentials anywhere in the git history | `make secrets` |
+| Scan every commit for credentials before it is made (once per clone) | `make hooks` |
 | Deploy one dashboard script to the Pi | `make deploy-script NAME=<script>` |
 | Deploy the vis-2 layout to the Pi | `make deploy-vis` |
 

@@ -33,6 +33,7 @@ init:
 	. .venv/bin/activate && pip install --upgrade pip
 	. .venv/bin/activate && pip install -e ".[dev]"
 	cp .env.example .env
+	$(MAKE) hooks
 	@echo "Project initialized. Activate the virtual environment with:"
 	@echo "source .venv/bin/activate"
 
@@ -49,6 +50,11 @@ test-integration:
 
 .PHONY: lint
 lint: check type-check
+
+# git hooks are versioned in .githooks/ but git only runs them once a clone points at them
+.PHONY: hooks
+hooks:
+	git config core.hooksPath .githooks
 
 # everything CI checks, in one command: run it before every commit
 .PHONY: verify

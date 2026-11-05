@@ -1,0 +1,18 @@
+#!/bin/sh
+# Refuse a commit whose staged changes contain a credential: once pushed it is public, and
+# CI only notices afterwards. Uses an installed gitleaks, else the pinned container image
+# (the main checkout is mounted at its own path so a worktree's .git pointer resolves).
+# Enable once per clone with `make hooks`; bypass a false positive with `git commit --no-verify`.
+IMAGE=ghcr.io/gitleaks/gitleaks:v8.21.2
+
+if command -v gitleaks >/dev/null 2>&1; then
+    exec gitleaks git --pre-commit --staged --redact --no-banner .
+fi
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    root="$(cd "$(git rev-parse --git-common-dir)/.." && pwd)"
+    exec docker run --rm -v "$root:$root:ro" "$IMAGE" \
+        git --pre-commit --staged --redact --no-banner "$PWD"
+fi
+echo "pre-commit: neither gitleaks nor docker is available, so staged changes were not" \
+    "scanned for credentials (brew install gitleaks)" >&2
+exit 1
