@@ -64,6 +64,16 @@ check-iobroker:
 	@for f in integrations/iobroker/*.js; do node --check "$$f" || exit 1; done
 	node --test $(TESTS_DIR)/iobroker/*.test.js
 
+# No credentials in the repo: scans every commit (the history is public once pushed).
+# Uses an installed gitleaks, else the pinned container image. The container needs the main
+# checkout mounted at its own path, so a worktree's .git pointer resolves inside it.
+GITLEAKS_IMAGE = ghcr.io/gitleaks/gitleaks:v8.21.2
+.PHONY: secrets
+secrets:
+	@if command -v gitleaks >/dev/null; then gitleaks git . --redact --no-banner; \
+	else root="$$(cd "$$(git rev-parse --git-common-dir)/.." && pwd)"; \
+	docker run --rm -v "$$root:$$root:ro" $(GITLEAKS_IMAGE) git "$$PWD" --redact --no-banner; fi
+
 # Deploy to the Pi from the workstation. Both refuse when the live copy was edited on the Pi
 # (it matches no committed version) or the local file has uncommitted changes.
 # Add DRY_RUN=1 to only run the drift check.
