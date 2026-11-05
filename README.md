@@ -249,26 +249,24 @@ drift-check → edit on the workstation → commit → deploy from the workstati
 ```
 
 ```bash
-# 0. BEFORE deploying, confirm the live scripts still match the repo — live-side
-#    edits happen (the whole vis_card layer existed only on the Pi until it was
-#    synced back on 2026-07-19):
-./integrations/iobroker/tools/check_drift.sh            # run on the Pi
-
 # 1. edit integrations/iobroker/<name>.js in the repo, commit
 
-# 2. deploy straight from the workstation (the Pi's git checkout is not kept current):
-scp integrations/iobroker/<name>.js pi@raspberrypi:/tmp/
-ssh pi@raspberrypi 'SRC="$(cat /tmp/<name>.js)"; \
-  iobroker object set script.js.common.<name> common.source="$SRC"'   # auto-restarts
+# 2. deploy straight from the workstation (the Pi's git checkout is not kept current).
+#    The drift check is built in: the deploy is refused when the live copy matches no
+#    committed version (someone edited it on the Pi — the whole vis_card layer existed
+#    only there until 2026-07-19) or when the local file has uncommitted changes.
+make deploy-script NAME=<name>          # script.js.common.<name> or script.js.global.<name>
+make deploy-vis                         # vis-2 layout, then reloads open dashboards
+make deploy-script NAME=<name> DRY_RUN=1   # only the drift check
 
 # 3. verify: the script's published view states re-render within seconds
 ```
 
-Global scripts (shared helpers like `vis_card.js`) live under `script.js.global.<name>`
-rather than `script.js.common.<name>` — same deploy command, different object id. The
-vis-2 layout deploys with `iobroker file write /tmp/vis-views.json
-/vis-2.0/main/vis-views.json` followed by a client reload
-(`iobroker state set vis-2.0.control.command refresh`). Custom nav icons are versioned
+The targets reach the Pi as `PI_HOST` (default `pi@raspberrypi`); extra ssh/scp options go
+in `PI_SSH_OPTS`. A refused deploy saves the live copy to the temp directory, so the Pi-side
+edit can be diffed and committed before deploying again. The scripts in
+`integrations/iobroker/tools/` do the same jobs when run on the Pi itself, e.g.
+`check_drift.sh` compares every deployed script with the Pi's checkout. Custom nav icons are versioned
 in `integrations/iobroker/vis/icons/` and copied to
 `/opt/iobroker/iobroker-data/files/vis-icontwo/Custom/` on the Pi.
 

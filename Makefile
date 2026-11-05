@@ -64,6 +64,18 @@ check-iobroker:
 	@for f in integrations/iobroker/*.js; do node --check "$$f" || exit 1; done
 	node --test $(TESTS_DIR)/iobroker/*.test.js
 
+# Deploy to the Pi from the workstation. Both refuse when the live copy was edited on the Pi
+# (it matches no committed version) or the local file has uncommitted changes.
+# Add DRY_RUN=1 to only run the drift check.
+.PHONY: deploy-script
+deploy-script:
+	@test -n "$(NAME)" || { echo "usage: make deploy-script NAME=<script>"; exit 1; }
+	PYTHONPATH=$(SRC_DIR) $(PYTHON) -m home_monitoring.scripts.deploy_iobroker script $(NAME) $(if $(DRY_RUN),--dry-run)
+
+.PHONY: deploy-vis
+deploy-vis:
+	PYTHONPATH=$(SRC_DIR) $(PYTHON) -m home_monitoring.scripts.deploy_iobroker vis $(if $(DRY_RUN),--dry-run)
+
 .PHONY: format
 format:
 	$(PYTHON) -m black $(SRC_DIR) $(TESTS_DIR)
