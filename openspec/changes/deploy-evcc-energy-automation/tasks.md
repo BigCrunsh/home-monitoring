@@ -2,7 +2,7 @@
 
 ## 1. Spike (1 evening)
 
-- [ ] 1.1 Check inverter for Modbus TCP support (model/firmware); enable if available
+- [x] 1.1 Check inverter for Modbus TCP support (model/firmware); enable if available
 - [ ] 1.2 Choose the first controlled load + actuator path (HomeMatic plug via which
       bridge? Shelly natively?) — record decision + comfort constraints in design.md
 - [ ] 1.3 Confirm Pi resource headroom for the evcc container

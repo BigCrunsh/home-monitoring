@@ -8,12 +8,12 @@
 
 ## A. Phase A — output metering via HomeMatic plug (no API needed)
 
-- [ ] A.1 Plug the Maxxi feed-in through a free HomeMatic metering plug; verify
+- [x] A.1 (done via Shelly Plug S Gen3 into javascript.0.power_maxxisun, live; not HomeMatic) Plug the Maxxi feed-in through a free HomeMatic metering plug; verify
       `.6.POWER` reports plausible output under reverse flow (evening battery
       discharge and daytime production)
 - [ ] A.2 Verify reporting cadence is acceptable; tune the plug's transmit
       thresholds (delta W / min interval) if too coarse
-- [ ] A.3 Extend `solaredge_power.js`: `maxxi_output` term in the hybrid model
+- [x] A.3 Extend `solaredge_power.js`: `maxxi_output` term in the hybrid model
       (`consumption = SE_production + maxxi_output + grid`); subscribe to the plug
       state like the Shelly; stale-handling when the plug stops reporting
 - [ ] A.4 Persist `maxxi_output` to InfluxDB; add to healthcheck SLAs
