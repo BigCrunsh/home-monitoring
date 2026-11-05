@@ -46,6 +46,17 @@ def blob_id(content: bytes) -> str:
     return hashlib.sha1(header + content, usedforsecurity=False).hexdigest()
 
 
+def as_deployed(live: bytes) -> bytes:
+    """Return the live copy as the committed file it was deployed from.
+
+    Deploying with common.source="$(cat file)" drops the file's final newline, so a
+    script deployed that way would otherwise match no committed version.
+    """
+    if not live or live.endswith(b"\n"):
+        return live
+    return live + b"\n"
+
+
 def decide(
     live: str | None, local: str, head: str | None, committed: set[str]
 ) -> Verdict:
@@ -147,7 +158,7 @@ def check(path: Path, live: bytes | None) -> Verdict:
     """Compare a repo file with its live copy."""
     local = path.read_bytes()
     return decide(
-        live=blob_id(live) if live is not None else None,
+        live=blob_id(as_deployed(live)) if live is not None else None,
         local=blob_id(local),
         head=head_blob(path),
         committed=committed_blobs(path),
@@ -184,7 +195,7 @@ def deploy_script(name: str, dry_run: bool) -> int:
         print(result.stderr, file=sys.stderr)
         return 1
     after = live_script(name)
-    if not after or blob_id(after[1]) != blob_id(path.read_bytes()):
+    if not after or blob_id(as_deployed(after[1])) != blob_id(path.read_bytes()):
         print(f"{name}: live copy does not match after deploy", file=sys.stderr)
         return 1
     print(f"{name}: deployed to {object_id}; the script restarts on its own")

@@ -7,7 +7,12 @@ The live Pi can be ahead of the repo (the vis_card layer existed only on the Pi 
 import hashlib
 
 import pytest
-from home_monitoring.scripts.deploy_iobroker import Verdict, blob_id, decide
+from home_monitoring.scripts.deploy_iobroker import (
+    Verdict,
+    as_deployed,
+    blob_id,
+    decide,
+)
 
 OLD = blob_id(b"old version\n")
 NEW = blob_id(b"new version\n")
@@ -63,3 +68,21 @@ def test_uncommitted_local_changes_win_over_other_problems(
     """Uncommitted work is reported first: the person deploying can fix it."""
     verdict = decide(live=live, local=NEW, head=head, committed={OLD})
     assert verdict is Verdict.LOCAL_UNCOMMITTED
+
+
+# Deploying with common.source="$(cat file)" drops the file's final newline, so a script
+# deployed that way differs from every committed version by exactly that byte.
+def test_a_live_copy_missing_only_the_final_newline_is_the_committed_version() -> None:
+    """The stripped newline is a deploy artefact, not an edit on the Pi."""
+    assert as_deployed(b"on(x);") == b"on(x);\n"
+
+
+def test_a_live_copy_that_ends_in_a_newline_is_left_as_it_is() -> None:
+    """Only the missing newline is restored; nothing else is normalized."""
+    assert as_deployed(b"on(x);\n") == b"on(x);\n"
+    assert as_deployed(b"on(x);  \n\n") == b"on(x);  \n\n"
+
+
+def test_an_empty_live_copy_stays_empty() -> None:
+    """An empty script is not turned into a one-line file."""
+    assert as_deployed(b"") == b""
