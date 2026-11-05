@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_README": "Guardrails against mistakes on the live Pi, not a sandbox: shell quoting can evade them. Deny targets mutation, never inspection: iob state/object get, logs, InfluxDB SELECT and docker ps stay open. Removing a deny is the owner's call. Rules match the whole command text, so the Pi rules also catch commands wrapped in ssh '...'. Argument-constraining rules need a space before the wildcard; the colon form (Bash(x:*)) is ignored in deny rules.",
+  "permissions": {
+    "deny": [
+      "Bash(ssh *iob* del *)",
+      "Bash(ssh *iobroker* del *)",
+      "Bash(ssh *iob* uninstall *)",
+      "Bash(ssh *iobroker* uninstall *)",
+      "Bash(ssh *docker rm *)",
+      "Bash(ssh *docker rmi *)",
+      "Bash(ssh *docker volume rm *)",
+      "Bash(ssh *docker system prune*)",
+      "Bash(ssh *docker compose down*)",
+      "Bash(ssh *crontab -r*)",
+      "Bash(ssh *rm -rf *)",
+      "Bash(ssh *git pull*)",
+      "Bash(*influx*DROP *)",
+      "Bash(*influx*drop *)",
+      "Bash(*influx*DELETE *)",
+      "Bash(*influx*delete *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Read(./.env)"
+    ],
+    "ask": [
+      "Bash(make deploy-script *)",
+      "Bash(make deploy-vis*)",
+      "Bash(ssh *iob* object set *)",
+      "Bash(ssh *iobroker* object set *)",
+      "Bash(ssh *iob* file write *)",
+      "Bash(*influx*ALTER *)",
+      "Bash(*influx*alter *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check_edit.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

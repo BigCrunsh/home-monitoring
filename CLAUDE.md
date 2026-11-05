@@ -17,6 +17,16 @@ Launch independent subagents in parallel; give each a precise, self-contained br
 and require a dense summary back (never raw file dumps). The main loop plans and
 integrates; cheap agents execute. Don't silently upgrade an agent's model tier.
 
+### Guardrails
+
+`.claude/settings.json` denies commands that delete or rewrite live data on the Pi (adapter
+removal, InfluxDB `DROP`/`DELETE`, container removal, `git pull` there) and destructive git
+(force-push, `reset --hard`), and asks before every deploy. They guard against mistakes and
+are not a sandbox. After a rule change, prove it with a headless session
+(`claude -p "Run: <cmd>" --allowedTools Bash`) and confirm BLOCKED vs RAN. Removing a deny is
+the owner's call. `.claude/hooks/check_edit.sh` checks every edited ioBroker script and vis
+layout as soon as it is written.
+
 ### OpenSpec
 
 Plan larger changes with the OpenSpec skills and `/opsx:*` commands in `.claude/`. They
