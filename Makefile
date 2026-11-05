@@ -50,6 +50,11 @@ test-integration:
 .PHONY: lint
 lint: check type-check
 
+# everything CI checks, in one command: run it before every commit
+.PHONY: verify
+verify: check type-check secrets
+	PYTHONPATH=$(SRC_DIR) $(PYTHON) -m pytest $(TESTS_DIR) -m "not integration" -q
+
 # read-only quality gate (CI-safe): never modifies files
 .PHONY: check
 check: ruff check-iobroker
