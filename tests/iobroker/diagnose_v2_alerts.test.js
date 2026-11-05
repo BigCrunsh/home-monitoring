@@ -85,7 +85,7 @@ test('alerts: an alerted issue that clears sends "wieder ok", and is sent again 
     ctx.publish();
     ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 100;
     ctx.publish();
-    ctx.advance(24 * HOUR);
+    ctx.advance(HOUR);
     ctx.publish();
     ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 12;
     ctx.publish();
@@ -141,7 +141,7 @@ test('alerts: issues alerted in the old stored format are neither resent nor los
     ctx.publish();
     ctx.st['hue.0.Claras_Fernbedienung.battery'].val = 100;
     ctx.publish();
-    ctx.advance(24 * HOUR);
+    ctx.advance(HOUR);
     ctx.publish();
     assert.deepEqual(ctx.sent.map((s) => s.msg.text), ['Diagnose: Claras Fernbedienung – wieder ok']);
 });
@@ -157,32 +157,32 @@ test('alerts: issues already alerted before a script restart are not sent again'
 });
 
 // A battery near its threshold flips between low and ok with the temperature: the hallway motion sensor
-// (2,1 V, 2026-11-04) sent "Batterie schwach" / "wieder ok" over and over. A battery doesn't recover on
-// its own, so "wieder ok" waits until it has stayed ok for 24 h, and a relapse before that is silent.
+// (2,1 V, 2026-11-04) sent "Batterie schwach" / "wieder ok" over and over. "wieder ok" waits until the
+// battery has stayed ok for an hour, and a relapse before that is silent.
 const FLUR = 'hm-rpc.1.00091A4996315B';
 
 test('alerts: a low-battery flag that flips back and forth sends one message, not one per flip', () => {
     const ctx = loadDiagnose({ [FLUR]: 'Bewegungsmelder Flur' }, { [FLUR + '.0.UNREACH']: false, [FLUR + '.0.LOW_BAT']: true });
     ctx.publish();
     for (let flip = 0; flip < 4; flip++) {
-        ctx.advance(3 * HOUR);
+        ctx.advance(20 * MIN);
         ctx.st[FLUR + '.0.LOW_BAT'].val = flip % 2 === 0 ? false : true;
         ctx.publish();
     }
     assert.deepEqual(ctx.sent.map((s) => s.msg.text), ['Diagnose: Bewegungsmelder Flur – Batterie schwach']);
 });
 
-test('alerts: a battery ok for less than 24 hours sends no "wieder ok"', () => {
+test('alerts: a battery ok for less than an hour sends no "wieder ok"', () => {
     const ctx = loadDiagnose({ [FLUR]: 'Bewegungsmelder Flur' }, { [FLUR + '.0.UNREACH']: false, [FLUR + '.0.LOW_BAT']: true });
     ctx.publish();
     ctx.st[FLUR + '.0.LOW_BAT'].val = false;
     ctx.publish();
-    ctx.advance(23 * HOUR);
+    ctx.advance(59 * MIN);
     ctx.publish();
     assert.deepEqual(ctx.sent.map((s) => s.msg.text), ['Diagnose: Bewegungsmelder Flur – Batterie schwach']);
 });
 
-test('alerts: a battery ok for 24 hours sends one "wieder ok", even across a script restart', () => {
+test('alerts: a battery ok for an hour sends one "wieder ok", even across a script restart', () => {
     const objects = { [FLUR]: 'Bewegungsmelder Flur' };
     const first = loadDiagnose(objects, { [FLUR + '.0.UNREACH']: false, [FLUR + '.0.LOW_BAT']: true });
     first.publish();
@@ -192,13 +192,72 @@ test('alerts: a battery ok for 24 hours sends one "wieder ok", even across a scr
         [FLUR + '.0.UNREACH']: false, [FLUR + '.0.LOW_BAT']: false,
         'javascript.0.diag_alerted': first.st['javascript.0.diag_alerted'].val
     });
-    restarted.advance(12 * HOUR);
+    restarted.advance(30 * MIN);
     restarted.publish();
-    restarted.advance(12 * HOUR);
+    restarted.advance(30 * MIN);
     restarted.publish();
-    restarted.advance(HOUR);
+    restarted.advance(30 * MIN);
     restarted.publish();
     assert.deepEqual(restarted.sent.map((s) => s.msg.text), ['Diagnose: Bewegungsmelder Flur – wieder ok']);
+});
+
+// A swapped battery jumps well above the lowest level seen while it was low (2,1 → 2,7 V on 2026-11-05):
+// that is news at once, unlike a flag flipping on the threshold.
+function flurLow(volts) {
+    return { [FLUR + '.0.UNREACH']: false, [FLUR + '.0.LOW_BAT']: true, [FLUR + '.0.OPERATING_VOLTAGE']: volts };
+}
+
+test('alerts: a swapped HomeMatic battery sends "wieder ok" at once', () => {
+    const ctx = loadDiagnose({ [FLUR]: 'Bewegungsmelder Flur' }, flurLow(2.1));
+    ctx.publish();
+    ctx.st[FLUR + '.0.LOW_BAT'].val = false;
+    ctx.st[FLUR + '.0.OPERATING_VOLTAGE'].val = 2.7;
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text).slice(1), ['Diagnose: Bewegungsmelder Flur – wieder ok']);
+});
+
+test('alerts: a voltage creeping back over the threshold is not taken for a new battery', () => {
+    const ctx = loadDiagnose({ [FLUR]: 'Bewegungsmelder Flur' }, flurLow(2.1));
+    ctx.publish();
+    ctx.st[FLUR + '.0.LOW_BAT'].val = false;
+    ctx.st[FLUR + '.0.OPERATING_VOLTAGE'].val = 2.3;
+    ctx.publish();
+    assert.equal(ctx.sent.length, 1);
+});
+
+test('alerts: the jump is measured from the lowest level seen, not the last one before ok', () => {
+    const ctx = loadDiagnose({ [FLUR]: 'Bewegungsmelder Flur' }, flurLow(2.4));
+    ctx.publish();
+    ctx.st[FLUR + '.0.OPERATING_VOLTAGE'].val = 2.1;
+    ctx.publish();
+    ctx.st[FLUR + '.0.OPERATING_VOLTAGE'].val = 2.6;
+    ctx.publish();
+    ctx.st[FLUR + '.0.LOW_BAT'].val = false;
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text).slice(1), ['Diagnose: Bewegungsmelder Flur – wieder ok']);
+});
+
+test('alerts: a device that reports no voltage still waits the hour', () => {
+    const ctx = loadDiagnose({ [FLUR]: 'Bewegungsmelder Flur' }, { [FLUR + '.0.UNREACH']: false, [FLUR + '.0.LOW_BAT']: true });
+    ctx.publish();
+    ctx.st[FLUR + '.0.LOW_BAT'].val = false;
+    ctx.st[FLUR + '.0.OPERATING_VOLTAGE'] = { val: 2.9 };
+    ctx.publish();
+    assert.equal(ctx.sent.length, 1);
+});
+
+test('alerts: a percentage battery that jumps to full sends "wieder ok" at once, a few points do not', () => {
+    const objects = { 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' };
+    const swapped = loadDiagnose(objects, { 'hue.0.Claras_Fernbedienung.battery': 15 });
+    swapped.publish();
+    swapped.st['hue.0.Claras_Fernbedienung.battery'].val = 100;
+    swapped.publish();
+    const hovering = loadDiagnose(objects, { 'hue.0.Claras_Fernbedienung.battery': 18 });
+    hovering.publish();
+    hovering.st['hue.0.Claras_Fernbedienung.battery'].val = 22;
+    hovering.publish();
+    assert.deepEqual(swapped.sent.map((s) => s.msg.text).slice(1), ['Diagnose: Claras Fernbedienung – wieder ok']);
+    assert.equal(hovering.sent.length, 1);
 });
 
 // When the Netatmo feed stalls, every module goes silent within the same hours: on 2026-10-30 seven
