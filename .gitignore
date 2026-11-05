@@ -130,3 +130,9 @@ dmypy.json
 .pyre/
 .cascade/
 sam_digital_devices.json
+
+# Claude Code: shared agents, skills, commands and settings are versioned; personal settings
+# and worktrees are not (a global gitignore may exclude .claude/ entirely)
+!.claude/
+.claude/settings.local.json
+.claude/worktrees/
