@@ -14,7 +14,7 @@
       (+ Maxxisun share from its metered power) into `electricity_energy_watthour`,
       same fields and tags; resume from the newest point; skip intervals with a counter gap
 - [x] 2.2 Remove the SolarEdge cloud client, its settings and tests
-- [ ] 2.3 Deploy to the Pi checkout; verify fresh points after one cron run
+- [x] 2.3 Deploy to the Pi checkout; verify fresh points after one cron run
 
 ## 3. Live states
 
