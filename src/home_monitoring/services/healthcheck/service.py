@@ -13,6 +13,7 @@ from pathlib import Path
 
 from home_monitoring.services.base_service import BaseService
 from home_monitoring.services.healthcheck.notifier import TelegramNotifier
+from home_monitoring.services.healthcheck.reconciliation import GridReconciliation
 
 # do not repeat an unchanged staleness alert more often than this
 REMINDER_INTERVAL = timedelta(hours=24)
@@ -143,6 +144,9 @@ class HealthcheckService(BaseService):
         try:
             measurements = await self._list_measurements()
             sent = await self._check_measurements(measurements, now)
+            sent += await GridReconciliation(self._db, self._store, self._notifier).run(
+                now
+            )
         except Exception as e:
             self._logger.error("healthcheck_failed", error=str(e))
             sent = self._alert_monitoring_failure(now, str(e))

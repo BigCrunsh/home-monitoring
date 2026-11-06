@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from home_monitoring.config import Settings
@@ -81,6 +82,27 @@ async def test_all_fresh_sends_nothing(tmp_path, mock_settings) -> None:
 
     assert sent == 0
     assert notifier.sent == []
+
+
+@pytest.mark.asyncio
+async def test_the_daily_grid_reconciliation_runs_with_every_pass(
+    tmp_path, mock_settings
+) -> None:
+    """The hourly pass hosts the daily check; its message counts like any alert."""
+    now = datetime.now(UTC)
+    service, _, _ = make_service(
+        tmp_path,
+        mock_settings,
+        {"weather_temperature_celsius": now - timedelta(minutes=5)},
+    )
+    with patch(
+        "home_monitoring.services.healthcheck.service.GridReconciliation.run",
+        AsyncMock(return_value=1),
+    ) as reconcile:
+        sent = await service.run()
+
+    assert sent == 1
+    reconcile.assert_awaited_once()
 
 
 @pytest.mark.asyncio

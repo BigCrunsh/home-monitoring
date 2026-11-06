@@ -4,8 +4,7 @@
     "electricity_prices_euro": 60,
     "electricity_consumption_kwh": 60,
     "electricity_costs_euro": 60,
-    "electricity_power_watt": 180,
-    "electricity_energy_watthour": 180,
+    "electricity_energy_watthour": 45,
     "gas_prices_euro": 60,
     "heat_temperature_celsius": 60,
     "heat_valve_signal_percentage": 60,
@@ -24,6 +23,7 @@
     "garden_light_intensity_lux": 60
   },
   "ignore": [
+    "electricity_power_watt",
     "weather_windstrength_kph",
     "weather_windangle_angles",
     "weather_guststrength_kph",
