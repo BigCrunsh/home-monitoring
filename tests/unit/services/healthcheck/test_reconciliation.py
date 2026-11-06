@@ -45,8 +45,9 @@ class FakeNotifier:
     def __init__(self) -> None:
         self.sent: list[str] = []
 
-    def send(self, text: str) -> None:
+    def send(self, text: str) -> bool:
         self.sent.append(text)
+        return True
 
 
 def counters(day_start: float | None, day_end: float | None) -> dict[str, float | None]:
@@ -56,7 +57,7 @@ def counters(day_start: float | None, day_end: float | None) -> dict[str, float 
 def run_check(tmp_path: Path, db: FakeDB, now: datetime = NOW) -> list[str]:
     notifier = FakeNotifier()
     store = AlertStore(tmp_path / "state.json")
-    check = GridReconciliation(db=db, store=store, notifier=notifier)  # type: ignore[arg-type]
+    check = GridReconciliation(db=db, store=store, send=notifier.send)  # type: ignore[arg-type]
     asyncio.run(check.run(now))
     store.save()
     return notifier.sent

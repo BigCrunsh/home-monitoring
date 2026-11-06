@@ -36,14 +36,17 @@ class FakeRepository:
 
 
 class FakeNotifier:
-    """Records sent messages; optionally fails."""
+    """Records sent messages; fails always (fail) or on the given attempts (1-based)."""
 
-    def __init__(self, fail: bool = False) -> None:
+    def __init__(self, fail: bool = False, fail_on: set[int] | None = None) -> None:
         self.sent: list[str] = []
+        self.attempted: list[str] = []
         self._fail = fail
+        self._fail_on = fail_on or set()
 
     def send(self, text: str) -> None:
-        if self._fail:
+        self.attempted.append(text)
+        if self._fail or len(self.attempted) in self._fail_on:
             raise APIError("telegram down")
         self.sent.append(text)
 
@@ -263,6 +266,95 @@ async def test_notifier_failure_propagates(tmp_path, mock_settings) -> None:
 
     with pytest.raises(APIError):
         await service.run()
+
+
+# A Telegram failure used to be caught as "InfluxDB unreachable": the run then tried to
+# send that (wrong) alert, failed again, and never saved its state, so alerts already
+# sent in the run were forgotten and resent an hour later.
+@pytest.mark.asyncio
+async def test_a_telegram_failure_is_not_reported_as_influxdb_down(
+    tmp_path, mock_settings
+) -> None:
+    """InfluxDB answered fine; only the message could not be delivered."""
+    now = datetime.now(UTC)
+    notifier = FakeNotifier(fail=True)
+    service, _, _ = make_service(
+        tmp_path,
+        mock_settings,
+        {"weather_rain_mm": now - timedelta(days=3)},
+        notifier=notifier,
+    )
+
+    with pytest.raises(APIError):
+        await service.run()
+
+    assert not any("InfluxDB" in text for text in notifier.attempted)
+
+
+@pytest.mark.asyncio
+async def test_alerts_sent_before_a_telegram_failure_stay_recorded(
+    tmp_path, mock_settings
+) -> None:
+    """The first alert went out; the second failed. The first must not be resent."""
+    now = datetime.now(UTC)
+    service, _, _ = make_service(
+        tmp_path,
+        mock_settings,
+        {
+            "weather_rain_mm": now - timedelta(days=3),
+            "weather_noise_db": now - timedelta(days=3),
+        },
+        notifier=FakeNotifier(fail_on={2}),
+    )
+
+    with pytest.raises(APIError):
+        await service.run()
+
+    saved = AlertStore(tmp_path / "state.json")
+    assert saved.is_stale("weather_rain_mm")
+    assert not saved.is_stale("weather_noise_db")
+
+
+@pytest.mark.asyncio
+async def test_an_alert_that_failed_to_send_is_retried_next_run(
+    tmp_path, mock_settings
+) -> None:
+    """A failed send is not recorded as sent, so the next hourly run tries again."""
+    now = datetime.now(UTC)
+    timestamps = {"weather_rain_mm": now - timedelta(days=3)}
+    first, _, _ = make_service(
+        tmp_path, mock_settings, timestamps, notifier=FakeNotifier(fail=True)
+    )
+    with pytest.raises(APIError):
+        await first.run()
+
+    second, notifier, _ = make_service(tmp_path, mock_settings, timestamps)
+    await second.run()
+
+    assert len(notifier.sent) == 1
+    assert "weather_rain_mm" in notifier.sent[0]
+
+
+@pytest.mark.asyncio
+async def test_a_recovery_message_that_failed_to_send_is_retried(
+    tmp_path, mock_settings
+) -> None:
+    """Data is back but the "wieder da" message failed: keep the record and retry."""
+    now = datetime.now(UTC)
+    store = AlertStore(tmp_path / "state.json")
+    store.mark_alerted("weather_rain_mm", now - timedelta(hours=5))
+    store.save()
+    service, _, _ = make_service(
+        tmp_path,
+        mock_settings,
+        {"weather_rain_mm": now - timedelta(minutes=5)},
+        notifier=FakeNotifier(fail=True),
+    )
+
+    with pytest.raises(APIError):
+        await service.run()
+
+    assert AlertStore(tmp_path / "state.json").is_stale("weather_rain_mm")
 
 
 def test_corrupt_state_file_starts_fresh(tmp_path) -> None:

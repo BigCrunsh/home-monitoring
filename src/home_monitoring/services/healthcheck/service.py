@@ -133,40 +133,55 @@ class HealthcheckService(BaseService):
         self._config = config
         self._store = store
         self._notifier = notifier or TelegramNotifier()
+        # first failed Telegram send of the pass, raised once the state is saved
+        self._send_error: Exception | None = None
 
     async def run(self) -> int:
         """Run one healthcheck pass.
+
+        A failed Telegram send does not stop the pass: what was sent stays recorded,
+        what failed is retried next run, and the first failure is raised at the end.
 
         Returns:
             Number of alert/recovery messages sent
         """
         now = datetime.now(UTC)
+        sent = await self._check_database(now)
+        # backup freshness is filesystem-only; check it regardless of the DB
+        sent += self._check_backups(now)
+        self._store.save()
+        self._logger.info("healthcheck_completed", sent=sent)
+        if self._send_error is not None:
+            raise self._send_error
+        return sent
+
+    async def _check_database(self, now: datetime) -> int:
+        """Check freshness and the daily reconciliation; alert if InfluxDB fails."""
         try:
             measurements = await self._list_measurements()
             sent = await self._check_measurements(measurements, now)
-            sent += await GridReconciliation(self._db, self._store, self._notifier).run(
-                now
-            )
+            sent += await GridReconciliation(self._db, self._store, self._send).run(now)
         except Exception as e:
             self._logger.error("healthcheck_failed", error=str(e))
-            sent = self._alert_monitoring_failure(now, str(e))
-            self._store.save()
-            return sent
+            return self._alert_monitoring_failure(now, str(e))
 
         # influx reachable again after a monitoring-failure alert
-        if self._store.is_stale(MONITORING_KEY):
+        if self._store.is_stale(MONITORING_KEY) and self._send(
+            "✅ Healthcheck: InfluxDB wieder erreichbar."
+        ):
             self._store.mark_recovered(MONITORING_KEY)
-            self._notifier.send("✅ Healthcheck: InfluxDB wieder erreichbar.")
             sent += 1
-
-        # backup freshness is filesystem-only; check it regardless of the DB
-        sent += self._check_backups(now)
-
-        self._store.save()
-        self._logger.info(
-            "healthcheck_completed", measurements=len(measurements), sent=sent
-        )
         return sent
+
+    def _send(self, text: str) -> bool:
+        """Send a message; on failure log it, remember it and return False."""
+        try:
+            self._notifier.send(text)
+        except Exception as e:
+            self._logger.error("telegram_send_failed", error=str(e))
+            self._send_error = self._send_error or e
+            return False
+        return True
 
     def _check_backups(self, now: datetime) -> int:
         """Alert when a configured backup is missing or past its SLA."""
@@ -187,9 +202,10 @@ class HealthcheckService(BaseService):
                     f"(SLA {int(sla.total_seconds() // 60)} min).",
                 ):
                     sent += 1
-            elif self._store.is_stale(key):
+            elif self._store.is_stale(key) and self._send(
+                f"✅ Backup '{name}': wieder aktuell."
+            ):
                 self._store.mark_recovered(key)
-                self._notifier.send(f"✅ Backup '{name}': wieder aktuell.")
                 sent += 1
         return sent
 
@@ -219,9 +235,10 @@ class HealthcheckService(BaseService):
                     f"(SLA {int(sla.total_seconds() // 60)} min).",
                 ):
                     sent += 1
-            elif self._store.is_stale(measurement):
+            elif self._store.is_stale(measurement) and self._send(
+                f"✅ {measurement}: Daten kommen wieder an."
+            ):
                 self._store.mark_recovered(measurement)
-                self._notifier.send(f"✅ {measurement}: Daten kommen wieder an.")
                 sent += 1
         return sent
 
@@ -240,7 +257,8 @@ class HealthcheckService(BaseService):
         last = self._store.last_alerted(key)
         if last is not None and now - last < REMINDER_INTERVAL:
             return False
-        self._notifier.send(text)
+        if not self._send(text):
+            return False
         self._store.mark_alerted(key, now)
         return True
 

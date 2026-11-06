@@ -7,12 +7,12 @@ reversed phase, a reset meter) is reported once. Missing figures are left to the
 freshness checks.
 """
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.services.healthcheck.notifier import TelegramNotifier
 
 if TYPE_CHECKING:
     from home_monitoring.services.healthcheck.service import AlertStore
@@ -43,11 +43,11 @@ class GridReconciliation:
         self,
         db: InfluxDBRepository,
         store: "AlertStore",
-        notifier: TelegramNotifier,
+        send: Callable[[str], bool],
     ) -> None:
         self._db = db
         self._store = store
-        self._notifier = notifier
+        self._send = send
 
     async def run(self, now: datetime) -> int:
         """Compare yesterday's figures, unless today's alert was already sent.
@@ -76,10 +76,11 @@ class GridReconciliation:
             or difference <= MIN_DIFFERENCE_SHARE * meter
         ):
             return 0
-        self._notifier.send(
+        if not self._send(
             f"⚠️ Netzbezug gestern ({yesterday:%d.%m.}): Shelly {_kwh(shelly)}, "
             f"Stromzähler (Tibber) {_kwh(meter)}."
-        )
+        ):
+            return 0
         self._store.mark_alerted(STORE_KEY, now)
         return 1
 
