@@ -17,11 +17,14 @@ const SRC = fs.readFileSync(
 
 const MAXXI_STATE = 'mqtt.0.shellyplugsg3-48f6eeb7af98.status.switch:0';
 
-// Boot the script with fake ioBroker globals. `inputs` maps state id -> {val, ts}.
-function boot(inputs) {
+const GRID_STATE = 'javascript.0.mqtt_shelly.total_act_power';
+
+// Boot the script with fake ioBroker globals. `inputs` maps state id -> {val, ts};
+// `daylight` is what the adapter's isAstroDay() answers (sun above the horizon).
+function boot(inputs, daylight = true) {
     const published = {};
     const handlers = [];
-    const influxCallbacks = [];
+    const influxQueries = [];
     const ctx = {
         console: { log() {}, warn() {}, error() {} },
         Math,
@@ -33,20 +36,25 @@ function boot(inputs) {
         getState: (id) => inputs[id] || null,
         on: (opts, fn) => handlers.push({ opts, fn }),
         schedule: () => {},
-        sendTo: (_adapter, _cmd, _query, cb) => influxCallbacks.push(cb),
+        sendTo: (_adapter, _cmd, query) => influxQueries.push(query),
+        isAstroDay: () => daylight,
     };
     vm.createContext(ctx);
     vm.runInContext(SRC, ctx);
     return {
         published,
+        influxQueries,
         plugReported: handlers.find((h) => h.opts.id === MAXXI_STATE).fn,
-        // the script's own InfluxDB reply handler, as registered by queryInfluxDB()
-        influxReply: () => {
-            vm.runInContext('queryInfluxDB()', ctx);
-            return influxCallbacks[influxCallbacks.length - 1];
-        },
+        gridReported: handlers.find((h) => h.opts.id === GRID_STATE).fn,
     };
 }
+
+const fresh = (val) => ({ val, ts: Date.now() - 1000 });
+const modbusLive = (watts) => ({
+    'javascript.0.solaredge_modbus_online': fresh(true),
+    'javascript.0.solaredge_modbus_production': fresh(watts),
+});
+const modbusOffline = { 'javascript.0.solaredge_modbus_online': fresh(false) };
 
 function plug(apower, ageSeconds = 1) {
     return { val: JSON.stringify({ apower, output: true }), ts: Date.now() - ageSeconds * 1000 };
@@ -91,12 +99,45 @@ test('plug payload without a numeric apower resets power and status to idle', ()
     assert.strictEqual(published.maxxisun_status, 'Bereit');
 });
 
-test('influx reply without a result array does not throw', () => {
-    const { influxReply } = boot({});
-    assert.doesNotThrow(() => influxReply()({}));
+// Production comes from Modbus only: the SolarEdge cloud rows that used to stand in while the
+// inverter was unreachable were retired on 2026-11-03. An inverter that does not answer at night
+// is asleep and produces nothing; one that does not answer in daylight is unknown, so the states
+// go stale instead of showing a made-up value.
+test('live Modbus production and a fresh grid reading are published', () => {
+    const { published, gridReported } = boot({ ...modbusLive(1200), [GRID_STATE]: fresh(-300) });
+    gridReported();
+    assert.strictEqual(published.power_production, 1200);
+    assert.strictEqual(published.power_feedin, 300);
+    assert.strictEqual(published.power_consumption, 900);
+    assert.strictEqual(published.power_data_stale, false);
 });
 
-test('influx reply with an empty result array does not throw', () => {
-    const { influxReply } = boot({});
-    assert.doesNotThrow(() => influxReply()({ result: [] }));
+test('an inverter asleep at night counts as 0 W and the house runs on the grid', () => {
+    const { published, gridReported } = boot({ ...modbusOffline, [GRID_STATE]: fresh(450) }, false);
+    gridReported();
+    assert.strictEqual(published.power_production, 0);
+    assert.strictEqual(published.power_consumption, 450);
+    assert.strictEqual(published.power_data_stale, false);
+});
+
+test('an inverter unreachable in daylight leaves the states stale, not guessed', () => {
+    const { published, gridReported } = boot({ ...modbusOffline, [GRID_STATE]: fresh(450) }, true);
+    gridReported();
+    assert.strictEqual(published.power_data_stale, true);
+    assert.ok(!('power_production' in published));
+});
+
+test('a stale grid reading leaves the states stale even with live production', () => {
+    const grid = { val: 450, ts: Date.now() - 10 * 60 * 1000 };
+    const { published, gridReported } = boot({ ...modbusLive(1200), [GRID_STATE]: grid });
+    gridReported();
+    assert.strictEqual(published.power_data_stale, true);
+    assert.ok(!('power_consumption' in published));
+});
+
+test('the retired SolarEdge cloud table is no longer queried', () => {
+    const { influxQueries, gridReported } = boot({ ...modbusLive(1200), [GRID_STATE]: fresh(0) });
+    gridReported();
+    assert.deepStrictEqual(influxQueries, []);
+    assert.doesNotMatch(SRC, /electricity_power_watt/);
 });

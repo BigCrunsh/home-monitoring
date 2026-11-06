@@ -1,24 +1,16 @@
-// Publishes real-time energy states anchored on the grid-point meter.
+// Publishes real-time energy states anchored on the grid-point meter: live inverter
+// production over Modbus TCP (SunSpec, via the solaredge_modbus script) plus the live
+// Shelly 3EM grid, so consumption and autarky are real-time.
 //
-// Modes:
-//   modbus    — live inverter production over Modbus TCP (SunSpec, via the
-//               solaredge_modbus script) plus the live Shelly 3EM grid. Preferred:
-//               consumption and autarky are real-time, no cloud lag.
-//   hybrid    — grid power from the live Shelly 3EM (mqtt_shelly states) plus the
-//               newest SolarEdge production reading (~15 min fresh). Purchase and
-//               feed-in are exact for the whole house; consumption and autarky are
-//               derived from the grid anchor. Fallback when Modbus is asleep/offline.
-//   solaredge — fallback when the Shelly state is stale: newest COMPLETE SolarEdge
-//               row (consumption-side fields present; the SolarEdge cloud delivers
-//               them ~2h late and attributes everything to FeedIn until then).
-//   stale     — nothing usable; previous values are kept.
+// The inverter sleeps after sunset and stops answering Modbus: then production is 0 W.
+// Unreachable while the sun is up, production is unknown and the states go stale; the
+// SolarEdge cloud rows that used to stand in were retired on 2026-11-03.
 //
 // Maxxisun: the PV+battery's gross AC is metered by a Shelly Plug S Gen3 (signed apower;
-// negative = feeding/producing, positive = charging). In hybrid mode its feed-in is added
-// to production, so consumption/autarky now include it; its charging is captured by the
-// grid anchor as consumption. The signed value + status are also published for the
-// dashboard (power_maxxisun / maxxisun_status). The solaredge fallback row does NOT
-// include the Maxxisun. Purchase and feed-in are exact regardless.
+// negative = feeding/producing, positive = charging). Its feed-in is added to production,
+// so consumption/autarky include it; its charging is captured by the grid anchor and
+// subtracted from Haus. The signed value + status are also published for the dashboard
+// (power_maxxisun / maxxisun_status).
 
 createState('power_consumption', 0, {
     desc: 'Aktueller Leistungsverbrauch',
@@ -92,15 +84,11 @@ createState('power_data_stale', true, {
     type: 'boolean',
     role: 'indicator.maintenance',
 }, function () {
-    queryInfluxDB();
+    recompute();
 });
 
-var MAX_AGE_HOURS = 6;            // fallback window for complete SolarEdge rows
-var GRID_MAX_AGE_SECONDS = 300;   // Shelly reading older than this -> fallback
-// SolarEdge publishes quarter-hour power rows ~60-75 min late, so the newest
-// row is normally ~1h old; the gate only catches genuine collection outages
-var PRODUCTION_MAX_AGE_SECONDS = 7200;
-var MODBUS_MAX_AGE_SECONDS = 30;  // live SolarEdge production via Modbus; older -> cloud row
+var GRID_MAX_AGE_SECONDS = 300;   // Shelly reading older than this -> stale
+var MODBUS_MAX_AGE_SECONDS = 30;  // live SolarEdge production via Modbus; older -> offline
 var GRID_STATE = 'javascript.0.mqtt_shelly.total_act_power';  // negative = export
 // Shelly Plug S Gen3 metering the Maxxisun (signed apower: negative = feeding/producing)
 var MAXXI_STATE = 'mqtt.0.shellyplugsg3-48f6eeb7af98.status.switch:0';
@@ -136,28 +124,6 @@ on({ id: 'javascript.0.maxxisun_relay', ack: false }, function (obj) {
         .catch(function (e) { console.warn('maxxisun relay set failed: ' + e.message); });
 });
 
-// A row is complete once the consumption meter has reported: consumption-side
-// fields are present and feed-in cannot exceed production (1W tolerance).
-function isComplete(row) {
-    var consumption = row.Consumption || 0;
-    var purchased = row.Purchased || 0;
-    var production = row.Production || 0;
-    var feedin = row.FeedIn || 0;
-    if (consumption <= 0 && purchased <= 0) {
-        return false;
-    }
-    if (feedin > production + 1) {
-        return false;
-    }
-    return true;
-}
-
-function rowAgeSeconds(row) {
-    // the influxdb adapter returns the row timestamp as `ts` (ms epoch)
-    var row_ts = row.ts !== undefined ? row.ts : row.time;
-    return Math.round((Date.now() - new Date(row_ts).getTime()) / 1000);
-}
-
 function publish(values) {
     setState('power_consumption', values.consumption);
     setState('power_feedin', values.feedin);
@@ -191,32 +157,11 @@ function computeHybrid(grid, production, maxxiCharge) {
     };
 }
 
-function computeFromRow(row) {
-    var consumption = row.Consumption || 0;
-    var production = row.Production || 0;
-    var selfconsumption = row.SelfConsumption || 0;
-    return {
-        consumption: consumption,
-        feedin: row.FeedIn || 0,
-        production: production,
-        purchased: row.Purchased || 0,
-        selfconsumption: selfconsumption,
-        rate_autarky: consumption > 0 ? selfconsumption / consumption : 0,
-        rate_selfconsumption: production > 0 ? selfconsumption / production : 0
-    };
-}
-
-// cached newest production row, refreshed by the scheduled InfluxDB query;
-// grid-change events recompute from this cache so Main reacts in seconds
-var cachedProductionRow = null;
-
 function recompute() {
     var gridState = getState(GRID_STATE);
     var gridFresh = gridState && gridState.val !== null
         && (Date.now() - gridState.ts) / 1000 < GRID_MAX_AGE_SECONDS;
 
-    // Prefer live SolarEdge production over Modbus (SunSpec, via solaredge_modbus);
-    // fall back to the newest cloud row when Modbus is offline/stale (inverter asleep).
     var mbOnline = getState('javascript.0.solaredge_modbus_online');
     var mbProd = getState('javascript.0.solaredge_modbus_production');
     var modbusLive = mbOnline && mbOnline.val === true
@@ -239,64 +184,15 @@ function recompute() {
         setState('maxxisun_status', 'Bereit');
     }
 
-    // Pick the SolarEdge production source: live Modbus, else newest cloud row.
-    var seProd, productionFresh;
-    if (modbusLive) {
-        seProd = Math.max(0, mbProd.val);
-        productionFresh = true;
-    } else if (cachedProductionRow) {
-        seProd = cachedProductionRow.Production || 0;
-        productionFresh = rowAgeSeconds(cachedProductionRow) < PRODUCTION_MAX_AGE_SECONDS;
-    } else {
-        return false;   // nothing usable yet
+    // An inverter that stops answering after sunset is asleep; in daylight it is unknown.
+    var seProd = modbusLive ? Math.max(0, mbProd.val) : (isAstroDay() ? null : 0);
+    if (!gridFresh || seProd === null) {
+        setState('power_data_stale', true);
+        return false;
     }
-
-    // Power states are only published when the data is fresh.
-    var gridVal = (gridState && gridState.val !== null) ? gridState.val : 0;
     var maxxiCharge = (maxxiApower !== null) ? Math.max(0, maxxiApower) : 0;
-    var vals = computeHybrid(gridVal, seProd + maxxiProd, maxxiCharge);
-    var fresh = gridFresh && productionFresh;
-    if (fresh) {
-        publish(vals);
-        return true;
-    }
-    return false;
-}
-
-function queryInfluxDB() {
-    sendTo('influxdb.0', 'query',
-        'SELECT * FROM home_monitoring.autogen.electricity_power_watt'
-        + ' WHERE time > now() - ' + MAX_AGE_HOURS + 'h'
-        + ' ORDER BY time DESC LIMIT 30',
-        function (result) {
-            if (result.error) {
-                console.error(result.error);
-                return;
-            }
-            var rows = (result.result && result.result[0]) || [];
-            cachedProductionRow = rows.length ? rows[0] : null;
-
-            if (recompute()) {
-                return;
-            }
-
-            // fallback: newest complete SolarEdge row
-            var row = null;
-            for (var i = 0; i < rows.length; i++) {
-                if (isComplete(rows[i])) {
-                    row = rows[i];
-                    break;
-                }
-            }
-            if (row) {
-                publish(computeFromRow(row));
-                return;
-            }
-
-            console.warn('no usable energy data; keeping previous values');
-            setState('power_data_stale', true);
-                }
-    );
+    publish(computeHybrid(gridState.val, seProd + maxxiProd, maxxiCharge));
+    return true;
 }
 
 // live recompute on every Shelly reading (~10s); cheap, no InfluxDB round-trip
@@ -315,4 +211,5 @@ on({ id: 'javascript.0.solaredge_modbus_production', change: 'ne' }, function ()
     recompute();
 });
 
-schedule("*/1 * * * *", queryInfluxDB);
+// without new readings no event fires: re-check every minute so a dead feed turns stale
+schedule("*/1 * * * *", recompute);
