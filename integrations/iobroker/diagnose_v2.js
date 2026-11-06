@@ -72,6 +72,10 @@ var GVALVE = 'smartgarden.0.LOCATION_28b39c94-2D8503-2D4ee7-2D8a95-2D7c5a0f50a8d
 var HOST = 'system.host.raspberrypi';
 var PI_CORES = 4;   // load average at the core count = fully busy
 var REGA_UP_ID = 'hm-rega.0.info.ccuRegaUp';
+// The Maxxisun's only meter (its CCU V2 opens no interface). It reports every 7-13 s while feeding
+// and at least every 2 min when idle; silent this long, the energy model has been counting the
+// Maxxisun as 0 W without any visible sign.
+var MAXXI_PLUG = 'mqtt.0.shellyplugsg3-48f6eeb7af98.status.switch:0', MAXXI_SILENT_MS = 15 * 60000;
 
 // [label, state id, fresh<=sec (green), amber<=sec] — age from the state's last-write ts
 var SOURCES = [
@@ -393,6 +397,9 @@ function deviceIssues() {
     // program runs, so no light switches. hm-rpc stays connected, so only hm-rega notices.
     if (existsState(REGA_UP_ID) && getState(REGA_UP_ID).val === false)
         issues.push({ nm: 'CCU-Programme', txt: 'offline', col: RED, rank: 0 });
+    var maxxiAge = existsState(MAXXI_PLUG) ? ageOf(MAXXI_PLUG) : null;
+    if (maxxiAge != null && maxxiAge * 1000 > MAXXI_SILENT_MS)
+        issues.push({ nm: 'Maxxisun-Zähler', txt: 'still seit ' + agoShort(maxxiAge * 1000), col: AMBER, rank: 1 });
     NETATMO_MODULES.forEach(function (m) {
         var silent = netatmoSilentMs(m.id);
         var bat = existsState(m.id + '.BatteryStatus') ? sNum(m.id + '.BatteryStatus') : null;   // wind gauge has none
@@ -422,7 +429,8 @@ function buildDevices() {
     enumerateBatteryDevices();
     var issues = deviceIssues();
     var total = HM_DEVICES.length + NETATMO_MODULES.length + HUE_REMOTES.length
-        + SOIL_SENSORS.filter(function (z) { return existsState(z.tsId); }).length;
+        + SOIL_SENSORS.filter(function (z) { return existsState(z.tsId); }).length
+        + (existsState(MAXXI_PLUG) ? 1 : 0);
     var h = '<div class="card"><div class="card-h">Geräte</div><div class="rows dense">';
     if (!issues.length) {
         h += '<div class="drow">' + dot(GREEN)
