@@ -52,7 +52,7 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 | Change | Goal | Effort |
 |---|---|---|
 | `add-realtime-hybrid-energy-states` | Anchor energy states on the live Shelly grid meter: purchase/feed-in exact in seconds, autarky near-real-time (added 2026-06-10 after the 2 h SolarEdge lag surfaced) | ~½ day |
-| `add-maxxisun-integration` | Meter the second PV system + battery at its socket (Shelly plug, in the energy model since 2026-06-15); CCU integration dropped — the CCU V2 opens no local interface | remaining: persistence SLA, Main tile |
+| `add-maxxisun-integration` | Meter the second PV system + battery at its socket (Shelly plug, in the energy model since 2026-06-15); CCU integration dropped — the CCU V2 opens no local interface | **done 2026-11-06** (archived) |
 | `deploy-evcc-energy-automation` | evcc sidecar: Tibber tariff + SolarEdge PV (incl. Modbus TCP spike for local real-time inverter data), first price/PV-surplus-controlled load (~€75–150/yr upside); the Maxxisun battery's charge state is not readable (CCU V2) | ~2–3 days |
 
 ### P5 — Platform modernization

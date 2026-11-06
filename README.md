@@ -33,7 +33,7 @@ Currently disabled (cron entries commented out):
 
 Metered only:
 
-- Maxxisun/Maxxicharge - second PV system with battery, metered at its socket by a Shelly Plug S Gen3; its CCU V2 opens no local interface, so the battery's charge state is unavailable (see `openspec/changes/add-maxxisun-integration/`)
+- Maxxisun/Maxxicharge - second PV system with battery, metered at its socket by a Shelly Plug S Gen3; its CCU V2 opens no local interface, so the battery's charge state is unavailable (see `openspec/specs/maxxisun-monitoring/`)
 
 ## Installation
 
