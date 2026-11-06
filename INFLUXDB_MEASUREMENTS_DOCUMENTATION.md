@@ -8,30 +8,27 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 ### 1. Electricity & Energy
 
 #### `electricity_energy_watthour`
-- **Source**: SolarEdge API (`/site/{siteId}/energyDetails`)
-- **Description**: Detailed solar energy per meter (production, consumption, feed-in, purchase, self-consumption)
-- **Fields**: 
-  - `Consumption`: Energy consumed (Wh)
-  - `Production`: Energy produced (Wh)
-  - `FeedIn`: Energy exported to the grid (Wh)
-  - `Purchased`: Energy imported from the grid (Wh)
-  - `SelfConsumption`: Self-consumed energy (Wh)
-- **Tags**: 
-  - `site_id`: SolarEdge site identifier
-- **Update Frequency**: Depends on configured `timeUnit` (DAY/WEEK/HOUR/etc.) and scheduler
-
-#### `electricity_power_watt`
-- **Source**: SolarEdge API (`/site/{siteId}/powerDetails`)
-- **Description**: Detailed real-time power per meter (production, consumption, feed-in, purchase, self-consumption)
+- **Source**: since 2026-11-06, the lifetime counters ioBroker logs (database `iobroker`):
+  the inverter's AC energy over Modbus and the Shelly 3EM's grid import/export, plus the
+  Maxxisun plug's power. Computed by `collect_solaredge_data` (every 5 min). Until
+  2026-11-03 the SolarEdge cloud API (`energyDetails`, retired); history before
+  2025-10-27 was dropped by the old retention policy.
+- **Description**: Energy per 15-minute interval, timestamped at the interval start
 - **Fields**:
-  - `Consumption`: Power consumed (W)
-  - `Production`: Power produced (W)
-  - `FeedIn`: Power exported to the grid (W)
-  - `Purchased`: Power imported from the grid (W)
-  - `SelfConsumption`: Self-consumed power (W)
+  - `Production`: SolarEdge inverter output (Wh)
+  - `Purchased`: Energy imported from the grid (Wh)
+  - `FeedIn`: Energy exported to the grid (Wh)
+  - `Maxxisun`: Maxxisun net delivery to the house, feeding minus charging (Wh; since 2026-11-06)
+  - `SelfConsumption`: Local generation used in the house (Wh)
+  - `Consumption`: Household consumption, battery charging excluded (Wh)
 - **Tags**:
   - `site_id`: SolarEdge site identifier
-- **Update Frequency**: Depends on scheduler; typically every 15 minutes for detailed power
+- **Update Frequency**: every 15 minutes; an interval without a recent counter reading at its
+  end is skipped, and its energy lands in the next one
+
+#### `electricity_power_watt`
+- **Source**: SolarEdge API (`powerDetails`) — **retired 2026-11-03, no longer written**.
+  Live power is in the ioBroker states (`javascript.0.power_*`, logged to database `iobroker`).
 
 #### `electricity_prices_euro`
 - **Source**: Tibber API
@@ -361,9 +358,9 @@ FROM "weather_temperature_celsius"
 WHERE time >= now() - 24h
 GROUP BY time(1h)
 
--- Current solar power production
-SELECT LAST("Production")
-FROM "electricity_power_watt"
+-- Current solar power production (logged by ioBroker)
+SELECT LAST("value")
+FROM "iobroker"."global"."javascript.0.power_production"
 WHERE time >= now() - 1h
 
 -- Daily energy consumption

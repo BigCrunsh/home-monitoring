@@ -11,7 +11,8 @@ counters (inverter AC energy, grid-meter import, grid-meter export) and write it
 #### Scenario: Normal interval
 - **WHEN** all three counters have readings at both ends of an interval
 - **THEN** `Production`, `Purchased` and `FeedIn` equal the counter differences,
-  `SelfConsumption = Production − FeedIn` and
+  `Maxxisun = Maxxisun feed − Maxxisun charge`,
+  `SelfConsumption = Production + Maxxisun feed − FeedIn` and
   `Consumption = Purchased + Production + Maxxisun feed − FeedIn − Maxxisun charge`
 
 #### Scenario: Pi or network was down

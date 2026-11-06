@@ -20,7 +20,7 @@ ioBroker scripts plus export/deploy/drift tooling — see the development cycle 
 Active:
 
 - [Netatmo](https://www.netatmo.com/en-eu) - Smart home weather station (OAuth2 with lnetatmo library)
-- [SolarEdge](https://www.solaredge.com/) - Solar inverter and PV monitoring (cloud API; power rows arrive ~60-75 min delayed)
+- [SolarEdge](https://www.solaredge.com/) - Solar inverter, read locally over Modbus TCP: live power for the dashboard, and the lifetime energy counter that (with the Shelly 3EM's import/export counters) gives the 15-minute energy totals. The SolarEdge cloud API v1 this used before was retired on 2026-11-03. The healthcheck compares the grid import with the utility meter (via Tibber) once a day.
 - [Tankerkoenig](https://creativecommons.tankerkoenig.de/) - Gas station price monitoring
 - [Tibber](https://tibber.com/) - Dynamic electricity tariff: hourly prices, consumption, costs
 - SAM Digital - Heating system gateway (flow/return/storage temperatures, valve signals)
@@ -31,9 +31,9 @@ Currently disabled (cron entries commented out):
 
 - Techem Compact V - Heat meter via nanoCUL USB stick (requires pyserial)
 
-Pending:
+Metered only:
 
-- Maxxisun/Maxxicharge - second PV system with battery; blocked on the CCU2 local API (see `openspec/changes/add-maxxisun-integration/`)
+- Maxxisun/Maxxicharge - second PV system with battery, metered at its socket by a Shelly Plug S Gen3; its CCU V2 opens no local interface, so the battery's charge state is unavailable (see `openspec/changes/add-maxxisun-integration/`)
 
 ## Installation
 
