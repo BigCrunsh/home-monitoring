@@ -9,9 +9,9 @@ import hashlib
 import pytest
 from home_monitoring.scripts.deploy_iobroker import (
     Verdict,
-    as_deployed,
     blob_id,
     decide,
+    live_blob,
 )
 
 OLD = blob_id(b"old version\n")
@@ -71,18 +71,27 @@ def test_uncommitted_local_changes_win_over_other_problems(
 
 
 # Deploying with common.source="$(cat file)" drops the file's final newline, so a script
-# deployed that way differs from every committed version by exactly that byte.
+# deployed that way differs from its committed version by exactly that byte. Files
+# committed without a final newline (diagnose_v2.js) must still match as they are.
 def test_a_live_copy_missing_only_the_final_newline_is_the_committed_version() -> None:
     """The stripped newline is a deploy artefact, not an edit on the Pi."""
-    assert as_deployed(b"on(x);") == b"on(x);\n"
+    known = {blob_id(b"on(x);\n")}
+    assert live_blob(b"on(x);", known) == blob_id(b"on(x);\n")
 
 
-def test_a_live_copy_that_ends_in_a_newline_is_left_as_it_is() -> None:
-    """Only the missing newline is restored; nothing else is normalized."""
-    assert as_deployed(b"on(x);\n") == b"on(x);\n"
-    assert as_deployed(b"on(x);  \n\n") == b"on(x);  \n\n"
+def test_a_file_committed_without_a_final_newline_matches_as_it_is() -> None:
+    """Regression: an added newline made an unchanged script look edited on the Pi."""
+    known = {blob_id(b"on(x);")}
+    assert live_blob(b"on(x);", known) == blob_id(b"on(x);")
 
 
-def test_an_empty_live_copy_stays_empty() -> None:
-    """An empty script is not turned into a one-line file."""
-    assert as_deployed(b"") == b""
+def test_a_live_copy_matching_no_version_keeps_its_own_id() -> None:
+    """A real Pi-side edit stays unknown, so the deploy is refused."""
+    known = {blob_id(b"on(x);\n")}
+    assert live_blob(b"on(y);", known) == blob_id(b"on(y);")
+
+
+def test_a_live_copy_ending_in_a_newline_is_never_altered() -> None:
+    """Only a missing final newline is tried; nothing else is normalized."""
+    known = {blob_id(b"on(x);  \n\n")}
+    assert live_blob(b"on(x);  \n\n", known) == blob_id(b"on(x);  \n\n")

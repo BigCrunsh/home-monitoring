@@ -46,15 +46,18 @@ def blob_id(content: bytes) -> str:
     return hashlib.sha1(header + content, usedforsecurity=False).hexdigest()
 
 
-def as_deployed(live: bytes) -> bytes:
-    """Return the live copy as the committed file it was deployed from.
+def live_blob(live: bytes, known: set[str]) -> str:
+    """Return the blob id of the live copy, matched against the known versions.
 
     Deploying with common.source="$(cat file)" drops the file's final newline, so a
-    script deployed that way would otherwise match no committed version.
+    live copy without one is also tried with it restored. A file committed without a
+    final newline matches as it is; a copy matching neither keeps its own id.
     """
-    if not live or live.endswith(b"\n"):
-        return live
-    return live + b"\n"
+    exact = blob_id(live)
+    if exact in known or live.endswith(b"\n"):
+        return exact
+    restored = blob_id(live + b"\n")
+    return restored if restored in known else exact
 
 
 def decide(
@@ -156,12 +159,13 @@ def live_vis() -> bytes | None:
 
 def check(path: Path, live: bytes | None) -> Verdict:
     """Compare a repo file with its live copy."""
-    local = path.read_bytes()
+    local = blob_id(path.read_bytes())
+    committed = committed_blobs(path)
     return decide(
-        live=blob_id(as_deployed(live)) if live is not None else None,
-        local=blob_id(local),
+        live=live_blob(live, committed | {local}) if live is not None else None,
+        local=local,
         head=head_blob(path),
-        committed=committed_blobs(path),
+        committed=committed,
     )
 
 
@@ -195,7 +199,8 @@ def deploy_script(name: str, dry_run: bool) -> int:
         print(result.stderr, file=sys.stderr)
         return 1
     after = live_script(name)
-    if not after or blob_id(as_deployed(after[1])) != blob_id(path.read_bytes()):
+    local = blob_id(path.read_bytes())
+    if not after or live_blob(after[1], {local}) != local:
         print(f"{name}: live copy does not match after deploy", file=sys.stderr)
         return 1
     print(f"{name}: deployed to {object_id}; the script restarts on its own")
