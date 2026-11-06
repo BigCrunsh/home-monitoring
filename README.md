@@ -266,7 +266,10 @@ The targets reach the Pi as `PI_HOST` (default `pi@raspberrypi`); extra ssh/scp 
 in `PI_SSH_OPTS`. A refused deploy saves the live copy to the temp directory, so the Pi-side
 edit can be diffed and committed before deploying again. The scripts in
 `integrations/iobroker/tools/` do the same jobs when run on the Pi itself, e.g.
-`check_drift.sh` compares every deployed script with the Pi's checkout. Custom nav icons are versioned
+`check_drift.sh` compares every deployed script with the Pi's checkout. Updating the
+`vis-icontwo` adapter wipes its `Custom/` folder (seen with 1.18 → 2.11 on 2026-11-06):
+afterwards restore each icon with `iobroker file write /tmp/<icon>.svg
+/vis-icontwo/Custom/<icon>.svg`. Custom nav icons are versioned
 in `integrations/iobroker/vis/icons/` and copied to
 `/opt/iobroker/iobroker-data/files/vis-icontwo/Custom/` on the Pi.
 
