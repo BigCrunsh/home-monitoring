@@ -30,8 +30,7 @@ class Settings(BaseSettings):
     netatmo_username: str | None = None
     netatmo_password: str | None = None
 
-    # SolarEdge settings
-    solaredge_api_key: str | None = None
+    # SolarEdge site id: tags the energy totals, as the retired cloud feed did
     solaredge_site_id: str | None = None
 
     # Gardena settings

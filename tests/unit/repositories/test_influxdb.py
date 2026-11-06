@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from home_monitoring.config import Settings
 from home_monitoring.models.base import Measurement
-from home_monitoring.repositories.influxdb import InfluxDBRepository
+from home_monitoring.repositories.influxdb import InfluxDBRepository, parse_influx_time
 from pytest_mock import MockerFixture
 
 from tests.unit.constants import EXPECTED_ITEM_COUNT
@@ -189,3 +189,24 @@ async def test_get_latest_timestamp_epoch_seconds(
     assert latest is not None
     expected = datetime.fromtimestamp(epoch_seconds, tz=UTC)
     assert latest == expected
+
+
+def test_parse_influx_time_reads_an_rfc3339_string_as_utc() -> None:
+    """InfluxDB's default time format, with fractional seconds."""
+    expected = datetime(2026, 11, 6, 10, 0, 30, 500000, tzinfo=UTC)
+    assert parse_influx_time("2026-11-06T10:00:30.5Z") == expected
+
+
+@pytest.mark.parametrize(
+    "epoch",
+    [1793959200, 1793959200000, 1793959200000000, 1793959200000000000],
+    ids=["s", "ms", "us", "ns"],
+)
+def test_parse_influx_time_reads_epochs_of_any_precision(epoch: int) -> None:
+    """Epoch values come back in whatever precision the query asked for."""
+    assert parse_influx_time(epoch) == datetime(2026, 11, 6, 10, 0, tzinfo=UTC)
+
+
+def test_parse_influx_time_rejects_other_types() -> None:
+    """An unexpected value is reported as unknown, not guessed."""
+    assert parse_influx_time(None) is None

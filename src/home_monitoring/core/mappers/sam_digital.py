@@ -138,8 +138,7 @@ class SamDigitalMapper(BaseMapper):
     def _build_tags(device: Mapping[str, Any]) -> dict[str, str]:
         """Build common tags for Sam Digital measurements.
 
-        We attach device-level context rather than per-datapoint labels to
-        match the aggregated measurement style used in SolarEdgeMapper.
+        We attach device-level context rather than per-datapoint labels.
         Device names are sanitized: names containing a street address are
         replaced by the device category (or a stable id-based fallback).
         """

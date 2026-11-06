@@ -1,70 +1,33 @@
 #!/usr/bin/env python3
-"""Collect data from SolarEdge API."""
+"""Write 15-minute energy (electricity_energy_watthour) from the logged meter counters.
+
+The SolarEdge cloud API this used to call was retired on 2026-11-03. The energy now
+comes from the inverter's lifetime counter (Modbus) and the grid meter's import/export
+counters, which ioBroker logs to InfluxDB. The script keeps its name so the cron entry
+stays valid.
+"""
 
 import asyncio
 import sys
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
-from home_monitoring.repositories.influxdb import InfluxDBRepository
-from home_monitoring.services.solaredge import SolarEdgeService
+from home_monitoring.services.energy_totals.service import EnergyTotalsService
 from home_monitoring.utils.logging import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
 
 async def main() -> int:
-    """Run the data collection.
+    """Run the energy computation.
 
     Returns:
         Exit code
     """
     configure_logging()
-    service = SolarEdgeService()
-    repository = InfluxDBRepository()
-    now = datetime.now(UTC)
-
     try:
-        # Collect detailed energy data starting from latest stored timestamp
-        latest_energy = await repository.get_latest_timestamp(
-            "electricity_energy_watthour"
-        )
-        energy_window_start = now - timedelta(days=30)
-        # If no data yet, start at window start; otherwise clamp latest to the window
-        energy_start = max(latest_energy or energy_window_start, energy_window_start)
-        energy_meters = [
-            "PRODUCTION",
-            "CONSUMPTION",
-            "SELFCONSUMPTION",
-            "FEEDIN",
-            "PURCHASED",
-        ]
-
-        await service.collect_and_store_energy_details(
-            start_time=energy_start,
-            end_time=now,
-            time_unit="QUARTER_OF_AN_HOUR",
-            meters=energy_meters,
-        )
-
-        # Collect detailed power data starting from latest stored timestamp
-        latest_power = await repository.get_latest_timestamp("electricity_power_watt")
-        power_window_start = now - timedelta(days=30)
-        power_start = max(latest_power or power_window_start, power_window_start)
-        power_meters = [
-            "PRODUCTION",
-            "CONSUMPTION",
-            "SELFCONSUMPTION",
-            "FEEDIN",
-            "PURCHASED",
-        ]
-
-        await service.collect_and_store_power_details(
-            start_time=power_start,
-            end_time=now,
-            meters=power_meters,
-        )
+        await EnergyTotalsService().collect(now=datetime.now(UTC))
     except Exception as e:
-        logger.error("solaredge_collection_failed", error=str(e))
+        logger.error("energy_totals_failed", error=str(e))
         return 1
     return 0
 

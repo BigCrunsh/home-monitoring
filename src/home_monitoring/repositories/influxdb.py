@@ -16,6 +16,30 @@ EPOCH_DIGITS_US = 16
 EPOCH_DIGITS_MS = 13
 
 
+def parse_influx_time(raw_time: object) -> datetime | None:
+    """Return an InfluxDB timestamp as a timezone-aware UTC datetime.
+
+    InfluxDB returns either an RFC3339 string (e.g. "2025-11-22T17:38:04Z") or an
+    integer epoch value in s, ms, us or ns; anything else gives None.
+    """
+    if isinstance(raw_time, str):
+        dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+        return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+    if isinstance(raw_time, int | float):
+        epoch = int(raw_time)
+        digits = len(str(abs(epoch)))
+        if digits >= EPOCH_DIGITS_NS:
+            seconds = epoch / 1_000_000_000
+        elif digits >= EPOCH_DIGITS_US:
+            seconds = epoch / 1_000_000
+        elif digits >= EPOCH_DIGITS_MS:
+            seconds = epoch / 1_000
+        else:
+            seconds = float(epoch)
+        return datetime.fromtimestamp(seconds, tz=UTC)
+    return None
+
+
 class InfluxDBRepository:
     """Repository for InfluxDB operations."""
 
@@ -75,36 +99,9 @@ class InfluxDBRepository:
                 return None
 
             raw_time = points[0][0]
-
-            # InfluxDB may return the timestamp either as an ISO8601 string
-            # (e.g. "2025-11-22T17:38:04Z") or as an integer epoch value.
-            # Handle both cases and always return a timezone-aware UTC
-            # datetime so callers can safely compare it with other UTC times.
-
-            # String timestamp (RFC3339/ISO8601)
-            if isinstance(raw_time, str):
-                value = raw_time
-                if value.endswith("Z"):
-                    value = value.replace("Z", "+00:00")
-                dt = datetime.fromisoformat(value)
-                return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
-
-            # Integer/float epoch timestamp (ns/us/ms/s)
-            if isinstance(raw_time, int | float):
-                epoch = int(raw_time)
-                digits = len(str(abs(epoch)))
-
-                # Heuristic based on digit count
-                if digits >= EPOCH_DIGITS_NS:  # nanoseconds
-                    seconds = epoch / 1_000_000_000
-                elif digits >= EPOCH_DIGITS_US:  # microseconds
-                    seconds = epoch / 1_000_000
-                elif digits >= EPOCH_DIGITS_MS:  # milliseconds
-                    seconds = epoch / 1_000
-                else:  # seconds
-                    seconds = float(epoch)
-
-                return datetime.fromtimestamp(seconds, tz=UTC)
+            parsed = parse_influx_time(raw_time)
+            if parsed is not None:
+                return parsed
 
             self._logger.error(
                 "unexpected_timestamp_type",

@@ -22,8 +22,6 @@ def mock_settings() -> Settings:
         netatmo_client_secret="test",
         netatmo_username="test",
         netatmo_password="test",
-        # SolarEdge settings
-        solaredge_api_key="test",
         solaredge_site_id="test",
         # Gardena settings
         gardena_client_id="test",
