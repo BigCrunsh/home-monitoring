@@ -8,8 +8,10 @@
 //
 // The inverter accepts only ONE Modbus TCP connection at a time, so each poll
 // opens one socket, reads, and closes; overlapping polls are skipped. Published:
-//   solaredge_modbus_production  W   inverter AC power (SunSpec 40083/40084)
-//   solaredge_modbus_online      bool  last poll succeeded
+//   solaredge_modbus_production    W     inverter AC power (SunSpec 40083/40084)
+//   solaredge_modbus_energy_total  Wh    lifetime AC energy counter (SunSpec 40093–40095);
+//                                        the 15-minute energy totals are its differences
+//   solaredge_modbus_online        bool  last poll succeeded
 //
 // SunSpec scale factors (sunSF) are signed int16 exponents: value = raw * 10^sf.
 
@@ -17,6 +19,7 @@ var net = require('net');
 var HOST = 'solaredgeinv-741523F9.fritz.box', PORT = 1502, UNIT = 1, POLL_MS = 6000;
 
 createState('solaredge_modbus_production', 0, { type: 'number', role: 'value.power', unit: 'W', desc: 'SolarEdge AC-Leistung (Modbus, live)' });
+createState('solaredge_modbus_energy_total', 0, { type: 'number', role: 'value.energy', unit: 'Wh', desc: 'SolarEdge AC-Energie gesamt (Modbus-Zähler)' });
 createState('solaredge_modbus_online', false, { type: 'boolean', role: 'indicator.reachable', desc: 'SolarEdge Modbus erreichbar' });
 
 // Read `qty` holding registers from `addr` (FC3); resolves with the data Buffer.
@@ -57,6 +60,15 @@ function noteSuccess() {
     wasOnline = true;
 }
 
+// A counter of 0 (inverter still starting) or below the last reading is a glitch, not energy:
+// publishing it would show up as a huge jump in the next 15-minute total.
+var lastEnergy = 0;
+function publishEnergy(wh) {
+    if (!(wh > 0) || wh < lastEnergy) return;
+    lastEnergy = wh;
+    setState('solaredge_modbus_energy_total', wh, true);
+}
+
 var polling = false;
 function poll() {
     if (polling) return;
@@ -74,9 +86,11 @@ function poll() {
     sock.on('timeout', function () { noteFailure('timeout'); done(false); });
     sock.on('error', function (e) { noteFailure(e.message); done(false); });
     sock.connect(PORT, HOST, function () {
-        modbusRead(sock, 40083, 2).then(function (inv) {    // inverter AC power + sf
+        // 40083 AC power, 40084 its sf, … 40093–40094 lifetime AC energy (Wh), 40095 its sf
+        modbusRead(sock, 40083, 13).then(function (inv) {
             var prod = inv.readInt16BE(0) * Math.pow(10, inv.readInt16BE(2));
             setState('solaredge_modbus_production', Math.round(prod), true);
+            publishEnergy(inv.readUInt32BE(20) * Math.pow(10, inv.readInt16BE(24)));
             setState('solaredge_modbus_online', true, true);
             noteSuccess();
             done(true);

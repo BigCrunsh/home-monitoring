@@ -91,14 +91,19 @@ const failConnect = (message) => (sock) => {
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
-function powerFrame(raw, sf) {
-    const f = Buffer.alloc(13);
-    f.writeUInt16BE(6 + 1 + 4, 4);
+// One reply for the 13 registers 40083–40095: AC power + its scale factor at the start, the
+// lifetime AC energy counter (32 bit, Wh) + its scale factor at the end; the registers in
+// between (frequency, VA, VAR, PF) are not used.
+function inverterFrame(raw, sf, energyWh = 0, energySf = 0) {
+    const f = Buffer.alloc(9 + 26);
+    f.writeUInt16BE(3 + 26, 4);
     f.writeUInt8(1, 6);
     f.writeUInt8(3, 7);
-    f.writeUInt8(4, 8);
+    f.writeUInt8(26, 8);
     f.writeInt16BE(raw, 9);
     f.writeInt16BE(sf, 11);
+    f.writeUInt32BE(energyWh, 9 + 20);
+    f.writeInt16BE(energySf, 9 + 24);
     return f;
 }
 
@@ -114,7 +119,7 @@ function exceptionFrame(code) {
 const reply = (frame) => (sock) => setImmediate(() => sock.emit('data', frame));
 
 test('a valid power frame publishes production with the scale factor applied', async () => {
-    const { states, sockets } = boot(() => {}, reply(powerFrame(1234, -1)));
+    const { states, sockets } = boot(() => {}, reply(inverterFrame(1234, -1)));
     await tick();
     assert.strictEqual(states.solaredge_modbus_production.val, 123);
     assert.strictEqual(states.solaredge_modbus_online.val, true);
@@ -125,7 +130,7 @@ test('production is published from a single read, no meter read follows', async 
     let writes = 0;
     const { states } = boot(() => {}, (sock) => {
         writes += 1;
-        reply(powerFrame(2000, 0))(sock);
+        reply(inverterFrame(2000, 0))(sock);
     });
     await tick();
     await tick();
@@ -165,7 +170,7 @@ test('recovery after failures logs once, and a later failure logs again', async 
     let healthy = false;
     const { logs, poll, states } = boot(
         (sock) => { if (!healthy) failConnect('ENOTFOUND')(sock); },
-        reply(powerFrame(500, 0)),
+        reply(inverterFrame(500, 0)),
     );
     poll();
     assert.strictEqual(logs.length, 1);
@@ -181,4 +186,50 @@ test('recovery after failures logs once, and a later failure logs again', async 
     healthy = false;
     poll();
     assert.strictEqual(logs.length, 3, 'a new outage logs again');
+});
+
+// The lifetime counter is what the 15-minute energy totals are computed from (the SolarEdge
+// cloud that used to deliver them was retired on 2026-11-03). A counter reading that is 0 or
+// lower than the last one is a glitch, not energy: publishing it would make the next interval
+// show a huge production jump.
+test('the lifetime energy counter is published in Wh from the same read as the power', async () => {
+    let writes = 0;
+    const { states } = boot(() => {}, (sock) => {
+        writes += 1;
+        reply(inverterFrame(1500, 0, 23456789, 0))(sock);
+    });
+    await tick();
+    assert.strictEqual(writes, 1);
+    assert.strictEqual(states.solaredge_modbus_energy_total.val, 23456789);
+    assert.strictEqual(states.solaredge_modbus_production.val, 1500);
+});
+
+test('the energy counter scale factor is applied', async () => {
+    const { states } = boot(() => {}, reply(inverterFrame(0, 0, 2345678, 1)));
+    await tick();
+    assert.strictEqual(states.solaredge_modbus_energy_total.val, 23456780);
+});
+
+test('a counter reading of 0 is not published, the power still is', async () => {
+    const { states } = boot(() => {}, reply(inverterFrame(800, 0, 0, 0)));
+    await tick();
+    assert.strictEqual(states.solaredge_modbus_energy_total.writes, 0);
+    assert.strictEqual(states.solaredge_modbus_production.val, 800);
+});
+
+test('a counter reading below the last published one is not published', async () => {
+    let energy = 5000000;
+    const { states, poll } = boot(() => {}, (sock) => reply(inverterFrame(100, 0, energy, 0))(sock));
+    await tick();
+    energy = 4999000;
+    poll();
+    await tick();
+    assert.strictEqual(states.solaredge_modbus_energy_total.val, 5000000);
+    assert.strictEqual(states.solaredge_modbus_energy_total.writes, 1);
+});
+
+test('a modbus exception publishes no counter reading', async () => {
+    const { states } = boot(() => {}, reply(exceptionFrame(2)));
+    await tick();
+    assert.strictEqual(states.solaredge_modbus_energy_total.writes, 0);
 });
