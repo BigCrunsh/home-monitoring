@@ -117,27 +117,41 @@ function lightTile(it, x, y, w, h) {
         + '<span class="ic">' + icoBulb(on ? AMBER : LBL) + '</span><span class="cap">' + esc(it[0]) + '</span></div>';
     return { html: html, targets: [rnd({ kind: 'toggle', oid: it[1], x: x, y: y, w: w, h: h })] };
 }
-// square plug tile: keeps the live-W status line
+// square plug tile: keeps the live-W status line. The Maxxisun plug meters both directions
+// (negative = feeding the house), so it says which way the power flows; the direction goes into
+// the name line, as "speist 812 W" does not fit the square tile's status line.
+var MAXXI_POWER = 'javascript.0.power_maxxisun', MAXXI_IDLE_W = 5;
+function plugLabel(it, on, pw) {
+    if (!on) return [it[0], 'aus'];
+    if (pw == null) return [it[0], 'an'];
+    if (it[2] !== MAXXI_POWER) return [it[0], Math.round(pw) + ' W'];
+    if (pw < -MAXXI_IDLE_W) return ['Maxxi speist', Math.round(-pw) + ' W'];
+    if (pw > MAXXI_IDLE_W) return ['Maxxi lädt', Math.round(pw) + ' W'];
+    return [it[0], 'bereit'];
+}
 function plugTile(it, x, y, w, h) {
     var on = sBool(it[1]), pw = sNum(it[2]);
-    var st = on ? (pw != null ? Math.round(pw) + ' W' : 'an') : 'aus';
-    return { html: tileHtml('sq1' + (on ? ' on' : ''), pos(x, y, w, h), it[3](on ? AMBER : LBL), it[0], st),
+    var label = plugLabel(it, on, pw);
+    return { html: tileHtml('sq1' + (on ? ' on' : ''), pos(x, y, w, h), it[3](on ? AMBER : LBL), label[0], label[1]),
         targets: [rnd({ kind: 'toggle', oid: it[1], x: x, y: y, w: w, h: h })] };
 }
 // Gardena valve: tap = water 10 min (write seconds to duration_value); 'STOP' marker = stop-all tile
 // (two-tap via garten_stop_cmd: a stray tap must not kill a running watering cycle)
+// The tap hint ("tippen = 10 min") sits once in the section header; tiles show their state.
 var stopArmUntil = 0;
+function isWatering(valve) { return /WATERING|MANUAL|SCHEDULED/i.test(sStr(GVALVE + valve + '.activity_value') || ''); }
 function gardenaTile(it, x, y, w, h) {
     if (it[1] === 'STOP') {
         var stopArmed = Date.now() < stopArmUntil;
-        return { html: tileHtml('gt stop', pos(x, y, w, h), icoStop(RED), 'Stop', stopArmed ? 'sicher? tippen' : 'stoppen'),
+        var live = stopArmed || VALVES.some(isWatering);   // alarming only while something waters
+        return { html: tileHtml('gt' + (live ? ' stop' : ''), pos(x, y, w, h), icoStop(live ? RED : LBL), 'Stop', stopArmed ? 'sicher? tippen' : 'stoppen'),
             targets: [rnd({ kind: 'cmd', oid: 'javascript.0.garten_stop_cmd', value: 'go', x: x, y: y, w: w, h: h })] };
     }
     var base = GVALVE + it[1];
     var nm = sStr(base + '.name_value') || it[0];
-    var act = sStr(base + '.activity_value') || '';
-    var watering = /WATERING|MANUAL|SCHEDULED/i.test(act);
-    var st = watering ? 'läuft' : '10 min';
+    var watering = isWatering(it[1]);
+    var left = sNum(base + '.duration_leftover_i');
+    var st = !watering ? 'aus' : (left != null && left > 0 ? 'läuft · ' + Math.ceil(left / 60) + ' min' : 'läuft');
     return { html: tileHtml('gt' + (watering ? ' open' : ''), pos(x, y, w, h), icoValve(watering ? BLUE : LBL), nm, st),
         targets: [rnd({ kind: 'set', oid: base + '.duration_value', value: WATER_SECS, x: x, y: y, w: w, h: h })] };
 }
@@ -155,20 +169,28 @@ function systemTile(it, x, y, w, h) {
     return { html: tileHtml(cls, pos(x, y, w, h), icoPower(col), 'CCU', st),
         targets: [rnd({ kind: 'cmd', oid: 'javascript.0.ccu_restart_cmd', value: 'go', x: x, y: y, w: w, h: h })] };
 }
-// shutter tile: name + position on top, three Auf/80%/Zu buttons below (each a write-target).
+// shutter tile: name + position on top, three Auf/50 %/Zu buttons below (each a write-target).
 // "Alle" moves every shutter in the house, so it gets the two-tap guard (arm → confirm).
+// HomeMatic LEVEL 100 = fully open; a bare "100 %" did not say which way, so the end positions
+// read as words. A partial position stays a short "40 %" so long room names keep fitting.
 var rollArmUntil = 0;
+function shutterPos(lvl) {
+    if (lvl == null) return '–';
+    if (lvl >= 95) return 'offen';
+    if (lvl <= 5) return 'zu';
+    return Math.round(lvl) + ' %';
+}
 function shutterTile(it, x, y, w, h) {
     var isAlle = it[0] === 'Alle';
     var oidBase = isAlle ? 'javascript.0.roll_all_cmd' : 'hm-rpc.1.' + it[1] + '.4.LEVEL';
     var lvl = isAlle ? null : sNum(oidBase);
     var armed = isAlle && Date.now() < rollArmUntil;
-    var posTxt = isAlle ? (armed ? 'sicher?' : 'alle') : (lvl != null ? Math.round(lvl) + ' %' : '–');
+    var posTxt = isAlle ? (armed ? 'sicher?' : '') : shutterPos(lvl);
     var open = isAlle || (lvl != null && lvl > 5);
     var html = '<div class="tile stile' + (armed ? ' stop' : (open ? ' open' : '')) + '" ' + pos(x, y, w, h) + '>'
         + '<div class="shead">' + icoBlind(armed ? RED : (open ? BLUE : LBL)) + '<span class="cap">' + esc(it[0]) + '</span><span class="st">' + posTxt + '</span></div></div>';
     var pad = 7, gap = 6, byH = 26, bw = (w - 2 * pad - 2 * gap) / 3, by = y + h - pad - byH;
-    var labels = [['Auf', 100], ['50%', 50], ['Zu', 0]];
+    var labels = [['Auf', 100], ['50 %', 50], ['Zu', 0]];
     var targets = [];
     labels.forEach(function (lb, i) {
         var bx = x + pad + i * (bw + gap);
@@ -219,7 +241,7 @@ function build() {
     // Steckdosen (up to 5 squares, card exactly 392 wide) and Garten share the third band
     var PW = 392;
     var P = section('Steckdosen', PLUGS, y, { x: PADX, w: PW, tileW: 68 }, plugTile, targets); html += P.html;
-    var G = section('Garten · Bewässerung', GARDENA, y, { x: PADX + PW + 8, w: W - 2 * PADX - PW - 8, cols: 7 }, gardenaTile, targets); html += G.html; y = G.nextY;
+    var G = section('Garten · Bewässerung · tippen = 10 min', GARDENA, y, { x: PADX + PW + 8, w: W - 2 * PADX - PW - 8, cols: 7 }, gardenaTile, targets); html += G.html; y = G.nextY;
 
     // emit the flat tap-target list once so the vis-views overlay generator can place native widgets
     if (!build._logged) { console.log('STEUERUNG_LAYOUT ' + JSON.stringify(targets)); build._logged = true; }

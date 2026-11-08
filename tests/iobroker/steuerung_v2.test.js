@@ -44,7 +44,7 @@ function overlays() {
 test('maxxi: the Maxxi Akku tile switches the Shelly relay and shows the Maxxisun power', () => {
     const { html, targets } = loadSteuerung({ 'javascript.0.maxxisun_relay': true, 'javascript.0.power_maxxisun': -87 });
     assert.ok(targets.some((t) => t.oid === 'javascript.0.maxxisun_relay' && t.kind === 'toggle'));
-    assert.match(html, /Maxxi Akku<\/span><span class="st">-87 W/);
+    assert.match(html, /Maxxi speist<\/span><span class="st">87 W/);
 });
 
 test('removed plugs: no tile, tap target or script still points at a device removed on the CCU', () => {
