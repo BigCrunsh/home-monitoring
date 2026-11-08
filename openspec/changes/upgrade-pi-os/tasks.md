@@ -2,11 +2,15 @@
 
 ## 1. Preparation
 
-- [ ] 1.1 Verify backups are current & complete: backitup (ioBroker), InfluxDB volume,
-      `.env`, crontab, `/home/pi/logs` layout
-- [ ] 1.2 Decide Python delivery on the new OS (distro 3.12 vs uv/pyenv); record in
-      design.md
-- [ ] 1.3 Write the rebuild runbook draft from the current system's inventory
+- [x] 1.1 Verify backups are current & complete: backitup (ioBroker), InfluxDB volume,
+      `.env`, crontab, `/home/pi/logs` layout (2026-11-08: all current — backitup daily
+      02:40, portable InfluxDB backup 02:15, NAS pulls the whole `/` daily with 14 snapshots.
+      Gaps: `/boot` excluded from the NAS pull, one InfluxDB generation only, no off-site
+      copy; the runbook's step 0 covers `/boot`)
+- [x] 1.2 Decide Python delivery on the new OS (distro 3.12 vs uv/pyenv); record in
+      design.md (uv-managed Python 3.12 + `.venv` from pyproject.toml)
+- [x] 1.3 Write the rebuild runbook draft from the current system's inventory
+      (`runbook.md`)
 
 ## 2. Build the new system (old card untouched)
 
