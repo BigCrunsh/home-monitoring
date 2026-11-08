@@ -69,7 +69,7 @@ var CSS_BASE = `
 
 /* 6-TAGE VORHERSAGE */
 .mv2 .fc{flex:1; display:flex; flex-direction:column}
-.mv2 .fcrow{display:grid; grid-template-columns:34px 30px auto 1fr auto; gap:var(--s2); align-items:center; border-top:1px solid var(--border); padding:var(--s2) 2px}
+.mv2 .fcrow{display:grid; grid-template-columns:52px 30px auto 1fr auto; gap:var(--s2); align-items:center; border-top:1px solid var(--border); padding:var(--s2) 2px}
 .mv2 .fcrow:first-child{border-top:none}
 .mv2 .fcrow.we .dow{color:var(--blue)}
 .mv2 .fcrow .dow{font-size:var(--t-sub); font-weight:600}
@@ -370,7 +370,8 @@ function buildForecast() {
 
     var h = '<div class="card"><div class="card-h">Vorhersage</div><div class="card-body">'
         + buildHourly() + '<div class="hdiv"></div><div class="fc">';
-    days.forEach(function (x) {
+    // the first row is today: named "Heute", as a bare weekday read like a future day in the evening
+    days.forEach(function (x, i) {
         var weekend = (x.dow === 0 || x.dow === 6);
         var bar = '';
         if (typeof x.mn === 'number' && typeof x.mx === 'number') {
@@ -379,7 +380,7 @@ function buildForecast() {
                 + '%;background:linear-gradient(90deg,' + comfortCol(x.mn) + ',' + comfortCol(x.mx) + ')"></div></div>';
         }
         h += '<div class="fcrow' + (weekend ? ' we' : '') + '">'
-            + '<div class="dow">' + DAYS_SHORT[x.dow] + '</div>'
+            + '<div class="dow">' + (i === 0 ? 'Heute' : DAYS_SHORT[x.dow]) + '</div>'
             + '<div>' + wxImg(x.sym) + '</div>'
             + '<div class="tmin" style="color:' + comfortCol(x.mn) + '">' + (x.mn != null ? Math.round(x.mn) : '–') + '°</div>'
             + (bar || '<div class="fcbar"></div>')
