@@ -9,6 +9,10 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 
 - **Energy automation**: closed-loop track via an **evcc sidecar** next to the
   existing stack (not a Home Assistant migration, not hand-rolled ioBroker JS).
+  Dropped on 2026-11-08: nothing worth switching exists (the switchable plugs feed
+  lamps and a printer, hot water comes from the heating, the Maxxisun battery can't be
+  controlled, and dishwasher/washer don't resume after a power cut). Reopen when an EV,
+  heat pump, electric water heater or remote-startable appliance arrives.
 - **Address leak**: rewrite git history and stay public (exposure is two device-name
   strings in one file, one commit).
 - **Dashboard**: incremental vis-2 fixes **plus** Grafana for history/analytics.
@@ -53,7 +57,6 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 |---|---|---|
 | `add-realtime-hybrid-energy-states` | Anchor energy states on the live Shelly grid meter: purchase/feed-in exact in seconds, autarky near-real-time (added 2026-06-10 after the 2 h SolarEdge lag surfaced) | ~½ day |
 | `add-maxxisun-integration` | Meter the second PV system + battery at its socket (Shelly plug, in the energy model since 2026-06-15); CCU integration dropped — the CCU V2 opens no local interface | **done 2026-11-06** (archived) |
-| `deploy-evcc-energy-automation` | evcc sidecar: Tibber tariff + SolarEdge PV (incl. Modbus TCP spike for local real-time inverter data), first price/PV-surplus-controlled load (~€75–150/yr upside); the Maxxisun battery's charge state is not readable (CCU V2) | ~2–3 days |
 
 ### P5 — Platform modernization
 
@@ -67,8 +70,6 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
 - `version-iobroker-scripts` should land before or with `fix-solaredge-power-metrics`
   (the fix is deployed through the new from-git workflow).
 - `fix-solaredge-power-metrics` feeds `improve-dashboard-data-states` (staleness state).
-- `harden-network-services` before `deploy-evcc-energy-automation`
-  (don't add services to an unauthenticated host).
 - `spike-tsdb-migration` outcome gates any storage migration; everything else is
   independent of it.
 
@@ -91,8 +92,6 @@ and energy-optimization perspectives). Each roadmap item is an OpenSpec change u
   retired as unused; the adapter stays.
 - **Router port forwarding**: is anything forwarded to the Pi? (`monitoring.sawade.me`
   is actively updated.) Answered as part of `harden-network-services`.
-- **First controlled load for evcc**: which device (hot-water, dishwasher, other)?
-  Decided in the `deploy-evcc-energy-automation` spike task.
 - **Maxxisun CCU local API**: answered 2026-10-31 — the household's CCU is a V2, which
   opens no local interface (MQTT control exists only on the V2+). The Maxxi is metered
   at its socket instead; its battery charge state stays unavailable.
