@@ -56,11 +56,12 @@ test('netatmo: a module that reported minutes ago with a good battery raises not
     assert.match(h, /alle ok/);
 });
 
-test('netatmo: a base station is not mistaken for a module', () => {
+// a base station is watched too (2026-11-08), under its Datenquellen name, never as a room module
+test('netatmo: a silent base station is listed as "Netatmo", not as a module named after its room', () => {
     const ctx = loadDiagnose({ [HOME]: 'Wohnzimmer' }, { [HOME + '.LastUpdate']: netatmoDate(500 * HOUR) });
     const h = ctx.buildDevices();
     assert.doesNotMatch(h, /Wohnzimmer/);
-    assert.match(h, /0 Geräte/);
+    assert.match(h, /Netatmo<\/span><span class="ag"[^>]*>still seit 21 Tg/);
 });
 
 test('netatmo: a low battery is flagged even while the module still reports', () => {

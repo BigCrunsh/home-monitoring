@@ -312,6 +312,9 @@ function enumerateHmDevices() {
 // The base stations themselves are watched as Datenquellen; only modules are listed here.
 // Modules report every ~10 min — 2 h of silence means a dead battery or lost radio link.
 var NETATMO_SILENT_MS = 2 * 3600000, LOW_BAT_PCT = 20;
+// Base stations report every ~10 min; silent for an hour they are offline (Studio, 2026-11-08: no
+// reading after 14:36 and no message, only a red age on the dashboard).
+var NETATMO_STATION_SILENT_MS = 3600000;
 // A Hue remote only radios when pressed: the bridge never marks it unreachable and keeps the last battery
 // level it heard, so a dead remote just sits at its last value (Claras Fernbedienung: 1 % for 9 days).
 // At this level it is as good as dead and counts as red, like an offline device.
@@ -332,16 +335,26 @@ function netatmoModuleName(obj, fallback) {
     var typeName = obj.native && NETATMO_TYPE_NAMES[obj.native.type];
     return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(name) && typeName ? typeName : name;
 }
+// netatmo.0.<home>.<station>.LastUpdate is a base station, one level deeper a module of it. Stations
+// carry the name of their Datenquellen row ("Netatmo Studio").
 function enumerateBatteryDevices() {
     NETATMO_MODULES = [];
     $('state[id=netatmo.0.*.LastUpdate]').each(function (id) {
         var parts = id.split('.');
+        if (parts.length === 5) {
+            var base = parts.slice(0, 4).join('.');
+            if (!getObject(base)) return;
+            NETATMO_MODULES.push({ id: base, silentMs: NETATMO_STATION_SILENT_MS,
+                name: STATION_LABELS[base] ? 'Netatmo ' + STATION_LABELS[base] : 'Netatmo' });
+            return;
+        }
         if (parts.length !== 6) return;
         var mod = parts.slice(0, 5).join('.'), station = parts.slice(0, 4).join('.');
         var obj = getObject(mod);
         if (!obj) return;
         var name = netatmoModuleName(obj, parts[4]);
-        NETATMO_MODULES.push({ id: mod, name: STATION_LABELS[station] ? STATION_LABELS[station] + ' · ' + name : name });
+        NETATMO_MODULES.push({ id: mod, silentMs: NETATMO_SILENT_MS,
+            name: STATION_LABELS[station] ? STATION_LABELS[station] + ' · ' + name : name });
     });
     HUE_REMOTES = [];
     $('state[id=hue.0.*.battery]').each(function (id) {
@@ -412,7 +425,7 @@ function deviceIssues() {
     NETATMO_MODULES.forEach(function (m) {
         var silent = netatmoSilentMs(m.id);
         var bat = existsState(m.id + '.BatteryStatus') ? sNum(m.id + '.BatteryStatus') : null;   // wind gauge has none
-        if (silent != null && silent > NETATMO_SILENT_MS) issues.push({ nm: m.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1, netatmoSilent: true });
+        if (silent != null && silent > m.silentMs) issues.push({ nm: m.name, txt: 'still seit ' + agoShort(silent), col: AMBER, rank: 1, netatmoSilent: true });
         else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: m.name, txt: 'Batterie schwach', col: AMBER, rank: 2, battery: { id: m.id + '.BatteryStatus', swapStep: PCT_SWAP_STEP } });
     });
     HUE_REMOTES.forEach(function (r) {
