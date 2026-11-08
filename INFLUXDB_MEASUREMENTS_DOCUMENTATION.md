@@ -8,9 +8,10 @@ This document provides comprehensive documentation of all InfluxDB measurements 
 ### 1. Electricity & Energy
 
 #### `electricity_energy_watthour`
-- **Source**: since 2026-11-06, the lifetime counters ioBroker logs (database `iobroker`):
-  the inverter's AC energy over Modbus and the Shelly 3EM's grid import/export, plus the
-  Maxxisun plug's power. Computed by `collect_solaredge_data` (every 5 min). Until
+- **Source**: since 2026-11-06, the inverter's lifetime AC energy counter (Modbus, logged
+  by ioBroker to database `iobroker`), the Shelly 3EM's 15-minute grid energy netted
+  across the three phases (`EMData.GetNetEnergies`, as the utility meter bills it), and
+  the Maxxisun plug's power. Computed by `collect_solaredge_data` (every 5 min). Until
   2026-11-03 the SolarEdge cloud API (`energyDetails`, retired); history before
   2025-10-27 was dropped by the old retention policy.
 - **Description**: Energy per 15-minute interval, timestamped at the interval start

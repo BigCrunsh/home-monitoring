@@ -14,9 +14,11 @@ OAuth app, a ~66-calls-a-day limit and a paywalled meter split for no better dat
 
 ## What Changes
 
-- `solaredge_modbus.js` also reads the inverter's lifetime AC energy counter;
-  `mqtt_shelly.js` also publishes the grid meter's lifetime import and export counters.
-  All three are logged to InfluxDB (database `iobroker`).
+- `solaredge_modbus.js` also reads the inverter's lifetime AC energy counter, logged to
+  InfluxDB (database `iobroker`). The grid exchange comes from the Shelly 3EM's own
+  15-minute records netted across the phases (its lifetime import/export counters count
+  per phase and overstated both by ~4 kWh a day; found by the reconciliation on
+  2026-11-08 and replaced the same day).
 - `collect_solaredge_data` computes 15-minute energy from counter differences instead of
   calling the cloud and writes it to `electricity_energy_watthour` with the same fields
   and tags, so the history and its consumers continue. The Maxxisun's share comes from
@@ -24,7 +26,7 @@ OAuth app, a ~66-calls-a-day limit and a paywalled meter split for no better dat
 - `electricity_power_watt` is no longer written; `solaredge_power.js` drops the cloud
   fallback: an inverter that is offline after sunset counts as 0 W production, an
   inverter offline in daylight leaves the states stale.
-- The healthcheck compares yesterday's grid import from the Shelly counter with the
+- The healthcheck compares yesterday's stored grid import (complete days only) with the
   utility meter's figure (Tibber) once a day and alerts on a large difference.
 - The SolarEdge cloud client, its config and its tests are removed.
 

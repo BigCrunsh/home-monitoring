@@ -4,8 +4,9 @@
 
 - [x] 1.1 `solaredge_modbus.js`: read the lifetime AC energy counter (SunSpec 40093–40095)
       in the same request as the power; publish `solaredge_modbus_energy_total` (Wh)
-- [x] 1.2 `mqtt_shelly.js`: publish the grid meter's lifetime import and export counters
-      (`emdata:0` `total_act` / `total_act_ret`, Wh)
+- [x] 1.2 Grid exchange per interval: the Shelly's phase-netted records
+      (`EMData.GetNetEnergies`); the per-phase lifetime counters first used here overstated
+      import and export and were dropped on 2026-11-08
 - [x] 1.3 Log the three counters to InfluxDB (influxdb adapter, on change); deploy and verify
 
 ## 2. Energy totals
