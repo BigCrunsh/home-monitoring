@@ -63,3 +63,22 @@ test('strom: without any power states the four rows still render in the new orde
     const html = loadMain({}).buildEnergie();
     assert.deepEqual(rows(html).map((r) => r[0]), ['Haus', 'Netz', 'SolarEdge', 'Maxxisun']);
 });
+
+// The €/h figure beside the price is the cost of the current grid draw; unlabelled it could read as
+// a daily or average figure (task 6.1).
+const priced = (over) => power(Object.assign({ [EN + 'tibber_states.energy_price_euro']: 0.45 }, over || {}));
+
+test('strom: the cost per hour is labelled "jetzt"', () => {
+    const html = loadMain(priced()).buildEnergie();
+    assert.match(html, /<span class="net"[^>]*><span class="nl">jetzt<\/span>/);
+});
+
+test('strom: without a price there is no price head and no "jetzt" label', () => {
+    const html = loadMain(power()).buildEnergie();
+    assert.doesNotMatch(html, /price-head|jetzt/);
+});
+
+test('strom: the "jetzt" label stays on feed-in income too', () => {
+    const html = loadMain(priced({ [EN + 'power_purchased']: 0, [EN + 'power_feedin']: 900 })).buildEnergie();
+    assert.match(html, /<span class="nl">jetzt<\/span>/);
+});

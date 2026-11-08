@@ -130,6 +130,7 @@ var CSS_BASE = `
 .mv2 .energie .price-head .lbl{color:var(--muted)}
 .mv2 .energie .price-head .val{font-size:var(--t-sub); font-weight:600}
 .mv2 .energie .price-head .net{margin-left:auto; font-weight:600; font-size:var(--t-label)}
+.mv2 .energie .price-head .nl{color:var(--muted); font-weight:400; margin-right:4px}
 .mv2 .energie .flows{flex:1; display:grid; grid-template-rows:repeat(4,1fr)}
 .mv2 .flow{display:grid; grid-template-columns:24px 84px 1fr 70px; align-items:center; gap:var(--s2)}
 .mv2 .flow.src-first{border-top:1px solid var(--border)}
@@ -465,7 +466,7 @@ function buildEnergie() {
     // + the spectrum-bar position carry the günstig/mittel/teuer verdict, so the word is dropped (owner).
     if (hasPrice) {
         h += '<div class="price-head"><span class="lbl">Strompreis</span><span class="val num" style="color:' + priceCol + '">' + comma(price, 2) + '<span class="u">€/kWh</span></span>'
-            + '<span class="net" style="color:' + netCol + '">' + netSign + comma(Math.abs(net), 2) + '<span class="u">€/h</span></span></div>';
+            + '<span class="net" style="color:' + netCol + '"><span class="nl">jetzt</span>' + netSign + comma(Math.abs(net), 2) + '<span class="u">€/h</span></span></div>';
         // bar spans the 7-day min–max range; labels show actual min/max; p20/p80 place the colour transitions.
         if (pMin != null && pMax != null && pMax > pMin) {
             h += '<div class="pricebar">' + spectrum(price, { min: pMin, max: pMax, p20: p20, p50: p50, p80: p80 }) + '</div>';
