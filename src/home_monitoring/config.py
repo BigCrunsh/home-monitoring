@@ -32,6 +32,8 @@ class Settings(BaseSettings):
 
     # SolarEdge site id: tags the energy totals, as the retired cloud feed did
     solaredge_site_id: str | None = None
+    # grid meter: its Fritz!Box name follows the DHCP lease, an address would not
+    shelly_3em_host: str = "shellypro3em-2cbcbba672b4.fritz.box"
 
     # Gardena settings
     gardena_application_id: str | None = None

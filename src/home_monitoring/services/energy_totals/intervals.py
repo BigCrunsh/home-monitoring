@@ -1,10 +1,11 @@
-"""15-minute energy from lifetime meter counters.
+"""15-minute energy from the inverter counter, the grid meter and the Maxxisun plug.
 
-The counters are the inverter's AC energy (Modbus), and the grid meter's import and
-export (Shelly 3EM), all in Wh and logged by ioBroker about once a minute. Energy in an
-interval is the difference of the last readings before its two ends, so it stays exact
-across gaps. The Maxxisun has no usable counter, so its share is its signed power held
-between readings (negative = feeding the house, positive = charging).
+Production is the difference of the inverter's lifetime AC energy counter (Modbus, Wh,
+logged by ioBroker about once a minute) between the last readings before the interval's
+two ends, so it stays exact across gaps. The grid exchange is the Shelly 3EM's energy
+for the interval netted across the three phases, as the utility meter bills it. The
+Maxxisun has no usable counter, so its share is its signed power held between readings
+(negative = feeding the house, positive = charging).
 """
 
 from collections.abc import Iterator
@@ -75,39 +76,41 @@ def _add(
 
 
 def interval_energy(
-    start: datetime, counters: dict[str, list[Reading]], maxxisun: list[Reading]
+    start: datetime,
+    production: list[Reading],
+    grid_net: float | None,
+    maxxisun: list[Reading],
 ) -> Measurement | None:
     """Return the energy of the interval starting at start, None if it is not known.
 
     Args:
         start: interval start (UTC)
-        counters: readings of the "Production", "Purchased" and "FeedIn" counters
+        production: readings of the inverter's lifetime energy counter (Wh)
+        grid_net: the grid meter's net energy for the interval (Wh, + import, - export)
         maxxisun: readings of the Maxxisun's signed power
 
     Returns:
-        The interval's measurement, or None when a counter has no reading before the
-        start, its reading at the end is stale, or it went backwards
+        The interval's measurement, or None when the grid figure is missing, or the
+        production counter has no reading before the start, a stale reading at the
+        end, or went backwards
     """
     end = start + INTERVAL
-    energy = {}
-    for name, readings in counters.items():
-        first, last = last_before(readings, start), last_before(readings, end)
-        if first is None or last is None or end - last.time > MAX_READING_AGE:
-            return None
-        if last.value < first.value:
-            return None
-        energy[name] = last.value - first.value
+    first, last = last_before(production, start), last_before(production, end)
+    if grid_net is None or first is None or last is None:
+        return None
+    if end - last.time > MAX_READING_AGE or last.value < first.value:
+        return None
 
+    produced = last.value - first.value
+    purchased, feed_in = max(0.0, grid_net), max(0.0, -grid_net)
     fed, charged = held_energy(maxxisun, start, end)
-    generation = energy["Production"] + fed
+    generation = produced + fed
     fields = {
-        "Production": energy["Production"],
-        "Purchased": energy["Purchased"],
-        "FeedIn": energy["FeedIn"],
+        "Production": produced,
+        "Purchased": purchased,
+        "FeedIn": feed_in,
         "Maxxisun": fed - charged,
-        "SelfConsumption": max(0.0, generation - energy["FeedIn"]),
-        "Consumption": max(
-            0.0, energy["Purchased"] + generation - energy["FeedIn"] - charged
-        ),
+        "SelfConsumption": max(0.0, generation - feed_in),
+        "Consumption": max(0.0, purchased + generation - feed_in - charged),
     }
     return Measurement(timestamp=start, measurement=MEASUREMENT, tags={}, fields=fields)

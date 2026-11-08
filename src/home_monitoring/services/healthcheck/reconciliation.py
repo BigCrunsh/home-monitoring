@@ -1,14 +1,14 @@
-"""Daily check of the grid meter's import against the utility meter.
+"""Daily check of the stored grid import against the utility meter.
 
-The energy totals rest on the Shelly 3EM's lifetime import counter; the utility meter,
-reported by Tibber, is what the bill is based on. Once a day, after Tibber has reported
-yesterday, the two are compared, and a large difference (a slipped current clamp, a
-reversed phase, a reset meter) is reported once. Missing figures are left to the
-freshness checks.
+The 15-minute energy totals take the grid import from the Shelly 3EM; the utility
+meter, reported by Tibber, is what the bill is based on. Once a day, after Tibber has
+reported yesterday, yesterday's stored import is compared with the meter, and a large
+difference (a slipped current clamp, a reversed phase, per-phase counting) is reported
+once. Missing figures and incomplete days are left to the freshness checks.
 """
 
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
@@ -22,9 +22,7 @@ BERLIN = ZoneInfo("Europe/Berlin")
 CHECK_FROM_HOUR = 8
 MIN_DIFFERENCE_KWH = 0.5
 MIN_DIFFERENCE_SHARE = 0.05
-# the counter reading taken for midnight must be at most this old
-MIDNIGHT_TOLERANCE = timedelta(minutes=15)
-IMPORT_COUNTER = '"iobroker"."global"."javascript.0.mqtt_shelly.import_total"'
+INTERVAL = timedelta(minutes=15)
 STORE_KEY = "grid_reconciliation"
 
 
@@ -37,7 +35,7 @@ def _kwh(value: float) -> str:
 
 
 class GridReconciliation:
-    """Compares yesterday's grid import on the Shelly with the utility meter."""
+    """Compares yesterday's stored grid import with the utility meter."""
 
     def __init__(
         self,
@@ -65,11 +63,9 @@ class GridReconciliation:
         yesterday = today - timedelta(days=1)
 
         meter = await self._meter_kwh(since=today)
-        start = await self._counter_wh(at=yesterday)
-        end = await self._counter_wh(at=today)
-        if meter is None or start is None or end is None:
+        shelly = await self._stored_import_kwh(yesterday, today)
+        if meter is None or shelly is None:
             return 0
-        shelly = (end - start) / 1000
         difference = abs(shelly - meter)
         if (
             difference <= MIN_DIFFERENCE_KWH
@@ -96,12 +92,17 @@ class GridReconciliation:
         )
         return await self._first_value(query)
 
-    async def _counter_wh(self, at: datetime) -> float | None:
+    async def _stored_import_kwh(self, start: datetime, end: datetime) -> float | None:
+        """Sum of the day's stored grid import, None unless every interval is there."""
         query = (
-            f"SELECT last(value) FROM {IMPORT_COUNTER}"
-            f" WHERE time <= '{_utc(at)}' AND time > '{_utc(at - MIDNIGHT_TOLERANCE)}'"
+            "SELECT sum(Purchased), count(Purchased) FROM electricity_energy_watthour"
+            f" WHERE time >= '{_utc(start)}' AND time < '{_utc(end)}'"
         )
-        return await self._first_value(query)
+        expected = (end.astimezone(UTC) - start.astimezone(UTC)) // INTERVAL
+        async for row in self._db.query(query):
+            if row.get("count") == expected and isinstance(row.get("sum"), int | float):
+                return float(row["sum"]) / 1000
+        return None
 
     async def _first_value(self, query: str) -> float | None:
         async for row in self._db.query(query):

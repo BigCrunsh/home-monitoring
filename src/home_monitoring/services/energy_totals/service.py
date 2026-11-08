@@ -1,19 +1,23 @@
-"""Write 15-minute energy computed from the meter counters ioBroker logs."""
+"""Write 15-minute energy from the inverter counter and the grid meter's records."""
 
 from datetime import datetime, timedelta
 
+import httpx
 from home_monitoring.config import Settings
 from home_monitoring.repositories.influxdb import InfluxDBRepository, parse_influx_time
 from home_monitoring.utils.logging import get_logger
 
-from .intervals import MEASUREMENT, Reading, interval_energy, quarter_hours
+from .intervals import (
+    INTERVAL,
+    MEASUREMENT,
+    Reading,
+    interval_energy,
+    quarter_hours,
+)
+from .shelly import grid_net_energy
 
-# ioBroker state of each lifetime counter (Wh), keyed by the field it feeds
-COUNTERS = {
-    "Production": "javascript.0.solaredge_modbus_energy_total",
-    "Purchased": "javascript.0.mqtt_shelly.import_total",
-    "FeedIn": "javascript.0.mqtt_shelly.export_total",
-}
+# the inverter's lifetime AC energy counter (Wh), logged by ioBroker
+PRODUCTION_COUNTER = "javascript.0.solaredge_modbus_energy_total"
 MAXXISUN_POWER = "javascript.0.power_maxxisun"
 # how far back a missed interval is recomputed after the collector was down
 CATCH_UP = timedelta(days=7)
@@ -26,14 +30,17 @@ class EnergyTotalsService:
 
     def __init__(
         self,
+        http: httpx.AsyncClient,
         repository: InfluxDBRepository | None = None,
         settings: Settings | None = None,
     ) -> None:
+        settings = settings or Settings()
         self._db = repository or InfluxDBRepository()
+        self._http = http
+        self._shelly = settings.shelly_3em_host
         self._tags = {}
-        site_id = (settings or Settings()).solaredge_site_id
-        if site_id:
-            self._tags["site_id"] = site_id
+        if settings.solaredge_site_id:
+            self._tags["site_id"] = settings.solaredge_site_id
         self._logger = get_logger(__name__)
 
     async def collect(self, now: datetime) -> int:
@@ -52,15 +59,15 @@ class EnergyTotalsService:
             return 0
 
         since = starts[0] - START_LOOKBACK
-        counters = {
-            field: await self._readings(state, since)
-            for field, state in COUNTERS.items()
-        }
+        production = await self._readings(PRODUCTION_COUNTER, since)
         maxxisun = await self._readings(MAXXISUN_POWER, since)
+        grid = await grid_net_energy(
+            self._http, self._shelly, starts[0], starts[-1] + INTERVAL
+        )
 
         points = []
         for start in starts:
-            point = interval_energy(start, counters, maxxisun)
+            point = interval_energy(start, production, grid.get(start), maxxisun)
             if point is not None:
                 points.append(point.model_copy(update={"tags": self._tags}))
         if points:
