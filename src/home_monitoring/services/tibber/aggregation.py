@@ -41,15 +41,20 @@ async def aggregate_this_day_data(
             now = dt.now(connection.time_zone)
         current_hour = now.hour
 
-        # Fetch all completed hours today (0 to current_hour)
-        today_hourly = await home.get_historic_data(
-            n_data=current_hour, resolution="HOURLY"
-        )
-        today_hourly_production = await home.get_historic_data(
-            n_data=current_hour, resolution="HOURLY", production=True
-        )
+        # Fetch all completed hours today (0 to current_hour). In the first hour none
+        # is complete: today so far is 0, and writing it keeps the dashboard from
+        # showing yesterday's total as today's until the first hour is done.
+        today_hourly: list[Any] = []
+        today_hourly_production: list[Any] = []
+        if current_hour > 0:
+            today_hourly = await home.get_historic_data(
+                n_data=current_hour, resolution="HOURLY"
+            )
+            today_hourly_production = await home.get_historic_data(
+                n_data=current_hour, resolution="HOURLY", production=True
+            )
 
-        if today_hourly:
+        if today_hourly or current_hour == 0:
             costs = [node.get("totalCost") for node in today_hourly]
             consumptions = [node.get("consumption") for node in today_hourly]
 
