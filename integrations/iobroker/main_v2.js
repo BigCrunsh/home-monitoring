@@ -591,6 +591,11 @@ function domChip(kind, icon, text) {
     return '<div class="rind dom" data-d="' + kind + '">' + icon + '<span class="nm">' + esc(text) + '</span></div>';
 }
 function icoBulbSm(c) { return '<svg width="16" height="16" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/></g></svg>'; }
+function icoLockSm(c, closed) {
+    var shackle = closed ? '<path d="M8 11 V8 a4 4 0 0 1 8 0 v3"/>' : '<path d="M8 11 V8 a4 4 0 0 1 7.6 -1.7"/>';
+    return '<svg data-l="' + (closed ? 'zu' : 'offen') + '" width="16" height="16" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">'
+        + '<rect x="5" y="11" width="14" height="10" rx="2"/>' + shackle + '</g></svg>';
+}
 function icoNoteSm(c) { return '<svg width="16" height="16" viewBox="0 0 24 24"><g fill="' + c + '"><path d="M9 4 L20 2 V16" stroke="' + c + '" stroke-width="2" fill="none"/><circle cx="7" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 4 V18" stroke="' + c + '" stroke-width="2"/></g></svg>'; }
 function contactInd(name, oid, batOid) {
     if (maint(batOid).unreach) return indDot(name, 'var(--muted)', batOid);  // offline → unknown, never a stale green
@@ -628,11 +633,13 @@ function buildRibbon() {
         + contactInd('Terrasse', 'hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT')
         + contactInd('Schuppen', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT')
         + contactInd('Haustür', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT');
+    // The door is usually left unlocked (owner, 2026-11-08), so the lock is a padlock symbol among the
+    // icon chips: grey and open when unlocked, red and closed when locked — on purpose, a warning that
+    // someone locked the normally open door. Unknown or unreachable reads grey (+ low-battery mark).
     var lock = sNum('hm-rpc.1.002A226996B89C.1.LOCK_STATE');  // 0 UNKNOWN, 1 LOCKED, 2 UNLOCKED
-    inds += maint(lockBat).unreach ? indDot('Türschloss', 'var(--muted)', lockBat)
-        : (lock === 1) ? indDot('Türschloss', 'var(--green)', lockBat)
-        : (lock === 2) ? indDot('Türschloss', 'var(--red-ind)', lockBat)
-        : indDot('Türschloss', 'var(--muted)', lockBat);
+    var lockM = maint(lockBat), locked = !lockM.unreach && lock === 1;
+    var lockChip = '<div class="rind dom" data-d="schloss">' + icoLockSm(locked ? 'var(--red-ind)' : 'var(--muted)', locked)
+        + '<span class="nm"></span>' + (lockM.low ? lowbatIco(lockBat) : '') + '</div>';
     inds += contactInd('Bad', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT');
     var sirenAlarm = sTrue(SIREN + '.3.ACOUSTIC_ALARM_ACTIVE') || sTrue(SIREN + '.3.OPTICAL_ALARM_ACTIVE');
     inds += maint(SIREN + '.0.LOW_BAT').unreach ? indDot('Sirene', 'var(--muted)', SIREN + '.0.LOW_BAT')
@@ -640,13 +647,13 @@ function buildRibbon() {
     // domain chips (task 6.4): lights on (amber bulb + count, amber = on as on the Steuerung tiles)
     // and music playing (green note), only while something is on. Compact and content-wide: text
     // chips here cut the six fixed names to an ellipsis. Counts come from steuerung_v2 / musik_v2.
-    var dom = '', domain = 0;
+    var dom = lockChip, domain = 1;
     var lights = sNum('javascript.0.lights_on') || 0;
     if (lights > 0) { dom += domChip('licht', icoBulbSm('var(--amber)'), String(lights)); domain++; }
     if ((sNum('javascript.0.music_playing') || 0) > 0) { dom += domChip('musik', icoNoteSm('var(--green)'), ''); domain++; }
     extras.forEach(function (e) { inds += indDot(e.name, e.col, e.bat); });
     inds = inds + dom;
-    var cols = 'repeat(' + (6 + extras.length) + ',1fr)' + new Array(domain + 1).join(' max-content');
+    var cols = 'repeat(' + (5 + extras.length) + ',1fr)' + new Array(domain + 1).join(' max-content');
     var inner = '<div class="mv2r"><style>' + RIBBON_CSS + '</style>'
         + '<div class="inds" style="grid-template-columns:' + cols + (_ribCompact ? ';gap:5px' : '') + '">' + inds + '</div></div>';
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 40" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
