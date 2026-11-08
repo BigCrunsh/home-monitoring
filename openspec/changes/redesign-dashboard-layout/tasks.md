@@ -80,8 +80,8 @@ OD items (§12) that gate a task are noted inline.
       battery icons only when relevant if space demands (U2) — wall-verify with a real
       offline contact (done: main_v2.js:573-583 offline contact = muted dot, never a stale green; battery icon only when low in compact mode (:568); status word dropped deliberately for width)
 - [x] 6.3 E5/Diesel: one band logic for value colour + knob (U3) (done: main_v2.js:412 buildFuel uses priceBand p20/p80 for value colour + quantile-driven vcSpectrum knob (de8d232, 2a02337))
-- [ ] 6.4 Domain-verdict chips for lights ("3 Lichter an"), music, Warmwasser (U5 —
-      additive)
+- [x] 6.4 Domain-verdict chips for lights ("3 Lichter an"), music, Warmwasser (U5 —
+      additive) (done 2026-11-08: 6867bdb, compact status-bar chips — amber bulb + count of lit lights, green note while music plays; Warmwasser not added, no state worth a chip)
 - [x] 6.5 Rename "TV" scene tile → "Fernsehabend" or visually mark scene tiles as actions
       (U6) (done: the TV tile already carries the status word "Szene", marking it as a scene/action)
 - [ ] 6.6 Calendar: size card to its rows (57px dead bottom), fix truncation strategy for
