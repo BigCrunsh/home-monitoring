@@ -107,7 +107,7 @@ function adapterHealth(inst) {
     var alive = sBool('system.adapter.' + inst + '.alive');
     var conn = sBool('system.adapter.' + inst + '.connected');
     if (c.enabled === false) return { col: RED, st: 'deaktiviert' };
-    if (c.mode === 'schedule') return alive ? { col: GREEN, st: 'läuft' } : { col: GREEN, st: 'geplant' };
+    if (c.mode === 'schedule') return alive ? { col: GREEN, st: 'läuft' } : { col: GREEN, st: 'nach Zeitplan' };
     // daemon
     if (alive === false) return { col: RED, st: 'offline' };
     if (conn === false) return { col: AMBER, st: 'verbindet…' };
@@ -137,6 +137,9 @@ function fo(cls, w, h, body) {
 }
 
 // ===== SUMMARY =====
+// The tab's verdict: source/adapter problems and device problems (the Geräte card), worst first.
+// Expects the device lists to be enumerated (publish does that before building the banner).
+function countOf(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 function buildSummary() {
     var red = 0, amber = 0;
     SOURCES.forEach(function (s) {
@@ -147,10 +150,16 @@ function buildSummary() {
         var hc = adapterHealth(a[1]).col;
         if (hc === RED) red++; else if (hc === AMBER) amber++;
     });
-    var col, txt;
-    if (red > 0) { col = RED; txt = red + (red === 1 ? ' Quelle offline' : ' Quellen offline'); }
-    else if (amber > 0) { col = AMBER; txt = amber + (amber === 1 ? ' Quelle veraltet' : ' Quellen veraltet'); }
-    else { col = GREEN; txt = 'Alle Quellen aktuell'; }
+    var devices = deviceIssues();
+    var devRed = devices.filter(function (i) { return i.col === RED; }).length;
+    var devAmber = devices.length - devRed;
+    var parts = [];
+    if (red) parts.push(countOf(red, 'Quelle offline', 'Quellen offline'));
+    if (devRed) parts.push(countOf(devRed, 'Gerät offline', 'Geräte offline'));
+    if (amber) parts.push(countOf(amber, 'Quelle veraltet', 'Quellen veraltet'));
+    if (devAmber) parts.push(countOf(devAmber, 'Gerät prüfen', 'Geräte prüfen'));
+    var col = (red || devRed) ? RED : ((amber || devAmber) ? AMBER : GREEN);
+    var txt = parts.length ? parts.join(' · ') : 'Alle Quellen und Geräte ok';
     var now = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' });
     return '<div class="card"><div class="sum">' + dot(col)
         + '<span class="txt" style="color:' + col + '">' + txt + '</span>'
@@ -522,6 +531,8 @@ function alertNewIssues(issues) {
 }
 
 function publish() {
+    enumerateHmDevices();
+    enumerateBatteryDevices();
     setState('diag_summary', fo('sumw', 1170, 72, buildSummary()), true);
     setState('diag_left', fo('dlw', 392, 596, buildSources()), true);
     // the nav panel sits under the left column only — middle and right run down to its bottom (y=775)
