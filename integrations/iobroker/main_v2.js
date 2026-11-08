@@ -132,6 +132,7 @@ var CSS_BASE = `
 .mv2 .energie .price-head .net{margin-left:auto; font-weight:600; font-size:var(--t-label)}
 .mv2 .energie .flows{flex:1; display:grid; grid-template-rows:repeat(4,1fr)}
 .mv2 .flow{display:grid; grid-template-columns:24px 84px 1fr 70px; align-items:center; gap:var(--s2)}
+.mv2 .flow.src-first{border-top:1px solid var(--border)}
 .mv2 .flow .fi{display:flex; align-items:center; justify-content:center}
 .mv2 .flow .fl{font-size:var(--t-label); color:var(--muted)}
 .mv2 .flow .track{height:6px; border-radius:3px; background:var(--inset); overflow:hidden}
@@ -472,16 +473,17 @@ function buildEnergie() {
     }
     // four flow rows
     var maxV = Math.max(Math.abs(se || 0), Math.abs(maxxi || 0), Math.abs(grid || 0), Math.abs(haus || 0), 1);
-    function frow(kind, name, val, col, approx) {
+    function frow(kind, name, val, col, approx, cls) {
         var frac = Math.min(1, Math.abs(val || 0) / maxV) * 100;
-        return '<div class="flow"><span class="fi">' + enIco(kind, col) + '</span><span class="fl">' + name + '</span>'
+        return '<div class="flow' + (cls ? ' ' + cls : '') + '"><span class="fi">' + enIco(kind, col) + '</span><span class="fl">' + name + '</span>'
             + '<span class="track"><span class="fill" style="width:' + frac.toFixed(0) + '%;background:' + col + '"></span></span>'
             + '<span class="fv num" style="color:' + col + '">' + (approx ? '≈ ' : '') + watts(val) + '</span></div>';
     }
-    // Netz is the headline flow (owner) → first; then Haus, SolarEdge, Maxxisun.
+    // Haus is demand, the rows below are the sources covering it (owner, 2026-11-08): Haus first,
+    // a divider, then Netz, SolarEdge, Maxxisun. One bar scale for all, so a surplus can outgrow Haus.
     h += '<div class="flows">'
-        + frow('grid', 'Netz', grid, gridCol)
         + frow('house', 'Haus', haus, stale ? LBL : enRoleCol(haus, false), stale)
+        + frow('grid', 'Netz', grid, gridCol, false, 'src-first')
         + frow('sun', 'SolarEdge', se, enRoleCol(se, true))
         + frow('battery', 'Maxxisun', maxxi, enRoleCol(maxxi, maxxi < 0, 500))
         + '</div>';
