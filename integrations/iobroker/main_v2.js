@@ -557,6 +557,8 @@ var RIBBON_CSS = `
 .mv2r .bat.sm{padding-left:4px}
 .mv2r .bat.sm svg{width:16px}
 .mv2r .rind.dom{gap:5px;padding:0 8px}
+.mv2r .lk{display:flex;align-items:center;flex:none;gap:2px}
+.mv2r .lk svg{display:block}
 .mv2r .rind.dom svg{flex:none;display:block}
 `;
 // HmIP maintenance read. An unreachable battery sensor has stopped communicating, so its STATE and
@@ -581,10 +583,11 @@ function lowbatIco(batOid) {
 }
 // At 40 px × 6-across the dot colour alone carries the verdict (green=secure / red=alarm / grey=unknown),
 // so each row is just dot + name + battery — no status word, which kept truncating long names.
-function indDot(name, col, batOid) {
+// `after`: optional markup right after the name (the Haustür chip carries the door lock's padlock)
+function indDot(name, col, batOid, after) {
     return '<div class="rind"' + (_ribCompact ? ' style="padding:0 6px;gap:6px"' : '') + '>'
         + '<span class="dot" style="background:' + col + '"></span><span class="nm">' + esc(name) + '</span>'
-        + (batOid ? lowbatIco(batOid) : '') + '</div>';
+        + (after || '') + (batOid ? lowbatIco(batOid) : '') + '</div>';
 }
 // compact domain chip: icon + optional count, as wide as its content
 function domChip(kind, icon, text) {
@@ -597,11 +600,11 @@ function icoLockSm(c, closed) {
         + '<rect x="5" y="11" width="14" height="10" rx="2"/>' + shackle + '</g></svg>';
 }
 function icoNoteSm(c) { return '<svg width="16" height="16" viewBox="0 0 24 24"><g fill="' + c + '"><path d="M9 4 L20 2 V16" stroke="' + c + '" stroke-width="2" fill="none"/><circle cx="7" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 4 V18" stroke="' + c + '" stroke-width="2"/></g></svg>'; }
-function contactInd(name, oid, batOid) {
-    if (maint(batOid).unreach) return indDot(name, 'var(--muted)', batOid);  // offline → unknown, never a stale green
+function contactInd(name, oid, batOid, after) {
+    if (maint(batOid).unreach) return indDot(name, 'var(--muted)', batOid, after);  // offline → unknown, never a stale green
     var v = sNum(oid);
     var col = v == null ? 'var(--muted)' : (v === 1 ? 'var(--red-ind)' : 'var(--green)');
-    return indDot(name, col, batOid);
+    return indDot(name, col, batOid, after);
 }
 // Alarm-grade sensors: Rauchmelder / Wassersensor join the ribbon ONLY when they demand
 // attention: red chip on alarm, muted chip on fault (offline / low battery / degraded smoke chamber) —
@@ -628,18 +631,19 @@ function buildRibbon() {
     // (battery icons only when low), otherwise names like Türschloss truncate
     _ribCompact = true;
 
+    // The door is usually left unlocked (owner, 2026-11-08), so the lock is a padlock symbol inside the
+    // Haustür chip, plainly that door's lock: grey and open when unlocked, red and closed when locked
+    // — on purpose, a warning that someone locked the normally open door. Unknown or unreachable
+    // reads grey (+ low-battery mark).
     var lockBat = 'hm-rpc.1.002A226996B89C.0.LOW_BAT';
+    var lock = sNum('hm-rpc.1.002A226996B89C.1.LOCK_STATE');  // 0 UNKNOWN, 1 LOCKED, 2 UNLOCKED
+    var lockM = maint(lockBat), locked = !lockM.unreach && lock === 1;
+    var padlock = '<span class="lk" data-d="schloss">' + icoLockSm(locked ? 'var(--red-ind)' : 'var(--muted)', locked)
+        + (lockM.low ? lowbatIco(lockBat) : '') + '</span>';
     var inds = ''
         + contactInd('Terrasse', 'hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT')
         + contactInd('Schuppen', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT')
-        + contactInd('Haustür', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT');
-    // The door is usually left unlocked (owner, 2026-11-08), so the lock is a padlock symbol among the
-    // icon chips: grey and open when unlocked, red and closed when locked — on purpose, a warning that
-    // someone locked the normally open door. Unknown or unreachable reads grey (+ low-battery mark).
-    var lock = sNum('hm-rpc.1.002A226996B89C.1.LOCK_STATE');  // 0 UNKNOWN, 1 LOCKED, 2 UNLOCKED
-    var lockM = maint(lockBat), locked = !lockM.unreach && lock === 1;
-    var lockChip = '<div class="rind dom" data-d="schloss">' + icoLockSm(locked ? 'var(--red-ind)' : 'var(--muted)', locked)
-        + '<span class="nm"></span>' + (lockM.low ? lowbatIco(lockBat) : '') + '</div>';
+        + contactInd('Haustür', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', padlock);
     inds += contactInd('Bad', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT');
     var sirenAlarm = sTrue(SIREN + '.3.ACOUSTIC_ALARM_ACTIVE') || sTrue(SIREN + '.3.OPTICAL_ALARM_ACTIVE');
     inds += maint(SIREN + '.0.LOW_BAT').unreach ? indDot('Sirene', 'var(--muted)', SIREN + '.0.LOW_BAT')
@@ -647,7 +651,7 @@ function buildRibbon() {
     // domain chips (task 6.4): lights on (amber bulb + count, amber = on as on the Steuerung tiles)
     // and music playing (green note), only while something is on. Compact and content-wide: text
     // chips here cut the six fixed names to an ellipsis. Counts come from steuerung_v2 / musik_v2.
-    var dom = lockChip, domain = 1;
+    var dom = '', domain = 0;
     var lights = sNum('javascript.0.lights_on') || 0;
     if (lights > 0) { dom += domChip('licht', icoBulbSm('var(--amber)'), String(lights)); domain++; }
     if ((sNum('javascript.0.music_playing') || 0) > 0) { dom += domChip('musik', icoNoteSm('var(--green)'), ''); domain++; }

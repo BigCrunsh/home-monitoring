@@ -57,16 +57,29 @@ test('ribbon: no music chip while nothing plays', () => {
 
 test('ribbon: icon chips take only their content width, the five text chips share the rest', () => {
     const html = loadMain({ 'javascript.0.lights_on': 2, 'javascript.0.music_playing': 1 }).buildRibbon();
-    assert.match(html, /grid-template-columns:repeat\(5,1fr\) max-content max-content max-content/);
+    assert.match(html, /grid-template-columns:repeat\(5,1fr\) max-content max-content/);
 });
 
 // The lock (owner, 2026-11-08): the door is usually left unlocked now, so a red "Türschloss" chip was
-// a standing false alarm. It became a padlock symbol at the start of the icon chips: grey (open)
-// when unlocked, red (closed) when locked — on purpose, it warns that someone locked the door that
-// is normally left open. Unknown or unreachable reads grey.
+// a standing false alarm. It is a padlock symbol inside the Haustür chip, so it plainly belongs to
+// that door: grey (open) when unlocked, red (closed) when locked — on purpose, it warns that someone
+// locked the door that is normally left open. Unknown or unreachable reads grey.
 const LOCK = 'hm-rpc.1.002A226996B89C';
-const lockChip = (html) => iconChips(html).find((c) => c.kind === 'schloss')
-    || (html.includes('data-d="schloss"') ? { kind: 'schloss', raw: true } : undefined);
+// the Haustür chip's markup, and the padlock symbol inside it
+function haustuer(html) {
+    const i = html.indexOf('<span class="nm">Haustür</span>');
+    assert.ok(i >= 0, 'no Haustür chip');
+    return html.slice(html.lastIndexOf('<div class="rind"', i), html.indexOf('</div>', i));
+}
+const lockChip = (html) => {
+    const m = haustuer(html).match(/<span class="lk" data-d="schloss">(<svg data-l="[a-z]+".*?<\/svg>)/);
+    return m ? { svg: m[1] } : undefined;
+};
+
+test('ribbon: the padlock sits inside the Haustür chip, right after its name', () => {
+    const chip = haustuer(loadMain({ [LOCK + '.1.LOCK_STATE']: 2 }).buildRibbon());
+    assert.match(chip, /<span class="nm">Haustür<\/span><span class="lk" data-d="schloss">/);
+});
 
 test('ribbon: a locked door shows a red closed padlock', () => {
     const c = lockChip(loadMain({ [LOCK + '.1.LOCK_STATE']: 1 }).buildRibbon());
@@ -87,10 +100,12 @@ test('ribbon: an unknown lock state reads grey', () => {
 
 test('ribbon: an unreachable lock reads grey with the low-battery mark, even if it last said locked', () => {
     const html = loadMain({ [LOCK + '.1.LOCK_STATE']: 1, [LOCK + '.0.UNREACH']: true }).buildRibbon();
-    const chip = html.slice(html.indexOf('data-d="schloss"'), html.indexOf('</div>', html.indexOf('data-d="schloss"')));
-    const padlock = chip.match(/<svg data-l="[a-z]+".*?<\/svg>/)[0];
-    assert.match(padlock, /var\(--muted\)/);
-    assert.match(chip, /class="bat/);
+    assert.match(lockChip(html).svg, /var\(--muted\)/);
+    assert.match(haustuer(html), /class="bat/);
+});
+
+test('ribbon: there is no separate lock chip any more', () => {
+    assert.doesNotMatch(loadMain({ [LOCK + '.1.LOCK_STATE']: 2 }).buildRibbon(), /<div class="rind dom" data-d="schloss"/);
 });
 
 test('ribbon: the long "Türschloss" text chip is gone', () => {
