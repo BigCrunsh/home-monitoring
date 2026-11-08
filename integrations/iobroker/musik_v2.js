@@ -46,13 +46,19 @@ var CSS = `
 .mv2 .room .ar{margin-top:2px; font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .mv2 .room .grp{color:var(--blue)}
 .mv2 .room .pp{position:absolute; width:38px; height:38px; border-radius:50%; background:var(--inset); display:flex; align-items:center; justify-content:center}
-.mv2 .room .pp.ghost{background:transparent}
+.mv2 .room .pp.ghost{background:transparent; border:1px dashed var(--border)}
+.mv2 .room.off{opacity:.45}
+.mv2 .room .stt{font-size:12px; color:var(--muted); flex:none}
+.mv2 .room .stt.on{color:var(--green)}
+.mv2 .gbtn.on{border-color:rgba(181,251,91,.4); background:var(--green-16)}
 .mv2 .room.playing .pp{background:var(--green-16)}
 .mv2 .room .vb{position:absolute; width:42px; height:34px; border-radius:10px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:var(--text)}
-.mv2 .room .vol{position:absolute; width:36px; height:34px; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--text); font-weight:600}
+.mv2 .room .vol{position:absolute; width:36px; height:34px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:14px; color:var(--text); font-weight:600}
+.mv2 .room .vbar{display:block; width:28px; height:3px; border-radius:2px; background:var(--inset); overflow:hidden}
+.mv2 .room .vbar>span{display:block; height:3px; background:var(--muted)}
 `;
 
-var GREEN = VC_PAL.good, BLUE = VC_PAL.cold, LBL = VC_PAL.muted;
+var GREEN = VC_PAL.good, LBL = VC_PAL.muted;
 // live Sonos room names (from jishi /zones), fixed order for a stable layout
 var ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zimmer', 'Carlottas Zimmer', 'Studio'];
 var COORD = 'Wohnzimmer';                         // preset group coordinator
@@ -72,24 +78,27 @@ function icoSpeaker(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"
 function icoStop(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
 function icoLink(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round"><path d="M9 12 h6"/><path d="M8 8 H6 a4 4 0 0 0 0 8 h2"/><path d="M16 8 h2 a4 4 0 0 1 0 8 h-2"/></g></svg>'; }
 
+// a room missing from the Sonos /zones answer is offline (speaker unplugged or unreachable)
 function roomCard(room, x, y, w, h) {
+    var offline = !ZONES[room];
     var z = ZONES[room] || {};
     var isTV = !!TV[room];                         // TV soundbar: no standalone play, volume + group only
     var playing = !!z.play;
     var vol = (typeof z.vol === 'number') ? z.vol : null;
     var grouped = z.coord && z.coord !== room;
-    var idle = isTV ? 'TV' : (z.coord ? (z.stopped ? 'gestoppt' : 'pausiert') : '–');
+    var idle = offline ? '–' : (isTV ? 'TV · nur Lautstärke' : (z.coord ? (z.stopped ? 'gestoppt' : 'pausiert') : '–'));
+    var stt = offline ? '<span class="stt">offline</span>' : (playing ? '<span class="stt on">spielt</span>' : '');
     var grp = grouped ? '<span class="grp">↪ ' + esc(z.coord) + '</span>' : '';
     var ti = playing ? clip(z.title, 34) : esc(idle);
     var ar = playing && z.artist ? clip(z.artist, 28) + (grouped ? ' &#160;' + grp : '') : grp;
     // control row pinned to the card bottom; positions are relative to the (absolute) card
     var vbY = h - 10 - 34, ppY = h - 10 - 38, ppX = w - 12 - 38;
-    var html = '<div class="room' + (playing ? ' playing' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px">'
-        + '<div class="rhead"><div class="disc">' + icoSpeaker(playing ? GREEN : LBL) + '</div><span class="nm">' + esc(room) + '</span></div>'
+    var html = '<div class="room' + (playing ? ' playing' : '') + (offline ? ' off' : '') + '" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px">'
+        + '<div class="rhead"><div class="disc">' + icoSpeaker(playing ? GREEN : LBL) + '</div><span class="nm">' + esc(room) + '</span>' + stt + '</div>'
         + '<div class="ti">' + ti + '</div>'
         + '<div class="ar">' + (ar || '&#160;') + '</div>'
         + '<span class="vb" style="left:12px;top:' + vbY + 'px">–</span>'
-        + '<span class="vol" style="left:60px;top:' + vbY + 'px">' + (vol != null ? vol : '–') + '</span>'
+        + '<span class="vol" style="left:60px;top:' + vbY + 'px">' + (vol != null ? vol + '<span class="vbar"><span style="width:' + vol + '%"></span></span>' : '–') + '</span>'
         + '<span class="vb" style="left:102px;top:' + vbY + 'px">+</span>'
         // TV rooms keep an invisible play slot so the layout (and its overlay) stays uniform;
         // the play tap is simply ignored by the command handler (no standalone transport)
@@ -104,18 +113,33 @@ function roomCard(room, x, y, w, h) {
     return { html: html, targets: targets };
 }
 
+// which preset the current grouping matches (over the rooms that answer), null if none
+function activePreset() {
+    var online = ROOMS.filter(function (r) { return ZONES[r]; });
+    if (!online.length) return null;
+    function coordOf(r) { return ZONES[r].coord || r; }
+    function matches(target) { return online.every(function (r) { return coordOf(r) === target(r); }); }
+    if (matches(function (r) { return r; })) return 'group:einzeln';
+    if (matches(function () { return COORD; })) return 'group:alle';
+    if (matches(function (r) { return (r === COORD || WOHNEN.indexOf(r) >= 0) ? COORD : r; })) return 'group:wohnen';
+    return null;
+}
+
 function build() {
     var html = '', targets = [];
     var cTop = 4, cH = H - 8;   // one section card fills the band
     html += '<div class="seccard" style="left:' + PADX + 'px;top:' + cTop + 'px;width:' + (W - 2 * PADX) + 'px;height:' + cH + 'px"></div>'
         + '<div class="card-h" style="left:' + (PADX + 14) + 'px;top:' + (cTop + 12) + 'px">Musik</div>';
     // preset group pills, right-aligned in the header row
-    var presets = [['Alle', 'group:alle', icoLink(GREEN)], ['Wohnen', 'group:wohnen', icoLink(BLUE)], ['Einzeln', 'group:einzeln', icoStop(LBL)]];
+    // the preset matching the current grouping is lit like an "on" tile; the others stay muted
+    var presets = [['Alle', 'group:alle', icoLink], ['Wohnen', 'group:wohnen', icoLink], ['Einzeln', 'group:einzeln', icoStop]];
+    var active = activePreset();
     var pbW = 150, pbH = 32, pbGap = 8, pbY = cTop + 8;
     var pbX0 = PADX + (W - 2 * PADX) - 14 - presets.length * pbW - (presets.length - 1) * pbGap;
     presets.forEach(function (p, i) {
         var px = pbX0 + i * (pbW + pbGap);
-        html += '<div class="gbtn" style="left:' + px + 'px;top:' + pbY + 'px;width:' + pbW + 'px;height:' + pbH + 'px"><span>' + p[2] + '</span>' + p[0] + '</div>';
+        var on = p[1] === active;
+        html += '<div class="gbtn' + (on ? ' on' : '') + '" style="left:' + px + 'px;top:' + pbY + 'px;width:' + pbW + 'px;height:' + pbH + 'px"><span>' + p[2](on ? GREEN : LBL) + '</span>' + p[0] + '</div>';
         targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: p[1], x: px, y: pbY - 6, w: pbW, h: pbH + 12 }));
     });
 
