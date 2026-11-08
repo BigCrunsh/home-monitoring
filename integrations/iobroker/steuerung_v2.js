@@ -255,10 +255,15 @@ function build() {
 // lit lights of the Lichter section, for the Übersicht status bar ("3 Lichter an")
 function lightsOn() { return LIGHTS.filter(function (l) { return sBool(l[1]); }).length; }
 createState('javascript.0.lights_on', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl eingeschalteter Lichter' });
+// switched-on consumer plugs, for the status bar's plug chip; the Maxxisun relay is always on (it
+// carries the battery) and would make the chip read "1" forever
+function plugsOn() { return PLUGS.filter(function (p) { return p[2] !== MAXXI_POWER && sBool(p[1]); }).length; }
+createState('javascript.0.plugs_on', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl eingeschalteter Steckdosen' });
 function publish() {
     setState('steuerung_grid', build(), true);
     publishRollNext();
     setState('javascript.0.lights_on', lightsOn(), true);
+    setState('javascript.0.plugs_on', plugsOn(), true);
 }
 createState('javascript.0.steuerung_grid', '', { type: 'string', role: 'html', desc: 'Steuerung tile grid' });
 

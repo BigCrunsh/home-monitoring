@@ -79,6 +79,25 @@ test('lights: with every light off the count is 0, not missing', () => {
     assert.equal(ctx.written['javascript.0.lights_on'], 0);
 });
 
+// the status bar's plug chip counts the switched-on consumer plugs; the Maxxisun relay is always on
+// (it carries the battery), so counting it would make the chip read "1" forever
+test('plugs: the number of switched-on consumer plugs is published', () => {
+    const ctx = loadSteuerung([]);
+    ctx.getState = (id) => ({
+        'hm-rpc.1.0001DD89A46CAD.3.STATE': { val: true }, 'hm-rpc.1.0001DD89A46CE1.3.STATE': { val: true },
+        'hm-rpc.1.0001DD89AADDE7.3.STATE': { val: false }
+    })[id] || null;
+    ctx.publish();
+    assert.equal(ctx.written['javascript.0.plugs_on'], 2);
+});
+
+test('plugs: the always-on Maxxisun relay is not counted', () => {
+    const ctx = loadSteuerung([]);
+    ctx.getState = (id) => (id === 'javascript.0.maxxisun_relay' ? { val: true } : null);
+    ctx.publish();
+    assert.equal(ctx.written['javascript.0.plugs_on'], 0);
+});
+
 test('rollo: the next move is published for the tile when a shutter position changes', () => {
     const ctx = loadSteuerung([100, 100, 100, 100, 100]);
     const watcher = ctx.handlers.find((h) => Array.isArray(h.opts.id) && h.opts.id.includes(levelId(SERIALS[0])));

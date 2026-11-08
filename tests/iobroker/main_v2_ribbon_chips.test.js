@@ -55,6 +55,25 @@ test('ribbon: no music chip while nothing plays', () => {
     assert.deepEqual(domChips(loadMain({ 'javascript.0.music_playing': 0 }).buildRibbon()), []);
 });
 
+// plugs (owner, 2026-11-08): like the lights, an amber plug symbol with the count while any is on
+test('ribbon: two plugs on show an amber plug with "2"', () => {
+    const [c] = domChips(loadMain({ 'javascript.0.plugs_on': 2 }).buildRibbon());
+    assert.equal(c.kind, 'stecker');
+    assert.equal(c.text, '2');
+    assert.match(c.svg, /var\(--amber\)/);
+});
+
+test('ribbon: no plug chip while every plug is off or the count is missing', () => {
+    assert.deepEqual(domChips(loadMain({ 'javascript.0.plugs_on': 0 }).buildRibbon()), []);
+    assert.deepEqual(domChips(loadMain({}).buildRibbon()), []);
+});
+
+test('ribbon: the chips read lights, plugs, music in that order', () => {
+    const html = loadMain({ 'javascript.0.lights_on': 3, 'javascript.0.plugs_on': 1, 'javascript.0.music_playing': 1 }).buildRibbon();
+    assert.deepEqual(domChips(html).map((c) => c.kind), ['licht', 'stecker', 'musik']);
+    assert.match(html, /grid-template-columns:repeat\(5,1fr\) max-content max-content max-content/);
+});
+
 test('ribbon: icon chips take only their content width, the five text chips share the rest', () => {
     const html = loadMain({ 'javascript.0.lights_on': 2, 'javascript.0.music_playing': 1 }).buildRibbon();
     assert.match(html, /grid-template-columns:repeat\(5,1fr\) max-content max-content/);

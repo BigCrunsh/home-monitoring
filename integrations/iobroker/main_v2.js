@@ -599,6 +599,7 @@ function icoLockSm(c, closed) {
     return '<svg data-l="' + (closed ? 'zu' : 'offen') + '" width="16" height="16" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">'
         + '<rect x="5" y="11" width="14" height="10" rx="2"/>' + shackle + '</g></svg>';
 }
+function icoPlugSm(c) { return '<svg width="16" height="16" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 v4 M15 3 v4"/><path d="M6 7 h12 v4 a6 6 0 0 1 -12 0 Z"/><path d="M12 17 v4"/></g></svg>'; }
 function icoNoteSm(c) { return '<svg width="16" height="16" viewBox="0 0 24 24"><g fill="' + c + '"><path d="M9 4 L20 2 V16" stroke="' + c + '" stroke-width="2" fill="none"/><circle cx="7" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 4 V18" stroke="' + c + '" stroke-width="2"/></g></svg>'; }
 function contactInd(name, oid, batOid, after) {
     if (maint(batOid).unreach) return indDot(name, 'var(--muted)', batOid, after);  // offline → unknown, never a stale green
@@ -654,6 +655,8 @@ function buildRibbon() {
     var dom = '', domain = 0;
     var lights = sNum('javascript.0.lights_on') || 0;
     if (lights > 0) { dom += domChip('licht', icoBulbSm('var(--amber)'), String(lights)); domain++; }
+    var plugs = sNum('javascript.0.plugs_on') || 0;   // consumer plugs (owner, 2026-11-08), Maxxisun relay excluded
+    if (plugs > 0) { dom += domChip('stecker', icoPlugSm('var(--amber)'), String(plugs)); domain++; }
     if ((sNum('javascript.0.music_playing') || 0) > 0) { dom += domChip('musik', icoNoteSm('var(--green)'), ''); domain++; }
     extras.forEach(function (e) { inds += indDot(e.name, e.col, e.bat); });
     inds = inds + dom;
@@ -663,7 +666,7 @@ function buildRibbon() {
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 40" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
         + '<foreignObject x="0" y="0" width="766" height="40"><div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
 }
-var RIBBON_OIDS = ['javascript.0.lights_on', 'javascript.0.music_playing', 'hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE',
+var RIBBON_OIDS = ['javascript.0.lights_on', 'javascript.0.plugs_on', 'javascript.0.music_playing', 'hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE',
     'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT', 'hm-rpc.1.002A226996B89C.0.LOW_BAT',
     'hm-rpc.1.0007DD8996AFD3.0.UNREACH', 'hm-rpc.1.00155D89A38D55.0.UNREACH', 'hm-rpc.1.0023DD89A5152D.0.UNREACH', 'hm-rpc.1.0007DD89B41FD4.0.UNREACH', 'hm-rpc.1.002A226996B89C.0.UNREACH',
     SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS', SMOKE + '.1.ERROR_DEGRADED_CHAMBER', SMOKE + '.0.LOW_BAT', SMOKE + '.0.UNREACH',
