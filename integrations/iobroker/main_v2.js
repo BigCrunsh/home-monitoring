@@ -501,9 +501,11 @@ function buildEnergie() {
 // ===== STEUERUNG — the 6 agreed tiles + symbols (mockup). Native i-vis-universal tap widgets
 // overlay each tile (the card is a read-only HTML string, so taps come from native vis widgets
 // positioned over each tile's measured box). data-k maps a tile to its overlay. Plug tiles
-// (Drucker/Couch/Vitrine) show real on/off; TV/Ambiente keep the mockup's "Szene" label; Tür
-// ("öffnen") is the guarded front-door opener. STEUER_OIDS drives the reactive tiles' subscriptions. =====
-var STEUER_OIDS = ['hm-rpc.1.0001DD89A46CE1.3.STATE', 'hm-rpc.1.0001DD89A46CAD.3.STATE', 'hm-rpc.1.0001DD89AADDE7.3.STATE', 'hue.0.TV-Bereich.on'];
+// (Drucker/Couch/Vitrine) show real on/off; Rollläden (owner, 2026-11-08, replacing the TV scene)
+// shows the next move for all shutters, published by steuerung_v2.js as roll_next — one tap moves
+// them; Tür ("öffnen") is the guarded front-door opener. STEUER_OIDS drives the reactive tiles'
+// subscriptions. =====
+var STEUER_OIDS = ['hm-rpc.1.0001DD89A46CE1.3.STATE', 'hm-rpc.1.0001DD89A46CAD.3.STATE', 'hm-rpc.1.0001DD89AADDE7.3.STATE', 'hue.0.TV-Bereich.on', 'javascript.0.roll_next'];
 function tile(key, kind, cap, state, icon) {
     return '<div class="tile ' + kind + '" data-k="' + key + '"><span class="ic">' + icon + '</span><span class="cap">' + cap + '</span><span class="st">' + state + '</span></div>';
 }
@@ -514,8 +516,11 @@ function buildSteuerung() {
     var vi = sBool('hm-rpc.1.0001DD89AADDE7.3.STATE');   // Vitrine plug
     var am = sBool('hue.0.TV-Bereich.on');               // Ambiente light (not a scene)
     var ta = sBool('javascript.0.tuer_arm');             // Tür confirm armed? (drives the red "bestätigen" look)
-    var ON = '#F1BE3D', OFF = '#8A8A8A', ALERT = '#d8536f';
-    var icTV = '<svg width="24" height="24" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="#5080AC" stroke-width="1.6"/><line x1="8" y1="20" x2="16" y2="20" stroke="#5080AC" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    var ON = '#F1BE3D', OFF = '#8A8A8A', ALERT = '#d8536f', ACT = '#5080AC';
+    var rn = sStr('javascript.0.roll_next');
+    var next = rn === 'hoch' || rn === 'runter' ? rn : null;
+    var arrow = next === 'hoch' ? '<path d="M18 9 l2 -3 l2 3"/>' : (next === 'runter' ? '<path d="M18 6 l2 3 l2 -3"/>' : '');
+    var icRollo = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + ACT + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="14" height="16" rx="1"/><line x1="2" y1="8" x2="16" y2="8"/><line x1="2" y1="12" x2="16" y2="12"/><line x1="2" y1="16" x2="16" y2="16"/>' + arrow + '</g></svg>';
     var icAmb = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (am ? ON : OFF) + '" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M12 3 v2 M12 19 v2 M3 12 h2 M19 12 h2 M5.6 5.6 l1.4 1.4 M17 17 l1.4 1.4 M18.4 5.6 l-1.4 1.4 M7 17 l-1.4 1.4"/><circle cx="12" cy="12" r="3.4" fill="' + (am ? ON : OFF) + '" stroke="none"/></g></svg>';
     var icDruck = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (dr ? ON : OFF) + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="6" rx="1"/><path d="M4 9 h16 v7 h-4 v5 H8 v-5 H4 Z"/><line x1="8" y1="13" x2="16" y2="13"/></g></svg>';
     var icCouch = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + (co ? ON : OFF) + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13 v-2 a3 3 0 0 1 3 -3 h8 a3 3 0 0 1 3 3 v2"/><rect x="3" y="13" width="18" height="5" rx="1.5"/><line x1="6" y1="18" x2="6" y2="20"/><line x1="18" y1="18" x2="18" y2="20"/></g></svg>';
@@ -523,7 +528,7 @@ function buildSteuerung() {
     var tc = ta ? ALERT : OFF;  // door icon grey → red when armed (mirrors the other tiles' grey→amber)
     var icTuer = '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + tc + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21 V4 a1 1 0 0 1 1 -1 h8 a1 1 0 0 1 1 1 v17"/><path d="M4 21 h14"/><circle cx="13" cy="12" r="1" fill="' + tc + '" stroke="none"/></g></svg>';
     var h = '<div class="card steuerung"><div class="card-body"><div class="controls">';
-    h += tile('tv', 'scene', 'TV', 'Szene', icTV);
+    h += tile('rollo', 'scene', 'Rollläden', next || '–', icRollo);
     h += tile('ambiente', am ? 'on' : '', 'Ambiente', am ? 'an' : 'aus', icAmb);
     h += tile('drucker', dr ? 'on' : '', 'Drucker', dr ? 'an' : 'aus', icDruck);
     h += tile('couch', co ? 'on' : '', 'Couch', co ? 'an' : 'aus', icCouch);
@@ -539,7 +544,7 @@ function buildSteuerung() {
 // horizontal row (dot · name · optional alarm word · battery) — a 2-line pill can't fit 40 px.
 var RIBBON_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap');
-.mv2r{--bg:#0d0e12;--surface:#15161c;--border:#262a33;--text:#CCCCCC;--muted:#8A8A8A;--green:#b5fb5b;--red-ind:#d8536f;
+.mv2r{--bg:#0d0e12;--surface:#15161c;--border:#262a33;--text:#CCCCCC;--muted:#8A8A8A;--green:#b5fb5b;--amber:#F1BE3D;--red-ind:#d8536f;
   width:766px;height:40px;box-sizing:border-box;background:var(--surface);border:1px solid var(--border);border-radius:12px;
   padding:5px 10px;display:flex;align-items:center;font-family:'Figtree',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
 .mv2r *{margin:0;padding:0;box-sizing:border-box}
@@ -551,6 +556,8 @@ var RIBBON_CSS = `
 .mv2r .bat svg{width:22px;height:auto;display:block}
 .mv2r .bat.sm{padding-left:4px}
 .mv2r .bat.sm svg{width:16px}
+.mv2r .rind.dom{gap:5px;padding:0 8px}
+.mv2r .rind.dom svg{flex:none;display:block}
 `;
 // HmIP maintenance read. An unreachable battery sensor has stopped communicating, so its STATE and
 // LOW_BAT freeze at their last values — a dead-battery contact then reads a stale "closed" (false green)
@@ -579,6 +586,12 @@ function indDot(name, col, batOid) {
         + '<span class="dot" style="background:' + col + '"></span><span class="nm">' + esc(name) + '</span>'
         + (batOid ? lowbatIco(batOid) : '') + '</div>';
 }
+// compact domain chip: icon + optional count, as wide as its content
+function domChip(kind, icon, text) {
+    return '<div class="rind dom" data-d="' + kind + '">' + icon + '<span class="nm">' + esc(text) + '</span></div>';
+}
+function icoBulbSm(c) { return '<svg width="16" height="16" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/></g></svg>'; }
+function icoNoteSm(c) { return '<svg width="16" height="16" viewBox="0 0 24 24"><g fill="' + c + '"><path d="M9 4 L20 2 V16" stroke="' + c + '" stroke-width="2" fill="none"/><circle cx="7" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 4 V18" stroke="' + c + '" stroke-width="2"/></g></svg>'; }
 function contactInd(name, oid, batOid) {
     if (maint(batOid).unreach) return indDot(name, 'var(--muted)', batOid);  // offline → unknown, never a stale green
     var v = sNum(oid);
@@ -624,14 +637,22 @@ function buildRibbon() {
     var sirenAlarm = sTrue(SIREN + '.3.ACOUSTIC_ALARM_ACTIVE') || sTrue(SIREN + '.3.OPTICAL_ALARM_ACTIVE');
     inds += maint(SIREN + '.0.LOW_BAT').unreach ? indDot('Sirene', 'var(--muted)', SIREN + '.0.LOW_BAT')
         : indDot('Sirene', sirenAlarm ? 'var(--red-ind)' : 'var(--green)', SIREN + '.0.LOW_BAT');
+    // domain chips (task 6.4): lights on (amber bulb + count, amber = on as on the Steuerung tiles)
+    // and music playing (green note), only while something is on. Compact and content-wide: text
+    // chips here cut the six fixed names to an ellipsis. Counts come from steuerung_v2 / musik_v2.
+    var dom = '', domain = 0;
+    var lights = sNum('javascript.0.lights_on') || 0;
+    if (lights > 0) { dom += domChip('licht', icoBulbSm('var(--amber)'), String(lights)); domain++; }
+    if ((sNum('javascript.0.music_playing') || 0) > 0) { dom += domChip('musik', icoNoteSm('var(--green)'), ''); domain++; }
     extras.forEach(function (e) { inds += indDot(e.name, e.col, e.bat); });
-    var n = 6 + extras.length;
+    inds = inds + dom;
+    var cols = 'repeat(' + (6 + extras.length) + ',1fr)' + new Array(domain + 1).join(' max-content');
     var inner = '<div class="mv2r"><style>' + RIBBON_CSS + '</style>'
-        + '<div class="inds" style="grid-template-columns:repeat(' + n + ',1fr)' + (_ribCompact ? ';gap:5px' : '') + '">' + inds + '</div></div>';
+        + '<div class="inds" style="grid-template-columns:' + cols + (_ribCompact ? ';gap:5px' : '') + '">' + inds + '</div></div>';
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 766 40" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">'
         + '<foreignObject x="0" y="0" width="766" height="40"><div xmlns="http://www.w3.org/1999/xhtml">' + inner + '</div></foreignObject></svg>';
 }
-var RIBBON_OIDS = ['hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE',
+var RIBBON_OIDS = ['javascript.0.lights_on', 'javascript.0.music_playing', 'hm-rpc.1.0007DD8996AFD3.1.STATE', 'hm-rpc.1.00155D89A38D55.1.STATE', 'hm-rpc.1.0023DD89A5152D.1.STATE', 'hm-rpc.1.0007DD89B41FD4.1.STATE', 'hm-rpc.1.002A226996B89C.1.LOCK_STATE',
     'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT', 'hm-rpc.1.002A226996B89C.0.LOW_BAT',
     'hm-rpc.1.0007DD8996AFD3.0.UNREACH', 'hm-rpc.1.00155D89A38D55.0.UNREACH', 'hm-rpc.1.0023DD89A5152D.0.UNREACH', 'hm-rpc.1.0007DD89B41FD4.0.UNREACH', 'hm-rpc.1.002A226996B89C.0.UNREACH',
     SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS', SMOKE + '.1.ERROR_DEGRADED_CHAMBER', SMOKE + '.0.LOW_BAT', SMOKE + '.0.UNREACH',

@@ -102,6 +102,27 @@ test('musik: a grouping that matches no preset marks none of them', () => {
     ['Alle', 'Wohnen', 'Einzeln'].forEach((p) => assert.doesNotMatch(presetHtml(ctx, p).cls, /\bon\b/));
 });
 
+// the Übersicht status bar shows a "Musik" chip while a room plays
+test('musik: the number of playing rooms is published with every redraw', () => {
+    const z = zones(null, {
+        Bad: { vol: 30, play: true, coord: 'Bad' },
+        Studio: { vol: 20, play: true, coord: 'Studio' }
+    });
+    const ctx = loadMusik(z);
+    const written = {};
+    ctx.setState = (id, val) => { written[id] = val; };
+    ctx.publish();
+    assert.equal(written['javascript.0.music_playing'], 2);
+});
+
+test('musik: nothing playing publishes 0', () => {
+    const ctx = loadMusik(zones());
+    const written = {};
+    ctx.setState = (id, val) => { written[id] = val; };
+    ctx.publish();
+    assert.equal(written['javascript.0.music_playing'], 0);
+});
+
 test('musik: inactive presets have muted icons, the active one is green', () => {
     const ctx = loadMusik(zones());
     assert.match(presetHtml(ctx, 'Alle').icon, new RegExp(ctx.LBL));

@@ -160,7 +160,13 @@ function build() {
         + '<div class="wrap">' + html + '</div></div></foreignObject></svg>';
 }
 
-function publish() { setState('musik_grid', build(), true); }
+// playing rooms, for the Übersicht status bar's "Musik" chip
+function playingRooms() { return ROOMS.filter(function (r) { return ZONES[r] && ZONES[r].play; }).length; }
+createState('javascript.0.music_playing', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl spielender Räume' });
+function publish() {
+    setState('musik_grid', build(), true);
+    setState('javascript.0.music_playing', playingRooms(), true);
+}
 createState('javascript.0.musik_grid', '', { type: 'string', role: 'html', desc: 'Musik (Sonos) grid' });
 createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (jishi)' });
 

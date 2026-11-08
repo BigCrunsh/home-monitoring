@@ -252,8 +252,36 @@ function build() {
         + '<div class="wrap">' + html + '</div></div></foreignObject></svg>';
 }
 
-function publish() { setState('steuerung_grid', build(), true); }
+// lit lights of the Lichter section, for the Übersicht status bar ("3 Lichter an")
+function lightsOn() { return LIGHTS.filter(function (l) { return sBool(l[1]); }).length; }
+createState('javascript.0.lights_on', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl eingeschalteter Lichter' });
+function publish() {
+    setState('steuerung_grid', build(), true);
+    publishRollNext();
+    setState('javascript.0.lights_on', lightsOn(), true);
+}
 createState('javascript.0.steuerung_grid', '', { type: 'string', role: 'html', desc: 'Steuerung tile grid' });
+
+// The Übersicht's Rollläden tile (owner, 2026-11-08): one tap moves all five, down when they are
+// mostly open, up when mostly closed — no confirm, a stray tap is undone by a second. This script owns
+// the shutter list, so it publishes the next move for the tile (roll_next) and handles its toggle.
+function rollNext() {
+    var levels = SHUTTERS.map(function (s) { return sNum('hm-rpc.1.' + s[1] + '.4.LEVEL'); })
+        .filter(function (v) { return v != null; });
+    if (!levels.length) return null;
+    var avg = levels.reduce(function (a, b) { return a + b; }, 0) / levels.length;
+    return avg >= 50 ? 'runter' : 'hoch';
+}
+function publishRollNext() { setState('javascript.0.roll_next', rollNext() || '', true); }
+createState('javascript.0.roll_next', '', { type: 'string', role: 'text', desc: 'Übersicht Rollläden: nächster Schritt (hoch/runter)' });
+createState('javascript.0.roll_toggle_cmd', false, { type: 'boolean', role: 'switch', desc: 'Übersicht Rollläden: alle hoch/runter' });
+on({ id: 'javascript.0.roll_toggle_cmd', change: 'any' }, function () {
+    var next = rollNext();
+    if (!next) return;
+    var target = next === 'runter' ? 0 : 100;
+    SHUTTERS.forEach(function (s) { setState('hm-rpc.1.' + s[1] + '.4.LEVEL', target); });
+});
+on({ id: SHUTTERS.map(function (s) { return 'hm-rpc.1.' + s[1] + '.4.LEVEL'; }), change: 'ne' }, publishRollNext);
 
 // "Alle Rollläden" fan-out: the Alle tile's Auf/80%/Zu buttons write 100/80/0 here; mirror to all 5
 createState('javascript.0.roll_all_cmd', 0, { type: 'number', role: 'level', desc: 'Alle Rollläden Sollwert' });
