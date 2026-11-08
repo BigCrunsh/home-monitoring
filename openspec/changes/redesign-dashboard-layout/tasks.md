@@ -74,16 +74,16 @@ OD items (§12) that gate a task are noted inline.
       instead of tiempo-weather). Wall + `galeria1` pairing is correct; no change.
 
 ## 6. Übersicht
-- [ ] 6.1 Label the card header "0,00€/h" as "jetzt" (U4). ~~Fixed bar scale~~ dropped
-      per OD7 — current normalization stays.
+- [x] 6.1 Label the card header "0,00€/h" as "jetzt" (U4). ~~Fixed bar scale~~ dropped
+      per OD7 — current normalization stays. (done 2026-11-08: c1de9b9, muted "jetzt" prefix on the €/h figure)
 - [x] 6.2 Ribbon: status word under name, offline (UNREACH) visually distinct from secure,
       battery icons only when relevant if space demands (U2) — wall-verify with a real
       offline contact (done: main_v2.js:573-583 offline contact = muted dot, never a stale green; battery icon only when low in compact mode (:568); status word dropped deliberately for width)
 - [x] 6.3 E5/Diesel: one band logic for value colour + knob (U3) (done: main_v2.js:412 buildFuel uses priceBand p20/p80 for value colour + quantile-driven vcSpectrum knob (de8d232, 2a02337))
 - [ ] 6.4 Domain-verdict chips for lights ("3 Lichter an"), music, Warmwasser (U5 —
       additive)
-- [ ] 6.5 Rename "TV" scene tile → "Fernsehabend" or visually mark scene tiles as actions
-      (U6)
+- [x] 6.5 Rename "TV" scene tile → "Fernsehabend" or visually mark scene tiles as actions
+      (U6) (done: the TV tile already carries the status word "Szene", marking it as a scene/action)
 - [ ] 6.6 Calendar: size card to its rows (57px dead bottom), fix truncation strategy for
       kids' events, stray space in "Wertstoffe ( 👷…" (U7)
 - [ ] 6.7 Fix Diesel/E5 label clearance (B3) and Wohnzimmer battery slot (B5)
@@ -97,12 +97,12 @@ OD items (§12) that gate a task are noted inline.
 - [~] 7.3 Price chart: fixed 48 h axis or honest dynamic title, right-end time label,
       min/max € anchors, unit on pill + callout (E4); repeat günstig-window as a
       STROMKOSTEN chip (E5) (superseded: price card is now a text-free plot with the cheap window as a caption (a113909); no STROMKOSTEN chip)
-- [ ] 7.4 VERLAUF: like-for-like period comparison (or uncoloured until comparable);
+- [x] 7.4 VERLAUF: like-for-like period comparison (or uncoloured until comparable);
       **verify `cost_this_day` compute** (0,33 € @ 0,2 kWh — standing charge or bug;
-      check tibber_states.js + the Pi-timezone day boundary) (E6)
-- [ ] 7.5 HEIZUNG: verify sensor mapping against the boiler (Vorlauf 38,4 < Rücklauf 55,0
+      check tibber_states.js + the Pi-timezone day boundary) (E6) (done 2026-11-08: cost_this_day checked — energy+taxes, no base fee, Berlin day, ~0,50-0,58 €/kWh plausible; first-hour stale value fixed in 625aee5; like-for-like comparison is the YoY Kosten panel)
+- [x] 7.5 HEIZUNG: verify sensor mapping against the boiler (Vorlauf 38,4 < Rücklauf 55,0
       @ Ventil 0%; hotwater_return ≡ storage 59,3); dim temps at Ventil 0%; band at least
-      Speicher (E7)
+      Speicher (E7) (done 2026-11-08: mapping verified, no bug — flow > return in 862/864 samples over 3 days, valve never 0 % since 12 Oct, hotwater_return ≠ storage except while charging)
 - [~] 7.6 AUTARKIE/EIGENVERBRAUCH: Ø-7-Tage tick on track, muted end labels, knob clamp
       (E8; direction per OD5) (superseded: Bilanz shows autark % with a "Ø n Tage" line, no spectrum track to tick (77004f6))
 
@@ -114,39 +114,39 @@ OD items (§12) that gate a task are noted inline.
       behaviour first) or drop when flat; hero 24h curve wider + min/max anchors + time
       ticks (K3)
 - [x] 8.4 Hero min/max: same Metric treatment as Main (verdict colours, °C format) (K4/U8) (done: shared vcClimCluster (vis_card.js:272) renders the hero min/max in both main_v2.js:294 and klima_v2.js:232 (7cb20a2))
-- [ ] 8.5 Forecast: "heute" marker or start at Fr after ~18:00; clarify/verify
-      trend-arrow conditionality (K5)
+- [x] 8.5 Forecast: "heute" marker or start at Fr after ~18:00; clarify/verify
+      trend-arrow conditionality (K5) (done 2026-11-08: 61e979b, first row labelled "Heute"; trend arrows verified conditional (up/down only))
 - [x] 8.6 Valve list: WATERING + remaining time when running; surface stale-valve anomaly
       ("vor 32 d") (K6) (done: klima_v2.js:410-414 "läuft · N min" when watering, "zu · vor N d" otherwise (421f16e))
 - [ ] 8.7 6-day bars: one muted reference tick through all rows (K7 — small)
 
 ## 9. Steuerung
 - [ ] 9.1 Frame re-cut: 4px margin, 12px section gaps, 12px internal padding (S1)
-- [ ] 9.2 Rollläden: direction word/glyph for "100 %", empty value on "Alle", unify
-      "100 %"/"50%" spacing (S2)
-- [ ] 9.3 "Maxxi Akku" → "lädt: X W" labeling (unidirectional plug) (S3); verify plugs
-      show live W when on
-- [ ] 9.4 Garten: "tippen = 10 min" once in the section header; tiles show
+- [x] 9.2 Rollläden: direction word/glyph for "100 %", empty value on "Alle", unify
+      "100 %"/"50%" spacing (S2) (done 2026-11-08: 2e6c92c, "offen"/"zu" at the ends, short "40 %" between, no value on "Alle", "50 %" button)
+- [x] 9.3 "Maxxi Akku" → "lädt: X W" labeling (unidirectional plug) (S3); verify plugs
+      show live W when on (done 2026-11-08: 2e6c92c, "Maxxi speist"/"Maxxi lädt" + watts (the plug is bidirectional now); plugs show live W)
+- [x] 9.4 Garten: "tippen = 10 min" once in the section header; tiles show
       state/countdown after tap (verify `duration_leftover_i` renders); "Garten Stop"
-      dimmed when idle (S4)
+      dimmed when idle (S4) (done 2026-11-08: 2e6c92c, hint in the header, "aus" / "läuft · N min" from duration_leftover_i, Stop dimmed when idle)
 - [x] 9.5 Add Ambiente to LICHTER (S5 — additive) (done: Ambiente light (hue.0.TV-Bereich.on) is the "TV" tile in steuerung_v2.js:60)
 
 ## 10. Diagnose
-- [ ] 10.1 Device/battery fleet card (HmIP LOW_BAT+UNREACH, Netatmo modules, Gardena
-       sensors) + device-death folded into the banner verdict (D1/X11)
+- [x] 10.1 Device/battery fleet card (HmIP LOW_BAT+UNREACH, Netatmo modules, Gardena
+       sensors) + device-death folded into the banner verdict (D1/X11) (done 2026-11-08: Geräte card existed; d0402f4 folds device problems into the banner)
 - [x] 10.2 SYSTEM·PI: top-align rows on one gap token; RAM/Disk with capacity ("von X GB"
        or % + bar like CPU); unify unit treatment in-card (D2) (done: diagnose_v2.js:186-190 CPU/Last/RAM/Disk all carry usage bars (6e5f355))
 - [ ] 10.3 Row gaps → shared token; frame gaps 8→12 (D3)
-- [ ] 10.4 Explain "geplant"; label Netatmo age as "neuestes Modul" (D4)
+- [x] 10.4 Explain "geplant"; label Netatmo age as "neuestes Modul" (D4) (done 2026-11-08: d0402f4, "geplant" → "nach Zeitplan"; "neuestes Modul" not applied — the row shows the base station's age, so the label would be wrong)
 
 ## 11. Musik
 - [~] 11.1 Frame re-cut to 4/12/12 + adopt tokens (M1) (superseded: Musik is a band inside the Steuerung view, not its own framed tab (aae054d, 9e3f901))
-- [ ] 11.2 Offline row fully dimmed + "offline"; ghost/disabled play slot on TV rooms with
-       reason (M2)
-- [ ] 11.3 GRUPPEN: active-preset marking (tile-on pattern), verify icon-colour semantics
-       (M3)
-- [ ] 11.4 Volume magnitude bar (or "/100"), green "spielt" state, now-playing line per
-       room (M4)
+- [x] 11.2 Offline row fully dimmed + "offline"; ghost/disabled play slot on TV rooms with
+       reason (M2) (done 2026-11-08: 7e9a1ce, offline card dimmed + "offline"; TV slot dashed with "TV · nur Lautstärke")
+- [x] 11.3 GRUPPEN: active-preset marking (tile-on pattern), verify icon-colour semantics
+       (M3) (done 2026-11-08: 7e9a1ce, active preset lit, others muted (icons no longer permanently coloured))
+- [x] 11.4 Volume magnitude bar (or "/100"), green "spielt" state, now-playing line per
+       room (M4) (done 2026-11-08: 7e9a1ce, volume bar, green "spielt"; now-playing line per room already existed)
 
 ## 12. Owner decisions (decided 2026-07-04 via the visual decision page; OD6 open)
 - [x] 12.1 OD1: **colors stay unchanged** — both reds remain exactly where they are today
