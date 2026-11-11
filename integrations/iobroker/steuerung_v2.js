@@ -38,6 +38,7 @@ var CSS_BASE = `
 .mv2 .tile.open{border-color:rgba(80,128,172,.5)} .mv2 .tile.open .cap{color:var(--text)} .mv2 .tile.open .st{color:var(--blue)}
 .mv2 .tile.stop{border-color:rgba(160,6,41,.5)} .mv2 .tile.stop .st{color:var(--red)}
 /* square 68×68 tiles: state lives in border + icon colour; captions shrink to fit */
+.mv2 .tile.offline{opacity:.45; border-style:dashed}
 .mv2 .tile.sq{gap:3px} .mv2 .tile.sq .cap,.mv2 .tile.sq1 .cap{font-size:11px}
 .mv2 .tile.sq .cap{white-space:normal; text-align:center; line-height:1.15; padding:0 1px; letter-spacing:-.01em; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
 .mv2 .tile.sq1{gap:2px}
@@ -53,15 +54,23 @@ var CSS_BASE = `
 
 var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.alarm, LBL = VC_PAL.muted, TEXT = VC_PAL.text;
 
-// [label, hue on-state] — long one-word labels carry a soft hyphen (­) so the 2-line
-// square-tile clamp can break them cleanly if the device font runs wider than the preview
+// [label, hue on-state the tap toggles, the hue lamps behind it] — long one-word labels carry a soft
+// hyphen (­) so the 2-line square-tile clamp can break them cleanly if the device font runs wider
+// than the preview. The tile's look comes from the lamps: a Hue room keeps its on flag at the last
+// command after its lamps lose power at the wall switch.
 var LIGHTS = [
-    ['Esstisch', 'hue.0.Esszimmer.on'], ['Couch­tisch', 'hue.0.Wohnzimmertischlampe.on'],
-    ['TV', 'hue.0.TV-Bereich.on'], ['Küche', 'hue.0.Küche.on'],
-    ['Eingang', 'hue.0.Eingangsbereich.on'], ['Flur', 'hue.0.Flur.on'],
-    ['Büro', 'hue.0.Arbeitszimmerlicht.on'], ['Keller', 'hue.0.Keller.on'],
-    ['Spiel­zimmer', 'hue.0.Spielzimmer.on'], ['Clara Decke', 'hue.0.Claras_Deckenlampe.on'],
-    ['Carlotta Decke', 'hue.0.Carlottas_Deckenlampe.on'], ['Carlotta Lampe', 'hue.0.Carlottas_Stehlampe.on']
+    ['Esstisch', 'hue.0.Esszimmer.on', ['Esstischlicht_hinten', 'Esstischlicht_mitte', 'Esstischlicht_vorne']],
+    ['Couch­tisch', 'hue.0.Wohnzimmertischlampe.on', ['Wohnzimmertischlampe']],
+    ['TV', 'hue.0.TV-Bereich.on', ['Hue_Play_wall_washer_1', 'Hue_Play_wall_washer_2']],
+    ['Küche', 'hue.0.Küche.on', ['Küchenlicht']],
+    ['Eingang', 'hue.0.Eingangsbereich.on', ['Eingangslampe']],
+    ['Flur', 'hue.0.Flur.on', ['Flurlampe']],
+    ['Büro', 'hue.0.Arbeitszimmerlicht.on', ['Arbeitszimmerlicht']],
+    ['Keller', 'hue.0.Keller.on', ['Kellervorraumlicht']],
+    ['Spiel­zimmer', 'hue.0.Spielzimmer.on', ['Deckenlampe_']],
+    ['Clara Decke', 'hue.0.Claras_Deckenlampe.on', ['Claras_Deckenlampe']],
+    ['Carlotta Decke', 'hue.0.Carlottas_Deckenlampe.on', ['Carlottas_Deckenlampe']],
+    ['Carlotta Lampe', 'hue.0.Carlottas_Stehlampe.on', ['Carlottas_Stehlampe']]
 ];
 // [label, on/off state, power state (W), icon]. HomeMatic plugs: .3.STATE + .6.POWER. Maxxi Akku is
 // the Shelly Plug S Gen3 metering the Maxxisun: solaredge_power.js mirrors its relay into
@@ -94,6 +103,7 @@ var esc = vcEsc;
 
 // 24px state-coloured icons (same visual language as main_v2's Steuerung tiles)
 function icoBulb(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/></g></svg>'; }
+function icoBulbOffline(c) { return '<svg data-l="offline" width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/><path d="M4 4l16 16"/></g></svg>'; }
 function icoCouch(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13 v-2 a3 3 0 0 1 3 -3 h8 a3 3 0 0 1 3 3 v2"/><rect x="3" y="13" width="18" height="5" rx="1.5"/><line x1="6" y1="18" x2="6" y2="20"/><line x1="18" y1="18" x2="18" y2="20"/></g></svg>'; }
 function icoPrinter(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="6" rx="1"/><path d="M4 9 h16 v7 h-4 v5 H8 v-5 H4 Z"/><line x1="8" y1="13" x2="16" y2="13"/></g></svg>'; }
 function icoCabinet(c) { return '<svg width="24" height="24" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.6" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5"/><line x1="6" y1="9" x2="18" y2="9"/><line x1="6" y1="15" x2="18" y2="15"/></g></svg>'; }
@@ -110,11 +120,19 @@ function tileHtml(cls, p, icon, cap, st) {
     return '<div class="tile' + (cls ? ' ' + cls : '') + '" ' + p + '>'
         + '<span class="ic">' + icon + '</span><span class="cap">' + esc(cap) + '</span><span class="st">' + st + '</span></div>';
 }
-// square light tile: no status line — state reads from the amber border + icon colour
+// 'offline' when none of the tile's lamps is reachable (switched off at the wall), else 'on'/'off'
+function lightState(it) {
+    var reachable = it[2].filter(function (n) { return sBool('hue.0.' + n + '.reachable'); });
+    if (!reachable.length) return 'offline';
+    return reachable.some(function (n) { return sBool('hue.0.' + n + '.on'); }) ? 'on' : 'off';
+}
+// square light tile: no status line — state reads from the amber border + icon colour; an offline
+// light is dimmed with a dashed outline and a slashed bulb (as Musik marks an offline room)
 function lightTile(it, x, y, w, h) {
-    var on = sBool(it[1]);
-    var html = '<div class="tile sq' + (on ? ' on' : '') + '" ' + pos(x, y, w, h) + '>'
-        + '<span class="ic">' + icoBulb(on ? AMBER : LBL) + '</span><span class="cap">' + esc(it[0]) + '</span></div>';
+    var state = lightState(it);
+    var icon = state === 'offline' ? icoBulbOffline(LBL) : icoBulb(state === 'on' ? AMBER : LBL);
+    var html = '<div class="tile sq' + (state === 'off' ? '' : ' ' + state) + '" ' + pos(x, y, w, h) + '>'
+        + '<span class="ic">' + icon + '</span><span class="cap">' + esc(it[0]) + '</span></div>';
     return { html: html, targets: [rnd({ kind: 'toggle', oid: it[1], x: x, y: y, w: w, h: h })] };
 }
 // square plug tile: keeps the live-W status line. The Maxxisun plug meters both directions
@@ -253,7 +271,7 @@ function build() {
 }
 
 // lit lights of the Lichter section, for the Übersicht status bar ("3 Lichter an")
-function lightsOn() { return LIGHTS.filter(function (l) { return sBool(l[1]); }).length; }
+function lightsOn() { return LIGHTS.filter(function (l) { return lightState(l) === 'on'; }).length; }
 createState('javascript.0.lights_on', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl eingeschalteter Lichter' });
 // switched-on consumer plugs, for the status bar's plug chip; the Maxxisun relay is always on (it
 // carries the battery) and would make the chip read "1" forever
@@ -346,7 +364,12 @@ on({ id: 'javascript.0.ccu_rega_ping', change: 'any' }, function () {
 });
 
 // re-render on any control state change
-LIGHTS.forEach(function (l) { on({ id: l[1], change: 'ne' }, publish); });
+LIGHTS.forEach(function (l) {
+    l[2].forEach(function (n) {
+        on({ id: 'hue.0.' + n + '.on', change: 'ne' }, publish);
+        on({ id: 'hue.0.' + n + '.reachable', change: 'ne' }, publish);
+    });
+});
 PLUGS.forEach(function (p) { on({ id: p[1], change: 'ne' }, publish); on({ id: p[2], change: 'ne' }, publish); });
 SHUTTERS.forEach(function (s) { on({ id: 'hm-rpc.1.' + s[1] + '.4.LEVEL', change: 'ne' }, publish); });
 

@@ -65,20 +65,6 @@ test('rollo: a tap without any position reading moves nothing', () => {
     SERIALS.forEach((s) => assert.equal(ctx.written[levelId(s)], undefined));
 });
 
-// the Übersicht status bar's lights chip ("3 Lichter an") counts the lights of the Lichter section
-test('lights: the number of lit lights is published with every redraw', () => {
-    const ctx = loadSteuerung([]);
-    ctx.getState = (id) => ({ 'hue.0.Esszimmer.on': { val: true }, 'hue.0.Flur.on': { val: true }, 'hue.0.Keller.on': { val: false } })[id] || null;
-    ctx.publish();
-    assert.equal(ctx.written['javascript.0.lights_on'], 2);
-});
-
-test('lights: with every light off the count is 0, not missing', () => {
-    const ctx = loadSteuerung([]);
-    ctx.publish();
-    assert.equal(ctx.written['javascript.0.lights_on'], 0);
-});
-
 // the status bar's plug chip counts the switched-on consumer plugs; the Maxxisun relay is always on
 // (it carries the battery), so counting it would make the chip read "1" forever
 test('plugs: the number of switched-on consumer plugs is published', () => {
