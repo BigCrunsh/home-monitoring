@@ -319,10 +319,14 @@ var NETATMO_STATION_SILENT_MS = 3600000;
 // level it heard, so a dead remote just sits at its last value (Claras Fernbedienung: 1 % for 9 days).
 // At this level it is as good as dead and counts as red, like an offline device.
 var HUE_EMPTY_PCT = 5;
+// A lamp switched off at the wall is as unreachable for the bridge as one that lost its pairing; only
+// the duration tells them apart (Büro lamp, 2026-11: lit for ~140 days with no bridge connection while
+// the Hue app said "on"). A month clears holidays with the wall switches off (owner choice).
+var HUE_LAMP_UNREACH_MS = 30 * 86400000;
 var STATION_LABELS = {};
 STATION_LABELS[NB2] = 'Studio';
 STATION_LABELS[NB3] = 'Lübkowsee';
-var NETATMO_MODULES = [], HUE_REMOTES = [];
+var NETATMO_MODULES = [], HUE_REMOTES = [], HUE_LAMPS = [];
 function nameOf(obj, fallback) {
     var n = obj && obj.common && obj.common.name;
     if (n && typeof n === 'object') n = n.de || n.en;
@@ -362,6 +366,18 @@ function enumerateBatteryDevices() {
         var obj = getObject(dev);
         if (obj) HUE_REMOTES.push({ id: dev, name: nameOf(obj, dev.split('.').pop()) });
     });
+    // remotes and switches (role ZLLSwitch) carry a reachable flag too; only light channels are lamps
+    HUE_LAMPS = [];
+    $('state[id=hue.0.*.reachable]').each(function (id) {
+        var dev = id.replace(/\.reachable$/, '');
+        var obj = getObject(dev);
+        if (obj && /^light/.test(String(obj.common && obj.common.role))) HUE_LAMPS.push({ id: dev, name: nameOf(obj, dev.split('.').pop()).trim() });
+    });
+}
+// the adapter writes reachable only when it changes, so lc is when the lamp went unreachable
+function hueUnreachableMs(lamp) {
+    var s = getState(lamp.id + '.reachable');
+    return s && s.val === false && s.lc ? Date.now() - s.lc : null;
 }
 // LastUpdate is the module's own measurement time as a date string; the state ts moves on every poll
 function netatmoSilentMs(mod) {
@@ -433,6 +449,10 @@ function deviceIssues() {
         if (bat != null && bat <= HUE_EMPTY_PCT) issues.push({ nm: r.name, txt: 'Batterie leer', col: RED, rank: 0, battery: { id: r.id + '.battery', swapStep: PCT_SWAP_STEP } });
         else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2, battery: { id: r.id + '.battery', swapStep: PCT_SWAP_STEP } });
     });
+    HUE_LAMPS.forEach(function (l) {
+        var away = hueUnreachableMs(l);
+        if (away != null && away > HUE_LAMP_UNREACH_MS) issues.push({ nm: l.name, txt: 'offline seit ' + agoShort(away), col: AMBER, rank: 1 });
+    });
     SOIL_SENSORS.forEach(function (z) {
         var silent = soilSilentMs(z);
         if (silent == null) return;
@@ -450,7 +470,7 @@ function buildDevices() {
     enumerateHmDevices();
     enumerateBatteryDevices();
     var issues = deviceIssues();
-    var total = HM_DEVICES.length + NETATMO_MODULES.length + HUE_REMOTES.length
+    var total = HM_DEVICES.length + NETATMO_MODULES.length + HUE_REMOTES.length + HUE_LAMPS.length
         + SOIL_SENSORS.filter(function (z) { return existsState(z.tsId); }).length
         + (existsState(MAXXI_PLUG) ? 1 : 0);
     var h = '<div class="card"><div class="card-h">Geräte</div><div class="rows dense">';
