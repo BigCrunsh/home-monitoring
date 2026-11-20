@@ -530,15 +530,34 @@ function groupSilentNetatmo(issues) {
     grouped.push({ nm: 'Netatmo', txt: names.length + ' Module still: ' + names.join(', '), rank: 1, members: names });
     return grouped.sort(worstFirst);
 }
+// A grouped module stays tracked under its own key (marked with its group), so the group dissolving
+// neither re-announces a module that is still silent nor claims "Netatmo – wieder ok" for it.
+function trackGroupMembers(i, groupKey, groupSent, tracked, current) {
+    (i.members || []).forEach(function (nm) {
+        var k = nm + '|' + i.rank;
+        var m = tracked[k] || { nm: nm, since: Date.now(), sent: false };
+        m.sent = m.sent || groupSent;
+        m.group = groupKey;
+        current[k] = m;
+    });
+}
+// names of a dissolved group's members that no longer have an issue of their own
+function recoveredMembers(groupKey, t, current) {
+    var rank = groupKey.split('|')[1];
+    return t.members.filter(function (nm) {
+        var m = current[nm + '|' + rank];
+        return !m || m.group;
+    });
+}
 function alertNewIssues(issues) {
-    var tracked = loadTracked(), now = Date.now(), current = {}, absorbed = {};
+    var tracked = loadTracked(), now = Date.now(), current = {};
     groupSilentNetatmo(issues).forEach(function (i) {
         var key = i.nm + '|' + i.rank;
         var memberKeys = (i.members || []).map(function (nm) { return nm + '|' + i.rank; });
-        memberKeys.forEach(function (k) { absorbed[k] = true; });
         // modules alerted one by one before they were grouped need no second message
         var alreadySent = memberKeys.length > 0 && memberKeys.every(function (k) { return tracked[k] && tracked[k].sent; });
         var t = tracked[key] || { nm: i.nm, since: now, sent: alreadySent };
+        if (i.members) t.members = i.members;
         if (i.battery) {
             t.battery = i.battery;
             var level = batteryLevel(i.battery);
@@ -550,10 +569,25 @@ function alertNewIssues(issues) {
             t.sent = true;
         }
         current[key] = t;
+        if (i.members) trackGroupMembers(i, key, t.sent, tracked, current);
+    });
+    // a module that had an issue on its own this round is no longer part of a group
+    issues.forEach(function (i) {
+        var t = current[i.nm + '|' + i.rank];
+        if (t && t.group && !current[t.group]) delete t.group;
     });
     Object.keys(tracked).forEach(function (key) {
         var t = tracked[key];
-        if (current[key] || absorbed[key] || !t.sent) return;
+        if (current[key] || !t.sent) return;
+        // a grouped module that reports again while its group stays silent is cleared with the group
+        if (t.group) return;
+        if (t.members) {
+            var back = recoveredMembers(key, t, current);
+            if (back.length < t.members.length) {
+                if (back.length) sendAlert(back.join(', ') + ' – wieder ok');
+                return;
+            }
+        }
         if (t.battery && !batterySwapped(t)) {
             t.okSince = t.okSince || now;
             if (now - t.okSince < BATTERY_OK_HOLD_MS) { current[key] = t; return; }

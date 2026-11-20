@@ -301,6 +301,44 @@ test('alerts: when the Netatmo modules report again, one "wieder ok" is sent, no
     assert.deepEqual(ctx.sent.map((s) => s.msg.text).slice(1), ['Diagnose: Netatmo – wieder ok']);
 });
 
+// The wind gauge sat silent for weeks while another module hovered around two hours of silence: each
+// hover formed a group and dissolved it again, sending "Netatmo – wieder ok" (false: the wind gauge was
+// still silent) and then "Windmesser – still seit 23 Tg" once more (2026-11-20). A module stays tracked
+// while it is grouped, so only the modules that really report again are cleared.
+test('alerts: when a grouped module reports again, only it is cleared and the still-silent one is not re-sent', () => {
+    const ctx = loadDiagnose({ [RAIN]: 'Regenmesser', [GARDEN]: 'Gartenhaus' }, Object.assign(silentStates([RAIN], 30 * 24 * HOUR), silentStates([GARDEN], 0.1 * HOUR)));
+    ctx.publish();
+    ctx.st[GARDEN + '.LastUpdate'].val = netatmoDate(3 * HOUR);
+    ctx.publish();
+    ctx.st[GARDEN + '.LastUpdate'].val = netatmoDate(0.1 * HOUR);
+    ctx.publish();
+    ctx.publish();
+    assert.deepEqual(ctx.sent.map((s) => s.msg.text), [
+        'Diagnose: Regenmesser – still seit 30 Tg',
+        'Diagnose: Netatmo – 2 Module still: Gartenhaus, Regenmesser',
+        'Diagnose: Gartenhaus – wieder ok'
+    ]);
+});
+
+test('alerts: a module hovering around the silence threshold does not re-announce the one that stays silent', () => {
+    const ctx = loadDiagnose({ [RAIN]: 'Regenmesser', [GARDEN]: 'Gartenhaus' }, Object.assign(silentStates([RAIN], 30 * 24 * HOUR), silentStates([GARDEN], 0.1 * HOUR)));
+    ctx.publish();
+    [3, 0.1, 3, 0.1].forEach((h) => {
+        ctx.st[GARDEN + '.LastUpdate'].val = netatmoDate(h * HOUR);
+        ctx.publish();
+    });
+    assert.equal(ctx.sent.filter((s) => /Regenmesser – still/.test(s.msg.text)).length, 1);
+    assert.equal(ctx.sent.filter((s) => /Netatmo – wieder ok/.test(s.msg.text)).length, 0);
+});
+
+test('alerts: a module that recovers while the rest of its group stays silent sends nothing yet', () => {
+    const ctx = loadDiagnose(SILENT_TRIO, silentStates([RAIN, GARDEN, CLARA], 3 * HOUR));
+    ctx.publish();
+    ctx.st[CLARA + '.LastUpdate'].val = netatmoDate(0.1 * HOUR);
+    ctx.publish();
+    assert.equal(ctx.sent.length, 1);
+});
+
 // the live state already held each module as alerted when grouping was introduced
 test('alerts: modules already alerted one by one are neither re-sent as a group nor cleared', () => {
     const alerted = {};
