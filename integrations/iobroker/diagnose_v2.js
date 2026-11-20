@@ -419,6 +419,14 @@ function soilSilentMs(sensor) {
     var t = s ? Date.parse(s.val) : NaN;
     return isNaN(t) ? null : Date.now() - t;
 }
+// lights that did not react to their wall button, published by kids_room_lights.js (2026-11-20: every
+// press reached the CCU, no lamp switched, nobody was told)
+var LIGHT_BUTTON_FAULTS_ID = 'javascript.0.light_button_faults';
+function lightButtonFaults() {
+    if (!existsState(LIGHT_BUTTON_FAULTS_ID)) return [];
+    var s = getState(LIGHT_BUTTON_FAULTS_ID);
+    try { return Object.keys(JSON.parse((s && s.val) || '{}')); } catch (e) { return []; }
+}
 function agoShort(ms) { return ms >= 172800000 ? Math.round(ms / 86400000) + ' Tg' : Math.round(ms / 3600000) + ' h'; }
 function deviceIssues() {
     var issues = [];
@@ -448,6 +456,9 @@ function deviceIssues() {
         var bat = sNum(r.id + '.battery');
         if (bat != null && bat <= HUE_EMPTY_PCT) issues.push({ nm: r.name, txt: 'Batterie leer', col: RED, rank: 0, battery: { id: r.id + '.battery', swapStep: PCT_SWAP_STEP } });
         else if (bat != null && bat <= LOW_BAT_PCT) issues.push({ nm: r.name, txt: 'Batterie schwach', col: AMBER, rank: 2, battery: { id: r.id + '.battery', swapStep: PCT_SWAP_STEP } });
+    });
+    lightButtonFaults().forEach(function (nm) {
+        issues.push({ nm: nm, txt: 'reagiert nicht auf Taster', col: RED, rank: 0 });
     });
     HUE_LAMPS.forEach(function (l) {
         var away = hueUnreachableMs(l);
