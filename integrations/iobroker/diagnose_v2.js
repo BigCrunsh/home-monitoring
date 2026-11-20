@@ -369,6 +369,7 @@ function enumerateBatteryDevices() {
     // remotes and switches (role ZLLSwitch) carry a reachable flag too; only light channels are lamps
     HUE_LAMPS = [];
     $('state[id=hue.0.*.reachable]').each(function (id) {
+        if (!existsState(id)) return;   // ghost lamps keep the object without a state
         var dev = id.replace(/\.reachable$/, '');
         var obj = getObject(dev);
         if (obj && /^light/.test(String(obj.common && obj.common.role))) HUE_LAMPS.push({ id: dev, name: nameOf(obj, dev.split('.').pop()).trim() });

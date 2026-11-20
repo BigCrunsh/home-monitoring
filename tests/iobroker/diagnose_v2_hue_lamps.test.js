@@ -96,6 +96,18 @@ test('hue lamps: a reachable flag without its lamp object is ignored', () => {
     assert.equal(ctx.sent.length, 0);
 });
 
+// ghost lamps left over in the hue adapter have a reachable object but no state; ioBroker logs a warning
+// for every getState on a missing state, once a minute per ghost (2026-11-20)
+test('hue lamps: a reachable object without a state is never read', () => {
+    const ctx = loadDiagnose({ 'hue.0.Hue_white_lamp_1': { name: 'Hue white lamp 1', role: 'light.dimmer' } }, {});
+    const read = [];
+    const getState = ctx.getState;
+    ctx.getState = (id) => { read.push(id); return getState(id); };
+    ctx.$ = () => ({ each: (fn) => fn('hue.0.Hue_white_lamp_1.reachable') });
+    ctx.publish();
+    assert.deepEqual(read.filter((id) => id.startsWith('hue.0.')), []);
+});
+
 test('hue lamps: a lamp that is reachable again sends "wieder ok"', () => {
     const ctx = buero();
     ctx.advance(31 * DAY);
