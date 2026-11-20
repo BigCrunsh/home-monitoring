@@ -70,6 +70,7 @@ design system, see `DESIGN_SYSTEM.md`):
 | `sam_digital.js` | SAM Digital heating states |
 | `suncalc_phases.js` | Sun phase times (sunrise/sunset) |
 | `reset_lock_target_state.js` | Resets a lock's target state after actuation |
+| `kids_room_lights.js` | Kids' room wall buttons (Clara, Spielzimmer, Carlotta) switch their Hue lamps over HTTPS, since the Hue bridge blocks the CCU's HTTP-only Hue integration (2026-11-20); a press the lamp does not follow is reported in Diagnose |
 | `bungalow_watch.js` | Dead man's switch for the Bungalow Lübkowsee: Telegram alert when its Netatmo station goes silent (details below) |
 
 ## Scripts
