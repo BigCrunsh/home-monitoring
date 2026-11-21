@@ -362,6 +362,16 @@ function buildKlima() {
     return h + '</div></div></div>';
 }
 
+// school calendars in ical.0 (owner 2026-11-21), one per child: each child's events carry the heart the
+// family calendar already uses for that child; an event both share (the whole-school calendar is in both
+// feeds) gets 🏫
+var SCHOOL_CALENDARS = { 'Schule 1': '💜', 'Schule 2': '🩵' };
+function schoolMark(hearts) {
+    var kids = Object.keys(hearts);
+    if (kids.length > 1) return '🏫 ';
+    return kids.length ? kids[0] + ' ' : '';
+}
+
 // ===== WOCHE — all events/day, time-sorted; trim whole trailing days when busy =====
 function buildWoche() {
     var tbl = getState('ical.0.data.table'), arr = (tbl && tbl.val) ? tbl.val : [];
@@ -371,7 +381,7 @@ function buildWoche() {
         var dt = e && e._date ? new Date(e._date) : null;
         if (!dt || isNaN(dt.getTime())) return;
         var k = dayKey(dt);
-        (byDay[k] = byDay[k] || []).push({ dt: dt, allDay: e._allDay === true, title: e.event || '' });
+        (byDay[k] = byDay[k] || []).push({ dt: dt, allDay: e._allDay === true, title: e.event || '', heart: SCHOOL_CALENDARS[e._calName] });
     });
     var b = berlinNow();
     // Px-budget fit guard (the card height isn't measurable server-side): estimate each day's height
@@ -386,10 +396,14 @@ function buildWoche() {
         var dd = new Date(b.getFullYear(), b.getMonth(), b.getDate() + i);
         var dow = dd.getDay(), weekend = (dow === 0 || dow === 6), today = (i === 0);
         var evs = (byDay[dayKey(dd)] || []).sort(function (a, c) { return a.dt - c.dt; });
-        // dedup repeated events (same time + title), as the old calendar did
+        // dedup repeated events (same time + title), as the old calendar did; the copies' school hearts merge
         var seen = {}, ded = [];
-        evs.forEach(function (ev) { var k = (ev.allDay ? 'gz' : hhmmBerlin(ev.dt)) + '|' + ev.title; if (!seen[k]) { seen[k] = 1; ded.push(ev); } });
-        evs = ded;
+        evs.forEach(function (ev) {
+            var k = (ev.allDay ? 'gz' : hhmmBerlin(ev.dt)) + '|' + ev.title;
+            if (!seen[k]) { seen[k] = { ev: ev, hearts: {} }; ded.push(seen[k]); }
+            if (ev.heart) seen[k].hearts[ev.heart] = true;
+        });
+        evs = ded.map(function (d) { return { dt: d.ev.dt, allDay: d.ev.allDay, title: schoolMark(d.hearts) + d.ev.title }; });
         var avail = PX_BUDGET - used - DAY_PAD;
         if (i > 0 && avail < MIN_DAY) break;  // no room for a further day
         var cap = Math.min(DAY_CAP, Math.max(1, Math.floor(avail / ROW_PX)));  // events that still fit
