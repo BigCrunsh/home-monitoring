@@ -51,6 +51,8 @@ var CSS = `
 .mv2 .room .stt{font-size:12px; color:var(--muted); flex:none}
 .mv2 .room .stt.on{color:var(--green)}
 .mv2 .gbtn.on{border-color:rgba(181,251,91,.4); background:var(--green-16)}
+/* the music-light pill is a light switch: lit = amber like a lit Steuerung light tile */
+.mv2 .gbtn.lit{border-color:rgba(241,190,61,.55); background:rgba(241,190,61,.16)}
 .mv2 .room.playing .pp{background:var(--green-16)}
 .mv2 .room .vb{position:absolute; width:42px; height:34px; border-radius:10px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:var(--text)}
 .mv2 .room .vol{position:absolute; width:36px; height:34px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:14px; color:var(--text); font-weight:600}
@@ -67,6 +69,9 @@ var ZONES = {};                                   // roomName -> {vol, play, tit
 // TV-room soundbars reject standalone transport (play/pause/seek all HTTP 500) — show volume + group
 // only, no play button. Seeded with the known one; auto-learned if any other room rejects play too.
 var TV = { 'Fernsehzimmer': true };
+// music light (music_light.js) on/off; on unless switched off
+var LIGHT_ENABLED_ID = 'javascript.0.music_light_enabled';
+function lightEnabled() { var s = getState(LIGHT_ENABLED_ID); return !(s && s.val === false); }
 
 var esc = vcEsc;
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
@@ -76,6 +81,7 @@ function icoPlay(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><p
 function icoPause(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="' + c + '"/><rect x="14" y="4" width="4" height="16" rx="1" fill="' + c + '"/></svg>'; }
 function icoSpeaker(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="15" r="3.4"/><circle cx="12" cy="6.5" r="1"/></g></svg>'; }
 function icoStop(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
+function icoBulb(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/></g></svg>'; }
 function icoLink(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round"><path d="M9 12 h6"/><path d="M8 8 H6 a4 4 0 0 0 0 8 h2"/><path d="M16 8 h2 a4 4 0 0 1 0 8 h-2"/></g></svg>'; }
 
 // a room missing from the Sonos /zones answer is offline (speaker unplugged or unreachable)
@@ -142,6 +148,10 @@ function build() {
         html += '<div class="gbtn' + (on ? ' on' : '') + '" style="left:' + px + 'px;top:' + pbY + 'px;width:' + pbW + 'px;height:' + pbH + 'px"><span>' + p[2](on ? GREEN : LBL) + '</span>' + p[0] + '</div>';
         targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: p[1], x: px, y: pbY - 6, w: pbW, h: pbH + 12 }));
     });
+    // the music-light switch sits left of the presets, separated by a wider gap (it is not a grouping)
+    var lit = lightEnabled(), lbW = 170, lbX = pbX0 - 24 - lbW;
+    html += '<div class="gbtn' + (lit ? ' lit' : '') + '" style="left:' + lbX + 'px;top:' + pbY + 'px;width:' + lbW + 'px;height:' + pbH + 'px"><span>' + icoBulb(lit ? VC_PAL.warn : LBL) + '</span>Musiklicht</div>';
+    targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: 'light:toggle', x: lbX, y: pbY - 6, w: lbW, h: pbH + 12 }));
 
     // 4×2 compact room cards inside the card (10px inner padding)
     var top = pbY + pbH + 10, cols = 4, gap = 10, rgap = 8, ch = 122;
@@ -163,32 +173,60 @@ function build() {
 // playing rooms, for the Übersicht status bar's "Musik" chip
 function playingRooms() { return ROOMS.filter(function (r) { return ZONES[r] && ZONES[r].play; }).length; }
 createState('javascript.0.music_playing', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl spielender Räume' });
+createState('javascript.0.music_ground_floor', '{"playing":false}', { type: 'string', role: 'json', desc: 'Musiklicht: was im Erdgeschoss spielt' });
+createState(LIGHT_ENABLED_ID, true, { type: 'boolean', role: 'switch', desc: 'Musiklicht an/aus' });
 function publish() {
     setState('musik_grid', build(), true);
     setState('javascript.0.music_playing', playingRooms(), true);
+    var gf = JSON.stringify(groundFloorMusic());
+    var cur = getState('javascript.0.music_ground_floor');
+    if (!cur || cur.val !== gf) setState('javascript.0.music_ground_floor', gf, true);
 }
 createState('javascript.0.musik_grid', '', { type: 'string', role: 'html', desc: 'Musik (Sonos) grid' });
 createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (jishi)' });
+
+// jishi /zones groups → roomName → {vol, play, stopped, title, artist, album, uri, art, nextArt, mute, coord}
+function zonesFromSonos(groups) {
+    var map = {};
+    groups.forEach(function (g) {
+        var coord = g.coordinator && g.coordinator.roomName;
+        var cs = (g.coordinator && g.coordinator.state) || {};
+        (g.members || []).forEach(function (m) {
+            var st = m.state || (m.roomName === coord ? cs : null) || {};
+            var t = st.currentTrack || cs.currentTrack || {};
+            var next = st.nextTrack || cs.nextTrack || {};
+            map[m.roomName] = {
+                vol: st.volume, play: (st.playbackState || cs.playbackState) === 'PLAYING',
+                stopped: (st.playbackState || cs.playbackState) === 'STOPPED',
+                title: t.title || t.stationName, artist: t.artist, album: t.album, uri: t.uri,
+                art: t.absoluteAlbumArtUri, nextArt: next.absoluteAlbumArtUri, mute: st.mute === true, coord: coord
+            };
+        });
+    });
+    return map;
+}
+
+// The ground floor (the "Wohnen" group) plays music when one of its rooms plays a track that is not
+// the TV input: the soundbar reports TV sound as PLAYING too (x-sonos-htastream:), and the Hue Sync
+// Box lights the TV then. Read by music_light.js.
+var GROUND_FLOOR = [COORD].concat(WOHNEN);
+var TV_INPUT = 'x-sonos-htastream:';
+function groundFloorMusic() {
+    var room = GROUND_FLOOR.filter(function (r) {
+        var z = ZONES[r];
+        return z && z.play && !z.mute && String(z.uri || '').indexOf(TV_INPUT) !== 0;
+    })[0];
+    if (!room) return { playing: false };
+    var z = ZONES[room];
+    return { playing: true, artist: z.artist, title: z.title, album: z.album, uri: z.uri, art: z.art, nextArt: z.nextArt, vol: z.vol };
+}
 
 // poll jishi /zones → ZONES cache → render
 function refresh() {
     jget('/zones', function (err, body) {
         if (err) return;
         try {
-            var now = Date.now(), z = JSON.parse(body), map = {};
-            z.forEach(function (g) {
-                var coord = g.coordinator && g.coordinator.roomName;
-                var ct = g.coordinator && g.coordinator.state && g.coordinator.state.currentTrack;
-                (g.members || []).forEach(function (m) {
-                    var st = m.state || (m.roomName === coord ? g.coordinator.state : null) || {};
-                    var t = st.currentTrack || ct || {};
-                    map[m.roomName] = {
-                        vol: st.volume, play: st.playbackState === 'PLAYING',
-                        stopped: st.playbackState === 'STOPPED',
-                        title: t.title || t.stationName, artist: t.artist, coord: coord
-                    };
-                });
-            });
+            var now = Date.now(), map = zonesFromSonos(JSON.parse(body));
             // while a tap is still settling, keep the optimistic value — a mid-transition poll
             // would otherwise clobber it (the playing→paused→playing flicker the user saw)
             Object.keys(ZONES).forEach(function (r) {
@@ -213,6 +251,11 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     // Switch won't re-write an identical value) — trim the marker back off here.
     var v = (obj && obj.state ? String(obj.state.val || '') : '').trim();
     if (!v) return;
+    if (v === 'light:toggle') {
+        setState(LIGHT_ENABLED_ID, !lightEnabled(), true);
+        publish();
+        return;
+    }
     function zof(r) { return ZONES[r] || (ZONES[r] = {}); }
     var HOLD = 3500;                        // ms to protect an optimistic value from a stale poll
     if (v === 'group:alle' || v === 'group:wohnen' || v === 'group:einzeln') {
