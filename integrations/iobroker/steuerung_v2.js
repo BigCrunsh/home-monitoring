@@ -61,7 +61,7 @@ var GREEN = VC_PAL.good, AMBER = VC_PAL.warn, BLUE = VC_PAL.cold, RED = VC_PAL.a
 var LIGHTS = [
     ['Esstisch', 'hue.0.Esszimmer.on', ['Esstischlicht_hinten', 'Esstischlicht_mitte', 'Esstischlicht_vorne']],
     ['Couch­tisch', 'hue.0.Wohnzimmertischlampe.on', ['Wohnzimmertischlampe']],
-    ['TV', 'hue.0.TV-Bereich.on', ['Hue_Play_wall_washer_1', 'Hue_Play_wall_washer_2']],
+    ['TV', 'hue.0.TV-Bereich.on', ['TV-Licht_links', 'TV-Licht_rechts']],
     ['Küche', 'hue.0.Küche.on', ['Küchenlicht']],
     ['Eingang', 'hue.0.Eingangsbereich.on', ['Eingangslampe']],
     ['Flur', 'hue.0.Flur.on', ['Flurlampe']],

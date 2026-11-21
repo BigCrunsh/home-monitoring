@@ -15,7 +15,7 @@ const vm = require('node:vm');
 const IOB = path.join(__dirname, '..', '..', 'integrations', 'iobroker');
 const ZONES_CFG = 'javascript.0.music_light_zones', MUSIC = 'javascript.0.music_zones';
 const OFF = 'javascript.0.music_light_off', SNAPSHOT = 'javascript.0.music_light_snapshot';
-const KITCHEN = 'hue.0.Küchenlicht', WASHER = 'hue.0.Hue_Play_wall_washer_1', WASHER2 = 'hue.0.Hue_Play_wall_washer_2';
+const KITCHEN = 'hue.0.Küchenlicht', WASHER = 'hue.0.TV-Licht_links', WASHER2 = 'hue.0.TV-Licht_rechts';
 const ROOM_LAMP = 'hue.0.Room_Lamp';
 const CONFIG = JSON.stringify([
     { key: 'eg', label: 'EG', rooms: ['Wohnzimmer'], lamps: [KITCHEN, WASHER, WASHER2] },
@@ -178,4 +178,9 @@ test('music light: after a restore the zone snapshot is removed', () => {
     ctx.change(MUSIC, music(['eg']));
     ctx.change(MUSIC, music([]));
     assert.deepEqual(JSON.parse(ctx.st[SNAPSHOT]), {});
+});
+
+// the hue adapter names its states after the lamp, so a lamp renamed in Hue needs its new name here
+test('zones: the ground floor default names both TV light bars by their current Hue names', () => {
+    assert.deepEqual(Array.from(load({}).DEFAULT_ZONES[0].lamps), [KITCHEN, WASHER, WASHER2]);
 });

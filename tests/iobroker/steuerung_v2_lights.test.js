@@ -106,3 +106,19 @@ test('lights: the tap still switches the whole room', () => {
     const targets = JSON.parse(logged.find((l) => l.startsWith('STEUERUNG_LAYOUT ')).slice('STEUERUNG_LAYOUT '.length));
     assert.ok(targets.some((t) => t.kind === 'toggle' && t.oid === 'hue.0.Esszimmer.on'));
 });
+
+// the TV tile reads the two light bars behind the couch; they were renamed in Hue
+test('lights: the TV tile is lit by the renamed light bars', () => {
+    const ctx = loadSteuerung({ 'hue.0.TV-Bereich.on': true, ...lamp('TV-Licht_links', true, true), ...lamp('TV-Licht_rechts', true, true) });
+    assert.deepEqual(lightTile(ctx.build(), 'TV').cls, ['on']);
+});
+
+test('lights: the TV tile ignores the light bars under their old names', () => {
+    const ctx = loadSteuerung({ 'hue.0.TV-Bereich.on': true, ...lamp('Hue_Play_wall_washer_1', true, true), ...lamp('Hue_Play_wall_washer_2', true, true) });
+    assert.deepEqual(lightTile(ctx.build(), 'TV').cls, ['offline']);
+});
+
+test('lights: the TV tile reads offline when both renamed light bars have no power', () => {
+    const ctx = loadSteuerung({ 'hue.0.TV-Bereich.on': true, ...lamp('TV-Licht_links', false, false), ...lamp('TV-Licht_rechts', false, false) });
+    assert.deepEqual(lightTile(ctx.build(), 'TV').cls, ['offline']);
+});

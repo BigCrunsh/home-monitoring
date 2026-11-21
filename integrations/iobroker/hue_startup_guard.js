@@ -9,7 +9,7 @@
 var BRIDGE = 'hue.0.info.connection';
 var GUARDED_LAMPS = [
     'hue.0.Carlottas_Deckenlampe.on',   // IKEA FLOALT
-    'hue.0.Vitinenlicht.on',            // IKEA TRADFRI driver
+    'hue.0.Vitrinenlicht.on',           // IKEA TRADFRI driver
     'hue.0.Flurlampe.on',               // IKEA FLOALT
     'hue.0.Wohnzimmertischlampe.on'     // Tuya TS0502B
 ];

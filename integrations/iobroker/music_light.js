@@ -19,7 +19,7 @@ var OFF_ID = 'javascript.0.music_light_off';
 var SNAPSHOT_ID = 'javascript.0.music_light_snapshot';
 var DEFAULT_ZONES = [{
     key: 'eg', label: 'EG', rooms: ['Wohnzimmer', 'Küche', 'Fernsehzimmer'],
-    lamps: ['hue.0.Küchenlicht', 'hue.0.Hue_Play_wall_washer_1', 'hue.0.Hue_Play_wall_washer_2']
+    lamps: ['hue.0.Küchenlicht', 'hue.0.TV-Licht_links', 'hue.0.TV-Licht_rechts']
 }];
 var FADE = 20;
 var SCENE = { bri: 90, ct: 2200, transitiontime: FADE };

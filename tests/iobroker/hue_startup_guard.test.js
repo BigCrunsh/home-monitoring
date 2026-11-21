@@ -12,7 +12,7 @@ const vm = require('node:vm');
 const IOB = path.join(__dirname, '..', '..', 'integrations', 'iobroker');
 const BRIDGE = 'hue.0.info.connection';
 const CARLOTTA = 'hue.0.Carlottas_Deckenlampe.on';
-const GUARDED = [CARLOTTA, 'hue.0.Vitinenlicht.on', 'hue.0.Flurlampe.on', 'hue.0.Wohnzimmertischlampe.on'];
+const GUARDED = [CARLOTTA, 'hue.0.Vitrinenlicht.on', 'hue.0.Flurlampe.on', 'hue.0.Wohnzimmertischlampe.on'];
 const HUE_LAMP = 'hue.0.Carlottas_Stehlampe.on';
 const MIN = 60 * 1000;
 
