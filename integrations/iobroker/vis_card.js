@@ -29,6 +29,9 @@ var VC_PAL = {
     text: '#CCCCCC',
     surf: '#15161c', inset: '#1c1f28', border: '#262a33', bg: '#0d0e12'
 };
+// "Effekt aktiv" (a light effect such as the music light runs): a colour gradient, used for nothing
+// else, so it never reads as amber (a lamp is on) or green (music plays)
+VC_PAL.effect = ['#ff6b9a', '#ffb347', '#6ec6ff'];
 // frost (≤3 °C) = snow white, the clock's white — deliberately not the muted grey, which means
 // "missing / disconnected"
 VC_PAL.frost = VC_PAL.text;

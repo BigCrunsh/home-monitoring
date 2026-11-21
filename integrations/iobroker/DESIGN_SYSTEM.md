@@ -31,6 +31,7 @@ one-off nudge. (This file is the durable version of the design-system proposal a
 | Inset | `--inset-x` — shared left/right page margin for hero content |
 | Palette | `--green #b5fb5b` (favourable) · `--amber #F1BE3D` (normal) · `--red #A00629` (high/alert) · `--blue #5080AC` (info/cold) · muted greys |
 | Tints | `--green-16 --amber-16 --red-16 --blue-16 --muted-16` (low-alpha fills/glows) |
+| Effect | `VC_PAL.effect` `#ff6b9a → #ffb347 → #6ec6ff` — **"Effekt aktiv" only** (a light effect runs, e.g. the music light): sparkle icon and frame in this gradient. Never for data; it must not read as amber (lamp on) or green (music plays) |
 
 Font = **Figtree** (Google Fonts), display weight **600** (not 700 — keeps it from reading "bold"),
 body 500, captions/units muted. Numbers use `font-variant-numeric: tabular-nums` so live values don't jitter.

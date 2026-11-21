@@ -51,8 +51,8 @@ var CSS = `
 .mv2 .room .stt{font-size:12px; color:var(--muted); flex:none}
 .mv2 .room .stt.on{color:var(--green)}
 .mv2 .gbtn.on{border-color:rgba(181,251,91,.4); background:var(--green-16)}
-/* the music-light pill is a light switch: lit = amber like a lit Steuerung light tile */
-.mv2 .gbtn.lit{border-color:rgba(241,190,61,.55); background:rgba(241,190,61,.16)}
+/* "Effekt aktiv" (design system): a music-light pill whose zone is on gets a frame in the effect gradient */
+.mv2 .gbtn.fx{border:1px solid transparent; background:linear-gradient(var(--bg),var(--bg)) padding-box, linear-gradient(90deg,${VC_PAL.effect.join(',')}) border-box}
 .mv2 .room.playing .pp{background:var(--green-16)}
 .mv2 .room .vb{position:absolute; width:42px; height:34px; border-radius:10px; background:var(--inset); display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:var(--text)}
 .mv2 .room .vol{position:absolute; width:36px; height:34px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:14px; color:var(--text); font-weight:600}
@@ -69,9 +69,22 @@ var ZONES = {};                                   // roomName -> {vol, play, tit
 // TV-room soundbars reject standalone transport (play/pause/seek all HTTP 500) — show volume + group
 // only, no play button. Seeded with the known one; auto-learned if any other room rejects play too.
 var TV = { 'Fernsehzimmer': true };
-// music light (music_light.js) on/off; on unless switched off
-var LIGHT_ENABLED_ID = 'javascript.0.music_light_enabled';
-function lightEnabled() { var s = getState(LIGHT_ENABLED_ID); return !(s && s.val === false); }
+// music light (music_light.js): zones (label, Sonos rooms, lamps) are configured privately on the Pi in
+// LIGHT_ZONES_ID; LIGHT_OFF_ID lists the keys of zones switched off, so a zone is on unless switched off
+var LIGHT_ZONES_ID = 'javascript.0.music_light_zones';
+var LIGHT_OFF_ID = 'javascript.0.music_light_off';
+var AUDIOBOOK_ARTISTS_ID = 'javascript.0.music_light_audiobook_artists';
+var MAX_LIGHT_PILLS = 4;   // the header has room for four, each with its fixed overlay slot
+function jsonState(id, fallback) {
+    if (!existsState(id)) return fallback;
+    var s = getState(id);
+    try { return JSON.parse((s && s.val) || 'null') || fallback; } catch (e) { return fallback; }
+}
+function lightZones() {
+    var z = jsonState(LIGHT_ZONES_ID, []);
+    return Array.isArray(z) ? z.slice(0, MAX_LIGHT_PILLS) : [];
+}
+function lightOff() { var o = jsonState(LIGHT_OFF_ID, []); return Array.isArray(o) ? o : []; }
 
 var esc = vcEsc;
 function clip(s, n) { s = String(s == null ? '' : s); return esc(s.length > n ? s.slice(0, n - 1) + '…' : s); }
@@ -81,7 +94,18 @@ function icoPlay(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><p
 function icoPause(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" fill="' + c + '"/><rect x="14" y="4" width="4" height="16" rx="1" fill="' + c + '"/></svg>'; }
 function icoSpeaker(c) { return '<svg width="18" height="18" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="15" r="3.4"/><circle cx="12" cy="6.5" r="1"/></g></svg>'; }
 function icoStop(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="' + c + '"/></svg>'; }
-function icoBulb(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g stroke="' + c + '" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.3 1 2.1h6c0-.8.4-1.5 1-2.1A6 6 0 0 0 12 3Z"/></g></svg>'; }
+// sparkle for the music-light pills: the "Effekt aktiv" gradient when on, plain grey when off
+// (each pill gets its own gradient id, as all pills share one document)
+function icoSparkle(on, i) {
+    var id = 'mlfx' + i, stops = VC_PAL.effect;
+    var defs = on ? '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1">' + stops.map(function (c, k) {
+        return '<stop offset="' + (k / (stops.length - 1)) + '" stop-color="' + c + '"/>';
+    }).join('') + '</linearGradient></defs>' : '';
+    return '<svg width="20" height="20" viewBox="0 0 24 24">' + defs + '<g fill="' + (on ? 'url(#' + id + ')' : LBL) + '">'
+        + '<path d="M11 3 L12.9 9.1 L19 11 L12.9 12.9 L11 19 L9.1 12.9 L3 11 L9.1 9.1 Z"/>'
+        + '<path d="M19 2.5 l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/>'
+        + '<path d="M18.5 15.5 l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z"/></g></svg>';
+}
 function icoLink(c) { return '<svg width="20" height="20" viewBox="0 0 24 24"><g fill="none" stroke="' + c + '" stroke-width="1.8" stroke-linecap="round"><path d="M9 12 h6"/><path d="M8 8 H6 a4 4 0 0 0 0 8 h2"/><path d="M16 8 h2 a4 4 0 0 1 0 8 h-2"/></g></svg>'; }
 
 // a room missing from the Sonos /zones answer is offline (speaker unplugged or unreachable)
@@ -148,10 +172,15 @@ function build() {
         html += '<div class="gbtn' + (on ? ' on' : '') + '" style="left:' + px + 'px;top:' + pbY + 'px;width:' + pbW + 'px;height:' + pbH + 'px"><span>' + p[2](on ? GREEN : LBL) + '</span>' + p[0] + '</div>';
         targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: p[1], x: px, y: pbY - 6, w: pbW, h: pbH + 12 }));
     });
-    // the music-light switch sits left of the presets, separated by a wider gap (it is not a grouping)
-    var lit = lightEnabled(), lbW = 170, lbX = pbX0 - 24 - lbW;
-    html += '<div class="gbtn' + (lit ? ' lit' : '') + '" style="left:' + lbX + 'px;top:' + pbY + 'px;width:' + lbW + 'px;height:' + pbH + 'px"><span>' + icoBulb(lit ? VC_PAL.warn : LBL) + '</span>Musiklicht</div>';
-    targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: 'light:toggle', x: lbX, y: pbY - 6, w: lbW, h: pbH + 12 }));
+    // one music-light pill per zone, left of the presets and set apart by a wider gap (they are not
+    // groupings); four fixed slots, each with its own native overlay
+    var off = lightOff(), lbW = 120, lbGap = 8;
+    var lbX0 = pbX0 - 24 - MAX_LIGHT_PILLS * lbW - (MAX_LIGHT_PILLS - 1) * lbGap;
+    lightZones().forEach(function (zone, i) {
+        var lx = lbX0 + i * (lbW + lbGap), on = off.indexOf(zone.key) < 0;
+        html += '<div class="gbtn' + (on ? ' fx' : '') + '" style="left:' + lx + 'px;top:' + pbY + 'px;width:' + lbW + 'px;height:' + pbH + 'px"><span>' + icoSparkle(on, i) + '</span>' + esc(zone.label) + '</div>';
+        targets.push(rnd({ kind: 'cmd', oid: 'javascript.0.musik_cmd', value: 'light:toggle:' + i, x: lx, y: pbY - 6, w: lbW, h: pbH + 12 }));
+    });
 
     // 4×2 compact room cards inside the card (10px inner padding)
     var top = pbY + pbH + 10, cols = 4, gap = 10, rgap = 8, ch = 122;
@@ -173,14 +202,16 @@ function build() {
 // playing rooms, for the Übersicht status bar's "Musik" chip
 function playingRooms() { return ROOMS.filter(function (r) { return ZONES[r] && ZONES[r].play; }).length; }
 createState('javascript.0.music_playing', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl spielender Räume' });
-createState('javascript.0.music_ground_floor', '{"playing":false}', { type: 'string', role: 'json', desc: 'Musiklicht: was im Erdgeschoss spielt' });
-createState(LIGHT_ENABLED_ID, true, { type: 'boolean', role: 'switch', desc: 'Musiklicht an/aus' });
+createState('javascript.0.music_zones', '{}', { type: 'string', role: 'json', desc: 'Musiklicht: was je Zone spielt' });
+createState(LIGHT_OFF_ID, '[]', { type: 'string', role: 'json', desc: 'Musiklicht: ausgeschaltete Zonen' });
+createState(AUDIOBOOK_ARTISTS_ID, '[]', { type: 'string', role: 'json', desc: 'Musiklicht: Hörspiel-Künstler (kein Musiklicht)' });
 function publish() {
     setState('musik_grid', build(), true);
     setState('javascript.0.music_playing', playingRooms(), true);
-    var gf = JSON.stringify(groundFloorMusic());
-    var cur = getState('javascript.0.music_ground_floor');
-    if (!cur || cur.val !== gf) setState('javascript.0.music_ground_floor', gf, true);
+    var music = JSON.stringify(zonesMusic());
+    if (jsonState('javascript.0.music_zones', null) === null || JSON.stringify(jsonState('javascript.0.music_zones', {})) !== music) {
+        setState('javascript.0.music_zones', music, true);
+    }
 }
 createState('javascript.0.musik_grid', '', { type: 'string', role: 'html', desc: 'Musik (Sonos) grid' });
 createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (jishi)' });
@@ -206,19 +237,29 @@ function zonesFromSonos(groups) {
     return map;
 }
 
-// The ground floor (the "Wohnen" group) plays music when one of its rooms plays a track that is not
-// the TV input: the soundbar reports TV sound as PLAYING too (x-sonos-htastream:), and the Hue Sync
-// Box lights the TV then. Read by music_light.js.
-var GROUND_FLOOR = [COORD].concat(WOHNEN);
+// A zone plays music when one of its rooms plays a track that is neither the TV input nor an audiobook:
+// the soundbar reports TV sound as PLAYING too (x-sonos-htastream:), and the Hue Sync Box lights the TV
+// then; audiobooks play at bedtime, when a light change would wake the children. Read by music_light.js.
 var TV_INPUT = 'x-sonos-htastream:';
-function groundFloorMusic() {
-    var room = GROUND_FLOOR.filter(function (r) {
+var AUDIOBOOK_NAMING = /\b(Folge|Kapitel|Teil|Episode)\s+\d+|Hörspiel|Hörbuch/i;
+function isAudiobook(z, artists) {
+    if (AUDIOBOOK_NAMING.test(z.album || '') || AUDIOBOOK_NAMING.test(z.title || '')) return true;
+    var artist = String(z.artist || '').toLowerCase();
+    return artists.some(function (a) { return artist && artist.indexOf(String(a).toLowerCase()) >= 0; });
+}
+function zoneMusic(rooms, artists) {
+    var room = rooms.filter(function (r) {
         var z = ZONES[r];
-        return z && z.play && !z.mute && String(z.uri || '').indexOf(TV_INPUT) !== 0;
+        return z && z.play && !z.mute && String(z.uri || '').indexOf(TV_INPUT) !== 0 && !isAudiobook(z, artists);
     })[0];
     if (!room) return { playing: false };
     var z = ZONES[room];
     return { playing: true, artist: z.artist, title: z.title, album: z.album, uri: z.uri, art: z.art, nextArt: z.nextArt, vol: z.vol };
+}
+function zonesMusic() {
+    var artists = jsonState(AUDIOBOOK_ARTISTS_ID, []), out = {};
+    lightZones().forEach(function (zone) { out[zone.key] = zoneMusic(zone.rooms || [], Array.isArray(artists) ? artists : []); });
+    return out;
 }
 
 // poll jishi /zones → ZONES cache → render
@@ -251,8 +292,12 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     // Switch won't re-write an identical value) — trim the marker back off here.
     var v = (obj && obj.state ? String(obj.state.val || '') : '').trim();
     if (!v) return;
-    if (v === 'light:toggle') {
-        setState(LIGHT_ENABLED_ID, !lightEnabled(), true);
+    if (v.indexOf('light:toggle:') === 0) {
+        var zone = lightZones()[parseInt(v.slice('light:toggle:'.length), 10)];
+        if (!zone) return;                          // an overlay slot without a zone
+        var off = lightOff().filter(function (k) { return k !== zone.key; });
+        if (off.length === lightOff().length) off.push(zone.key);
+        setState(LIGHT_OFF_ID, JSON.stringify(off), true);
         publish();
         return;
     }
