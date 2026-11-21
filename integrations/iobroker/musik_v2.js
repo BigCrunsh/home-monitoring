@@ -216,6 +216,16 @@ function publish() {
 createState('javascript.0.musik_grid', '', { type: 'string', role: 'html', desc: 'Musik (Sonos) grid' });
 createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (jishi)' });
 
+// The cover image of a track. Some streaming services put the track's audio file into
+// absoluteAlbumArtUri (a FLAC download); the real cover is then the full URL in albumArtUri. A relative
+// albumArtUri (served by the speaker) only works as the absolute variant.
+function coverOf(t) {
+    var direct = String(t.albumArtUri || ''), absolute = String(t.absoluteAlbumArtUri || '');
+    if (/^https?:\/\//.test(direct)) return direct;
+    if (absolute && absolute !== t.uri) return absolute;
+    return undefined;
+}
+
 // jishi /zones groups → roomName → {vol, play, stopped, title, artist, album, uri, art, nextArt, mute, coord}
 function zonesFromSonos(groups) {
     var map = {};
@@ -230,7 +240,7 @@ function zonesFromSonos(groups) {
                 vol: st.volume, play: (st.playbackState || cs.playbackState) === 'PLAYING',
                 stopped: (st.playbackState || cs.playbackState) === 'STOPPED',
                 title: t.title || t.stationName, artist: t.artist, album: t.album, uri: t.uri,
-                art: t.absoluteAlbumArtUri, nextArt: next.absoluteAlbumArtUri, mute: st.mute === true, coord: coord
+                art: coverOf(t), nextArt: coverOf(next), mute: st.mute === true, coord: coord
             };
         });
     });

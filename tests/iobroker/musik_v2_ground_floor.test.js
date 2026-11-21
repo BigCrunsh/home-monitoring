@@ -68,6 +68,27 @@ test('zones: music in the kitchen plays in the ground-floor zone, with what play
     assert.equal(z.k1.playing, false);
 });
 
+// with the household's streaming service Sonos puts the track's audio file into absoluteAlbumArtUri (a
+// 23 MB FLAC download, 2026-11-21); the real cover is the JPEG in albumArtUri
+test('zones: the cover is the image in albumArtUri, never the audio file', () => {
+    const audio = 'https://cdn/track.flac?Expires=1';
+    const z = zones(loadMusik({}), [group(['Küche'], track({ nextTrack: { albumArtUri: 'https://img/next.jpg', absoluteAlbumArtUri: 'https://cdn/next.flac' } },
+        { uri: audio, absoluteAlbumArtUri: audio, albumArtUri: 'https://img/cover.jpg' }))]);
+    assert.equal(z.eg.art, 'https://img/cover.jpg');
+    assert.equal(z.eg.nextArt, 'https://img/next.jpg');
+});
+
+test('zones: a cover that is only the track address counts as no cover', () => {
+    const audio = 'https://cdn/track.flac';
+    const z = zones(loadMusik({}), [group(['Küche'], track({ nextTrack: {} }, { uri: audio, absoluteAlbumArtUri: audio, albumArtUri: '' }))]);
+    assert.equal(z.eg.art, undefined);
+});
+
+test('zones: a relative albumArtUri falls back to the absolute cover address', () => {
+    const z = zones(loadMusik({}), [group(['Küche'], track({}, { albumArtUri: '/getaa?s=1&u=x', absoluteAlbumArtUri: 'http://speaker:1400/getaa?s=1&u=x' }))]);
+    assert.equal(z.eg.art, 'http://speaker:1400/getaa?s=1&u=x');
+});
+
 test('zones: each zone follows only its own rooms', () => {
     const z = zones(loadMusik({}), [group(['Studio'], track())]);
     assert.equal(z.k1.playing, true);
