@@ -25,7 +25,13 @@ var FADE = 20;
 var SCENE_COLOUR = { bri: 90, ct: 2200, transitiontime: FADE };
 var SCENE_WHITE = { bri: 70, transitiontime: FADE };
 
-function val(id) { var s = getState(id); return s ? s.val : null; }
+// existsState first: getState on a missing state logs a warning (createState is asynchronous, so on
+// the first start the snapshot state does not exist yet)
+function val(id) {
+    if (!existsState(id)) return null;
+    var s = getState(id);
+    return s ? s.val : null;
+}
 function enabled() { return val(ENABLED_ID) !== false; }
 function musicPlaying() {
     try { return JSON.parse(val(MUSIC_ID) || '{}').playing === true; } catch (e) { return false; }

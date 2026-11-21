@@ -141,6 +141,23 @@ test('music light: an unreadable music state counts as no music', () => {
     assert.deepEqual(ctx.commands, []);
 });
 
+// createState is asynchronous in ioBroker: on the very first start the script ran before its snapshot
+// state existed, and every getState on a missing state logs a warning with a stack trace (2026-11-21)
+test('music light: the first start reads no state that does not exist yet', () => {
+    const read = [];
+    const st = {};
+    const ctx = {
+        console: { log() {} },
+        getState: (id) => { read.push(id); return id in st ? { val: st[id] } : null; },
+        existsState: (id) => id in st,
+        setState: (id, val) => { st[id] = val; },
+        createState() {}, on() {}
+    };
+    vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(IOB, 'music_light.js'), 'utf8'), ctx);
+    assert.deepEqual(read, []);
+});
+
 test('music light: after a restore the snapshot is cleared', () => {
     const ctx = load(Object.assign(living(), { [MUSIC]: silent }));
     ctx.change(MUSIC, playing);
