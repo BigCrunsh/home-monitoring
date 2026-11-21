@@ -44,7 +44,7 @@ function load(states) {
             st[id] = val;
         },
         createState: (id, def) => { if (!(id in st)) st[id] = def; },
-        on: (opts, fn) => handlers.push({ opts, fn })
+        on: (opts, fn) => handlers.push({ opts, fn }), setInterval() {}
     };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'music_light.js'), 'utf8'), ctx);
@@ -147,7 +147,7 @@ test('music light: an unreadable music state counts as no music', () => {
 test('music light: without a private config the ground floor default is used, with colour lamps only', () => {
     const st = {};
     const ctx = { console: { log() {} }, getState: (id) => (id in st ? { val: st[id] } : null), existsState: (id) => id in st,
-        setState: (id, v) => { st[id] = v; }, createState: (id, def) => { st[id] = def; }, on() {} };
+        setState: (id, v) => { st[id] = v; }, createState: (id, def) => { st[id] = def; }, on() {}, setInterval() {} };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'music_light.js'), 'utf8'), ctx);
     const zones = JSON.parse(st[ZONES_CFG]);
@@ -163,7 +163,7 @@ test('music light: the first start reads no state that does not exist yet', () =
         getState: (id) => { read.push(id); return id in st ? { val: st[id] } : null; },
         existsState: (id) => id in st,
         setState: (id, val) => { st[id] = val; },
-        createState() {}, on() {}
+        createState() {}, on() {}, setInterval() {}
     };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'music_light.js'), 'utf8'), ctx);
