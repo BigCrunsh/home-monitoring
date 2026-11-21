@@ -36,9 +36,9 @@ const NAMES = { [PLUG]: 'Steckdose Studio Stehlampe', [MOTION]: 'Bewegungssensor
 test('devices: a device removed on the CCU disappears on the next refresh, without a restart', () => {
     const objects = [PLUG, MOTION];
     const ctx = loadDiagnose(objects, NAMES);
-    assert.match(ctx.buildDevices(), /Steckdose Studio Stehlampe/);
+    assert.match(card(ctx), /Steckdose Studio Stehlampe/);
     objects.splice(objects.indexOf(PLUG), 1);   // hm-rpc deleteDevices
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.doesNotMatch(h, /Steckdose Studio Stehlampe/);
     assert.match(h, /Bewegungssensor/);
 });
@@ -47,7 +47,7 @@ test('devices: a channel state left behind by a deleted device is never listed',
     const ctx = loadDiagnose([MOTION], NAMES);
     // the selector still finds the plug's UNREACH, but its device object is gone
     ctx.$ = () => ({ each: (fn) => [PLUG, MOTION].forEach((d) => fn(d + '.0.UNREACH')) });
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.doesNotMatch(h, /Steckdose/);
     assert.doesNotMatch(h, /0001DD89A46/);
 });
@@ -55,40 +55,40 @@ test('devices: a channel state left behind by a deleted device is never listed',
 test('devices: a device added on the CCU appears on the next refresh', () => {
     const objects = [MOTION];
     const ctx = loadDiagnose(objects, NAMES);
-    ctx.buildDevices();
+    card(ctx);
     objects.push(LAMP);
-    assert.match(ctx.buildDevices(), /Steckdose Maxxisun Akku/);
+    assert.match(card(ctx), /Steckdose Maxxisun Akku/);
 });
 
 // "Bewegungssensor offline" alone doesn't say which of the three motion sensors to fix
 test('devices: an offline device names the room it is assigned to on the CCU', () => {
     const rooms = [{ id: 'enum.rooms.Eingang', name: 'Eingangsbereich', members: [MOTION + '.1'] }];
-    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    const h = card(loadDiagnose([MOTION], NAMES, rooms));
     assert.match(h, /Eingangsbereich · Bewegungssensor/);
 });
 
 test('devices: a device without a room keeps its plain name, no dangling separator', () => {
     const rooms = [{ id: 'enum.rooms.Keller', name: 'Keller', members: ['hm-rpc.1.00091BE9910C5B.1'] }];
-    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    const h = card(loadDiagnose([MOTION], NAMES, rooms));
     assert.match(h, /<span class="nm">Bewegungssensor<\/span>/);
 });
 
 test('devices: a room whose name is translated shows the German name', () => {
     const rooms = [{ id: 'enum.rooms.Keller', name: { en: 'Basement', de: 'Keller' }, members: [MOTION] }];
-    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    const h = card(loadDiagnose([MOTION], NAMES, rooms));
     assert.match(h, /Keller · Bewegungssensor/);
     assert.doesNotMatch(h, /Basement|object Object/);
 });
 
 test('devices: a sibling device whose address shares a prefix is not mistaken for a room member', () => {
     const rooms = [{ id: 'enum.rooms.Keller', name: 'Keller', members: [MOTION + '0.1'] }];
-    const h = loadDiagnose([MOTION], NAMES, rooms).buildDevices();
+    const h = card(loadDiagnose([MOTION], NAMES, rooms));
     assert.doesNotMatch(h, /Keller/);
 });
 
 test('devices: a room already named in the device name is not repeated', () => {
     const rooms = [{ id: 'enum.rooms.Flur', name: 'Flur', members: [MOTION + '.1'] }];
-    const h = loadDiagnose([MOTION], { [MOTION]: 'Bewegungsmelder Flur' }, rooms).buildDevices();
+    const h = card(loadDiagnose([MOTION], { [MOTION]: 'Bewegungsmelder Flur' }, rooms));
     assert.match(h, /<span class="nm">Bewegungsmelder Flur<\/span>/);
 });
 
@@ -102,6 +102,9 @@ test('devices: a device without a battery state is never asked for one', () => {
         if (id === PLUG + '.0.UNREACH') return { val: false, ts: Date.now(), lc: Date.now() };
         return realGet(id);
     };
-    ctx.buildDevices();
+    card(ctx);
     assert.ok(!asked.includes(PLUG + '.0.LOW_BAT'), 'getState called for missing ' + PLUG + '.0.LOW_BAT');
 });
+
+// the Geräte card as publish renders it: devices found afresh, then drawn
+function card(ctx) { return ctx.buildDevices(ctx.refreshDevices()); }

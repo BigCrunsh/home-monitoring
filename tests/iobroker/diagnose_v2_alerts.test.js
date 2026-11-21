@@ -360,3 +360,38 @@ test('alerts: a low Netatmo battery is not folded into the silent-modules messag
         'Diagnose: Kinderzimmer Clara – Batterie schwach'
     ]);
 });
+
+// the list of reported issues is written only when it changes
+function countWrites(ctx, id) {
+    const count = { n: 0 }, set = ctx.setState;
+    ctx.setState = (sid, val, ack) => { if (sid === id) count.n++; set(sid, val, ack); };
+    return count;
+}
+
+test('alerts: an unchanged list of reported issues is not written again', () => {
+    const ctx = loadDiagnose({ 'hue.0.Fernbedienung_Kinderzimmer': 'Fernbedienung Kinderzimmer' }, { 'hue.0.Fernbedienung_Kinderzimmer.battery': 15 });
+    ctx.publish();
+    const writes = countWrites(ctx, 'javascript.0.diag_alerted');
+    ctx.publish();
+    ctx.publish();
+    assert.equal(writes.n, 0);
+});
+
+test('alerts: the list is written when an issue clears', () => {
+    const ctx = loadDiagnose({ 'hue.0.Fernbedienung_Kinderzimmer': 'Fernbedienung Kinderzimmer' }, { 'hue.0.Fernbedienung_Kinderzimmer.battery': 15 });
+    ctx.publish();
+    const writes = countWrites(ctx, 'javascript.0.diag_alerted');
+    ctx.st['hue.0.Fernbedienung_Kinderzimmer.battery'].val = 100;
+    ctx.advance(48 * HOUR);
+    ctx.publish();
+    assert.equal(writes.n, 1);
+    assert.equal(ctx.st['javascript.0.diag_alerted'].val, '{}');
+});
+
+test('alerts: a missing list is written once, even with no issues', () => {
+    const ctx = loadDiagnose({}, {});
+    const writes = countWrites(ctx, 'javascript.0.diag_alerted');
+    ctx.publish();
+    ctx.publish();
+    assert.equal(writes.n, 1);
+});

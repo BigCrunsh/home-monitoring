@@ -38,7 +38,7 @@ function loadDiagnose(devices, stale = []) {
     ctx.enumerateBatteryDevices();
     return ctx;
 }
-const banner = (ctx) => ctx.buildSummary().match(/class="txt" style="color:([^"]+)">([^<]+)</).slice(1);
+const banner = (ctx) => ctx.buildSummary(ctx.refreshDevices()).match(/class="txt" style="color:([^"]+)">([^<]+)</).slice(1);
 
 test('summary: no source and no device problem reads all clear in green', () => {
     const ctx = loadDiagnose({ [MOTION]: { name: 'Bewegungsmelder Flur' } });

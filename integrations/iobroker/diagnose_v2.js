@@ -138,9 +138,8 @@ function fo(cls, w, h, body) {
 
 // ===== SUMMARY =====
 // The tab's verdict: source/adapter problems and device problems (the Geräte card), worst first.
-// Expects the device lists to be enumerated (publish does that before building the banner).
 function countOf(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
-function buildSummary() {
+function buildSummary(devices) {
     var red = 0, amber = 0;
     SOURCES.forEach(function (s) {
         var c = freshCol(ageOf(s[1]), s[2], s[3]);
@@ -150,7 +149,6 @@ function buildSummary() {
         var hc = adapterHealth(a[1]).col;
         if (hc === RED) red++; else if (hc === AMBER) amber++;
     });
-    var devices = deviceIssues();
     var devRed = devices.filter(function (i) { return i.col === RED; }).length;
     var devAmber = devices.length - devRed;
     var parts = [];
@@ -478,10 +476,13 @@ function worstFirst(a, b) { return a.rank - b.rank || a.nm.localeCompare(b.nm); 
 // the card fills the right column below System · Pi down to the nav panel's bottom edge — room for
 // 8 dense rows: all issues when they fit, otherwise the 7 worst + a "+n weitere" count.
 var DEV_MAX_ROWS = 8;
-function buildDevices() {
+// finds the devices afresh (new ones appear without a restart) and returns their problems, worst first
+function refreshDevices() {
     enumerateHmDevices();
     enumerateBatteryDevices();
-    var issues = deviceIssues();
+    return deviceIssues();
+}
+function buildDevices(issues) {
     var total = HM_DEVICES.length + NETATMO_MODULES.length + HUE_REMOTES.length + HUE_LAMPS.length
         + SOIL_SENSORS.filter(function (z) { return existsState(z.tsId); }).length
         + (existsState(MAXXI_PLUG) ? 1 : 0);
@@ -606,20 +607,20 @@ function alertNewIssues(issues) {
         }
         sendAlert(t.nm + ' – wieder ok');
     });
-    setState(ALERTED_ID, JSON.stringify(current), true);
+    var serialized = JSON.stringify(current), stored = getState(ALERTED_ID);
+    if (!stored || stored.val !== serialized) setState(ALERTED_ID, serialized, true);
 }
 
 function publish() {
-    enumerateHmDevices();
-    enumerateBatteryDevices();
-    setState('diag_summary', fo('sumw', 1170, 72, buildSummary()), true);
+    var issues = refreshDevices();
+    setState('diag_summary', fo('sumw', 1170, 72, buildSummary(issues)), true);
     setState('diag_left', fo('dlw', 392, 596, buildSources()), true);
     // the nav panel sits under the left column only — middle and right run down to its bottom (y=775)
     setState('diag_mid', fo('dmw', 377, 691, '<div class="mcol">'
         + buildAdapters().replace('"card"', '"card grow"') + buildBackup() + '</div>'), true);
     setState('diag_right', fo('drw', 377, 691, '<div class="mcol">'
-        + buildSystem() + buildDevices().replace('"card"', '"card grow"') + '</div>'), true);
-    alertNewIssues(deviceIssues());
+        + buildSystem() + buildDevices(issues).replace('"card"', '"card grow"') + '</div>'), true);
+    alertNewIssues(issues);
 }
 
 ['diag_summary', 'diag_left', 'diag_mid', 'diag_right'].forEach(function (id) {

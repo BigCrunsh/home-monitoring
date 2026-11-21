@@ -44,17 +44,17 @@ function loadDiagnose(states) {
 }
 
 test('ccu: a dead program engine shows as a red device issue', () => {
-    const h = loadDiagnose({ [REGA_UP]: false }).buildDevices();
+    const h = card(loadDiagnose({ [REGA_UP]: false }));
     assert.match(h, /CCU-Programme<\/span><span class="ag" style="color:#A00629">offline/);
 });
 
 test('ccu: a running program engine raises nothing', () => {
-    const h = loadDiagnose({ [REGA_UP]: true }).buildDevices();
+    const h = card(loadDiagnose({ [REGA_UP]: true }));
     assert.doesNotMatch(h, /CCU-Programme/);
 });
 
 test('ccu: no engine state yet (hm-rega not installed or still starting) raises nothing', () => {
-    const h = loadDiagnose({}).buildDevices();
+    const h = card(loadDiagnose({}));
     assert.doesNotMatch(h, /CCU-Programme/);
 });
 
@@ -66,3 +66,6 @@ test('ccu: a program engine dead for 10 minutes is sent to Telegram', () => {
     assert.equal(ctx.sent.length, 1);
     assert.match(ctx.sent[0].msg.text, /CCU-Programme – offline/);
 });
+
+// the Geräte card as publish renders it: devices found afresh, then drawn
+function card(ctx) { return ctx.buildDevices(ctx.refreshDevices()); }

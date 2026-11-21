@@ -45,13 +45,13 @@ function loadDiagnose(objects, states) {
 
 test('netatmo: a module silent for months is listed as still', () => {
     const ctx = loadDiagnose({ [RAIN]: 'Regenmesser' }, { [RAIN + '.LastUpdate']: netatmoDate(200 * 24 * HOUR), [RAIN + '.BatteryStatus']: 60 });
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.match(h, /Regenmesser<\/span><span class="ag" style="color:#F1BE3D">still seit 200 Tg/);
 });
 
 test('netatmo: a module that reported minutes ago with a good battery raises nothing', () => {
     const ctx = loadDiagnose({ [GARDEN]: 'Gartenhaus' }, { [GARDEN + '.LastUpdate']: netatmoDate(0.1 * HOUR), [GARDEN + '.BatteryStatus']: 38 });
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.match(h, /1 Geräte/);
     assert.match(h, /alle ok/);
 });
@@ -59,24 +59,24 @@ test('netatmo: a module that reported minutes ago with a good battery raises not
 // a base station is watched too (2026-11-08), under its Datenquellen name, never as a room module
 test('netatmo: a silent base station is listed as "Netatmo", not as a module named after its room', () => {
     const ctx = loadDiagnose({ [HOME]: 'Wohnzimmer' }, { [HOME + '.LastUpdate']: netatmoDate(500 * HOUR) });
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.doesNotMatch(h, /Wohnzimmer/);
     assert.match(h, /Netatmo<\/span><span class="ag"[^>]*>still seit 21 Tg/);
 });
 
 test('netatmo: a low battery is flagged even while the module still reports', () => {
     const ctx = loadDiagnose({ [GARDEN]: 'Gartenhaus' }, { [GARDEN + '.LastUpdate']: netatmoDate(0.1 * HOUR), [GARDEN + '.BatteryStatus']: 12 });
-    assert.match(ctx.buildDevices(), /Gartenhaus<\/span><span class="ag" style="color:#F1BE3D">Batterie schwach/);
+    assert.match(card(ctx), /Gartenhaus<\/span><span class="ag" style="color:#F1BE3D">Batterie schwach/);
 });
 
 test('netatmo: a module of the Studio station says which station it belongs to', () => {
     const ctx = loadDiagnose({ [ROOF]: 'Dachterrasse' }, { [ROOF + '.LastUpdate']: netatmoDate(30 * HOUR), [ROOF + '.BatteryStatus']: 90 });
-    assert.match(ctx.buildDevices(), /Studio · Dachterrasse/);
+    assert.match(card(ctx), /Studio · Dachterrasse/);
 });
 
 test('netatmo: an unreadable last-update text is not reported as still', () => {
     const ctx = loadDiagnose({ [GARDEN]: 'Gartenhaus' }, { [GARDEN + '.LastUpdate']: 'garbage', [GARDEN + '.BatteryStatus']: 80 });
-    assert.doesNotMatch(ctx.buildDevices(), /still/);
+    assert.doesNotMatch(card(ctx), /still/);
 });
 
 // A module never named in the Netatmo app is called by its radio address: the wind gauge reached
@@ -88,7 +88,7 @@ function unnamedModule(address, type) {
 test('netatmo: an unnamed wind gauge is called Windmesser, not by its address', () => {
     const WIND = HOME + '.06-00-00-02-a2-5c';
     const ctx = loadDiagnose({ [WIND]: unnamedModule('06:00:00:02:a2:5c', 'NAModule2') }, { [WIND + '.LastUpdate']: netatmoDate(3 * HOUR) });
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.match(h, /Windmesser<\/span><span class="ag" style="color:#F1BE3D">still seit 3 h/);
     assert.doesNotMatch(h, /06:00:00/);
 });
@@ -96,12 +96,12 @@ test('netatmo: an unnamed wind gauge is called Windmesser, not by its address', 
 test('netatmo: an unnamed module of the Studio station keeps the station prefix', () => {
     const STUDIO_RAIN = STUDIO + '.05-00-00-0a-0b-0c';
     const ctx = loadDiagnose({ [STUDIO_RAIN]: unnamedModule('05:00:00:0a:0b:0c', 'NAModule3') }, { [STUDIO_RAIN + '.LastUpdate']: netatmoDate(3 * HOUR) });
-    assert.match(ctx.buildDevices(), /Studio · Regenmesser/);
+    assert.match(card(ctx), /Studio · Regenmesser/);
 });
 
 test('netatmo: a name given in the Netatmo app wins over the type', () => {
     const ctx = loadDiagnose({ [GARDEN]: { common: { name: 'Gartenhaus' }, native: { type: 'NAModule1' } } }, { [GARDEN + '.LastUpdate']: netatmoDate(3 * HOUR) });
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.match(h, /Gartenhaus/);
     assert.doesNotMatch(h, /Außenmodul/);
 });
@@ -109,7 +109,7 @@ test('netatmo: a name given in the Netatmo app wins over the type', () => {
 test('netatmo: an unnamed module of an unknown type keeps its address rather than a blank name', () => {
     const ODD = HOME + '.09-00-00-01-02-03';
     const ctx = loadDiagnose({ [ODD]: unnamedModule('09:00:00:01:02:03', 'NAModule9') }, { [ODD + '.LastUpdate']: netatmoDate(3 * HOUR) });
-    assert.match(ctx.buildDevices(), /09:00:00:01:02:03<\/span>/);
+    assert.match(card(ctx), /09:00:00:01:02:03<\/span>/);
 });
 
 // A Hue remote only radios when pressed, so the bridge never marks it unreachable, and it keeps the last
@@ -117,36 +117,36 @@ test('netatmo: an unnamed module of an unknown type keeps its address rather tha
 // "schwach" although it was dead. At 5 % or less a remote is as good as dead: red "Batterie leer".
 test('hue: a remote at 1 % battery is shown red as empty, by its name', () => {
     const ctx = loadDiagnose({ 'hue.0.Claras_Fernbedienung': 'Claras Fernbedienung' }, { 'hue.0.Claras_Fernbedienung.battery': 1 });
-    assert.match(ctx.buildDevices(), /Claras Fernbedienung<\/span><span class="ag" style="color:#A00629">Batterie leer/);
+    assert.match(card(ctx), /Claras Fernbedienung<\/span><span class="ag" style="color:#A00629">Batterie leer/);
 });
 
 test('hue: 5 % is still empty, 6 % is only low (amber)', () => {
-    const at5 = loadDiagnose({ 'hue.0.R': 'R' }, { 'hue.0.R.battery': 5 }).buildDevices();
-    const at6 = loadDiagnose({ 'hue.0.R': 'R' }, { 'hue.0.R.battery': 6 }).buildDevices();
+    const at5 = card(loadDiagnose({ 'hue.0.R': 'R' }, { 'hue.0.R.battery': 5 }));
+    const at6 = card(loadDiagnose({ 'hue.0.R': 'R' }, { 'hue.0.R.battery': 6 }));
     assert.match(at5, /color:#A00629">Batterie leer/);
     assert.match(at6, /color:#F1BE3D">Batterie schwach/);
 });
 
 test('hue: a remote at 21 % raises nothing', () => {
     const ctx = loadDiagnose({ 'hue.0.R': 'R' }, { 'hue.0.R.battery': 21 });
-    assert.doesNotMatch(ctx.buildDevices(), /Batterie/);
+    assert.doesNotMatch(card(ctx), /Batterie/);
 });
 
 test('hue: an empty remote is listed ahead of amber issues', () => {
     // named so that neither alphabet nor enumeration order puts the empty one first
     const ctx = loadDiagnose({ 'hue.0.A_Low': 'Anna', 'hue.0.Z_Empty': 'Zora' }, { 'hue.0.A_Low.battery': 15, 'hue.0.Z_Empty.battery': 2 });
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.ok(h.indexOf('>Zora<') >= 0 && h.indexOf('>Zora<') < h.indexOf('>Anna<'), 'empty first');
 });
 
 test('hue: a remote that never reported a battery level raises nothing', () => {
     const ctx = loadDiagnose({ 'hue.0.Hue_dimmer_switch_1': 'Hue dimmer switch 1' }, { 'hue.0.Hue_dimmer_switch_1.battery': null });
-    assert.doesNotMatch(ctx.buildDevices(), /Batterie/);
+    assert.doesNotMatch(card(ctx), /Batterie/);
 });
 
 test('hue: a remote whose device object is gone is not listed', () => {
     const ctx = loadDiagnose({}, { 'hue.0.Old_Remote.battery': 3 });
-    assert.doesNotMatch(ctx.buildDevices(), /Old/);
+    assert.doesNotMatch(card(ctx), /Old/);
 });
 
 // the wind gauge has no BatteryStatus state; reading it anyway logged a warning every minute
@@ -156,7 +156,7 @@ test('netatmo: a module without a battery state is never asked for one', () => {
     const asked = [];
     const realGet = ctx.getState;
     ctx.getState = (id) => { asked.push(id); return realGet(id); };
-    ctx.buildDevices();
+    card(ctx);
     assert.ok(!asked.includes(WIND + '.BatteryStatus'));
 });
 
@@ -169,14 +169,17 @@ function remotes(n) {
 
 test('devices: eight issues are all listed, nothing folded away', () => {
     const ctx = loadDiagnose(...remotes(8));
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.equal((h.match(/Batterie schwach/g) || []).length, 8);
     assert.doesNotMatch(h, /weitere/);
 });
 
 test('devices: nine issues show the seven worst and a "+ 2 weitere" row', () => {
     const ctx = loadDiagnose(...remotes(9));
-    const h = ctx.buildDevices();
+    const h = card(ctx);
     assert.equal((h.match(/Batterie schwach/g) || []).length, 7);
     assert.match(h, /\+ 2 weitere/);
 });
+
+// the Geräte card as publish renders it: devices found afresh, then drawn
+function card(ctx) { return ctx.buildDevices(ctx.refreshDevices()); }

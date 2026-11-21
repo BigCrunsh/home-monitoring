@@ -48,14 +48,14 @@ test('stations: a base station silent for over an hour is an issue and one Teleg
     const ctx = loadDiagnose({ [STUDIO]: 70, [MAIN]: 5 });
     ctx.publish();
     ctx.publish();
-    assert.match(ctx.buildDevices(), /Netatmo Studio/);
+    assert.match(card(ctx), /Netatmo Studio/);
     assert.deepEqual(ctx.sent, ['Diagnose: Netatmo Studio – still seit 1 h']);
 });
 
 test('stations: a station that reported within the hour is fine', () => {
     const ctx = loadDiagnose({ [STUDIO]: 50, [MAIN]: 5 });
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /Netatmo Studio/);
+    assert.doesNotMatch(card(ctx), /Netatmo Studio/);
     assert.deepEqual(ctx.sent, []);
 });
 
@@ -71,3 +71,6 @@ test('stations: a station without a readable LastUpdate is not reported', () => 
     ctx.publish();
     assert.deepEqual(ctx.sent, []);
 });
+
+// the Geräte card as publish renders it: devices found afresh, then drawn
+function card(ctx) { return ctx.buildDevices(ctx.refreshDevices()); }

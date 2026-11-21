@@ -40,14 +40,14 @@ test('button lights: a light that did not react shows a red row and sends one me
     const ctx = loadDiagnose({ [FAULTS]: JSON.stringify({ 'Clara Decke': 1 }) });
     ctx.publish();
     ctx.publish();
-    assert.match(ctx.buildDevices(), /<span class="nm">Clara Decke<\/span><span class="ag" style="color:[^"]+">reagiert nicht auf Taster</);
+    assert.match(card(ctx), /<span class="nm">Clara Decke<\/span><span class="ag" style="color:[^"]+">reagiert nicht auf Taster</);
     assert.deepEqual(ctx.sent, ['Diagnose: Clara Decke – reagiert nicht auf Taster']);
 });
 
 test('button lights: the summary counts it as a device offline', () => {
     const ctx = loadDiagnose({ [FAULTS]: JSON.stringify({ 'Clara Decke': 1 }) });
     ctx.publish();
-    assert.match(ctx.buildSummary(), /Gerät offline/);
+    assert.match(ctx.buildSummary(ctx.refreshDevices()), /Gerät offline/);
 });
 
 test('button lights: a cleared fault sends "wieder ok"', () => {
@@ -61,12 +61,15 @@ test('button lights: a cleared fault sends "wieder ok"', () => {
 test('button lights: without the fault state there is no issue', () => {
     const ctx = loadDiagnose({});
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /reagiert nicht/);
+    assert.doesNotMatch(card(ctx), /reagiert nicht/);
     assert.equal(ctx.sent.length, 0);
 });
 
 test('button lights: a corrupt fault state is ignored, not thrown', () => {
     const ctx = loadDiagnose({ [FAULTS]: '{not json' });
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /reagiert nicht/);
+    assert.doesNotMatch(card(ctx), /reagiert nicht/);
 });
+
+// the Geräte card as publish renders it: devices found afresh, then drawn
+function card(ctx) { return ctx.buildDevices(ctx.refreshDevices()); }

@@ -55,14 +55,14 @@ test('maxxisun: a plug silent for over 15 minutes is a device issue and one Tele
     const ctx = loadDiagnose(report(70 * MIN));
     ctx.publish();
     ctx.publish();
-    assert.match(ctx.buildDevices(), /Maxxisun-Zähler/);
+    assert.match(card(ctx), /Maxxisun-Zähler/);
     assert.deepEqual(ctx.sent, ['Diagnose: Maxxisun-Zähler – still seit 1 h']);
 });
 
 test('maxxisun: a plug that reported recently is not an issue', () => {
     const ctx = loadDiagnose(report(2 * MIN));
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /Maxxisun-Zähler/);
+    assert.doesNotMatch(card(ctx), /Maxxisun-Zähler/);
     assert.deepEqual(ctx.sent, []);
 });
 
@@ -80,6 +80,9 @@ test('maxxisun: a plug that reports again after an alert sends "wieder ok"', () 
 test('maxxisun: without any plug state (plug removed) nothing is reported', () => {
     const ctx = loadDiagnose({});
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /Maxxisun-Zähler/);
+    assert.doesNotMatch(card(ctx), /Maxxisun-Zähler/);
     assert.deepEqual(ctx.sent, []);
 });
+
+// the Geräte card as publish renders it: devices found afresh, then drawn
+function card(ctx) { return ctx.buildDevices(ctx.refreshDevices()); }

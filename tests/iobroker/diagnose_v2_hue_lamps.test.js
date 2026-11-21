@@ -60,7 +60,7 @@ test('hue lamps: a lamp unreachable for over a month shows an amber row and send
     ctx.advance(31 * DAY);
     ctx.publish();
     ctx.publish();
-    assert.match(ctx.buildDevices(), /<span class="nm">Arbeitszimmerlicht<\/span><span class="ag" style="color:[^"]+">offline seit 31 Tg</);
+    assert.match(card(ctx), /<span class="nm">Arbeitszimmerlicht<\/span><span class="ag" style="color:[^"]+">offline seit 31 Tg</);
     assert.deepEqual(texts(ctx), ['Diagnose: Arbeitszimmerlicht – offline seit 31 Tg']);
 });
 
@@ -68,7 +68,7 @@ test('hue lamps: a lamp unreachable for less than a month (off at the wall) stay
     const ctx = buero();
     ctx.advance(29 * DAY);
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /Arbeitszimmerlicht/);
+    assert.doesNotMatch(card(ctx), /Arbeitszimmerlicht/);
     assert.equal(ctx.sent.length, 0);
 });
 
@@ -76,7 +76,7 @@ test('hue lamps: a reachable lamp is fine however long ago it last changed', () 
     const ctx = loadDiagnose({ [BUERO]: { name: 'Arbeitszimmerlicht', role: 'light.color' } }, { [BUERO + '.reachable']: true });
     ctx.advance(400 * DAY);
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /Arbeitszimmerlicht/);
+    assert.doesNotMatch(card(ctx), /Arbeitszimmerlicht/);
     assert.equal(ctx.sent.length, 0);
 });
 
@@ -85,7 +85,7 @@ test('hue lamps: a remote or switch with a reachable flag is not a lamp', () => 
         { 'hue.0.Hue_dimmer_switch_1.reachable': false });
     ctx.advance(60 * DAY);
     ctx.publish();
-    assert.doesNotMatch(ctx.buildDevices(), /dimmer/);
+    assert.doesNotMatch(card(ctx), /dimmer/);
     assert.equal(ctx.sent.length, 0);
 });
 
@@ -121,5 +121,8 @@ test('hue lamps: the summary asks to check a device', () => {
     const ctx = buero();
     ctx.advance(31 * DAY);
     ctx.publish();
-    assert.match(ctx.buildSummary(), /Gerät prüfen/);
+    assert.match(ctx.buildSummary(ctx.refreshDevices()), /Gerät prüfen/);
 });
+
+// the Geräte card as publish renders it: devices found afresh, then drawn
+function card(ctx) { return ctx.buildDevices(ctx.refreshDevices()); }
