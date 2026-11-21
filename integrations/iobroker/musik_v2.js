@@ -62,7 +62,7 @@ var CSS = `
 
 var GREEN = VC_PAL.good, LBL = VC_PAL.muted;
 // live Sonos room names (from jishi /zones), fixed order for a stable layout
-var ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zimmer', 'Carlottas Zimmer', 'Studio'];
+var ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zimmer', 'Carlottas Zimmer', 'Cleas Zimmer'];
 var COORD = 'Wohnzimmer';                         // preset group coordinator
 var WOHNEN = ['Küche', 'Fernsehzimmer'];          // joined to COORD for "Wohnen"
 var ZONES = {};                                   // roomName -> {vol, play, title, artist, coord}

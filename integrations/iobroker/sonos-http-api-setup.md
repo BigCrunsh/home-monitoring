@@ -68,5 +68,5 @@ TV audio or follow a group coordinator. Such rooms render **volume + grouping on
 whose play is rejected with an `AVTransport` error.
 
 Room names are the live Sonos names (URL-encoded by the script): Fernsehzimmer, Küche, Wohnzimmer,
-Sauna, Bad, Claras Zimmer, Carlottas Zimmer, Studio. Adjust the `Wohnen` preset / coordinator in
+Sauna, Bad, Claras Zimmer, Carlottas Zimmer, Cleas Zimmer. Adjust the `Wohnen` preset / coordinator in
 `musik_v2.js` (`WOHNEN`, `COORD`).

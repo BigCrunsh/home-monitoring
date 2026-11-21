@@ -14,7 +14,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const IOB = path.join(__dirname, '..', '..', 'integrations', 'iobroker');
-const ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zimmer', 'Carlottas Zimmer', 'Studio'];
+const ROOMS = ['Fernsehzimmer', 'Küche', 'Wohnzimmer', 'Sauna', 'Bad', 'Claras Zimmer', 'Carlottas Zimmer', 'Cleas Zimmer'];
 
 function loadMusik(zones) {
     const ctx = {
@@ -106,7 +106,7 @@ test('musik: a grouping that matches no preset marks none of them', () => {
 test('musik: the number of playing rooms is published with every redraw', () => {
     const z = zones(null, {
         Bad: { vol: 30, play: true, coord: 'Bad' },
-        Studio: { vol: 20, play: true, coord: 'Studio' }
+        'Cleas Zimmer': { vol: 20, play: true, coord: 'Cleas Zimmer' }
     });
     const ctx = loadMusik(z);
     const written = {};
