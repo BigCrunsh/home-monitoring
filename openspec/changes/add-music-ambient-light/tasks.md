@@ -15,9 +15,10 @@
 ## 3. Stage 3: cover colours
 
 - [ ] 3.1 Add `jpeg-js` to the javascript adapter's additional modules (one adapter restart)
-- [ ] 3.2 Tests, then dominant colours from the cover (coarse histogram, skip near-black/white), cached per cover URL, applied to kitchen and wall washers
+- [ ] 3.2 Tests, then a cover palette: 4-6 dominant colours with their share of the cover (coarse histogram, skip near-black/white/grey, lift washed-out saturation), cached per cover URL
+- [ ] 3.3 Tests, then slow weighted cycling (owner idea, 2026-11-21): each colour lamp drifts through the palette with long transitions, each colour held in proportion to its share; kitchen and the two wall washers run offset, so the room shows several cover colours at once
 
 ## 4. Stage 4: tempo
 
 - [ ] 4.1 Tests, then Deezer BPM lookup per track (timeout, cache, calm fallback)
-- [ ] 4.2 Tests, then pace: rotate the cover colours across the colour lamps, interval from BPM, never faster than every 4 s
+- [ ] 4.2 Tests, then pace: the cycle speed follows the BPM (calm: one pass in 2-4 min, fast: 30-60 s), never more than one command per lamp every 4 s
