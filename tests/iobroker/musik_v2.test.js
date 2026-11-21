@@ -128,3 +128,49 @@ test('musik: inactive presets have muted icons, the active one is green', () => 
     assert.match(presetHtml(ctx, 'Alle').icon, new RegExp(ctx.LBL));
     assert.match(presetHtml(ctx, 'Einzeln').icon, new RegExp(ctx.GREEN));
 });
+
+// an unchanged value is never rewritten; the comparison is with the stored value
+function withStore(ctx) {
+    const store = {}, writes = [];
+    ctx.existsState = (id) => id in store;
+    ctx.getState = (id) => (id in store ? { val: store[id] } : null);
+    ctx.setState = (id, val) => { store[id] = val; writes.push(id); };
+    return { store, writes };
+}
+test('musik: an unchanged redraw writes nothing again', () => {
+    const ctx = loadMusik(zones());
+    const { writes } = withStore(ctx);
+    ctx.publish();
+    writes.length = 0;
+    ctx.publish();
+    assert.deepEqual(writes, []);
+});
+
+test('musik: a changed volume redraws the band', () => {
+    const ctx = loadMusik(zones());
+    const { writes } = withStore(ctx);
+    ctx.publish();
+    writes.length = 0;
+    ctx.ZONES.Bad.vol = 45;
+    ctx.publish();
+    assert.deepEqual(writes, ['javascript.0.musik_grid']);
+});
+
+test('musik: a room that starts playing updates the count, not only the band', () => {
+    const ctx = loadMusik(zones());
+    const { store } = withStore(ctx);
+    ctx.publish();
+    ctx.ZONES.Bad.play = true;
+    ctx.publish();
+    assert.equal(store['javascript.0.music_playing'], 1);
+});
+
+test('musik: a write that never reached the store is repeated on the next poll', () => {
+    const ctx = loadMusik(zones());
+    const { store, writes } = withStore(ctx);
+    ctx.publish();
+    delete store['javascript.0.music_zones'];
+    writes.length = 0;
+    ctx.publish();
+    assert.deepEqual(writes, ['javascript.0.music_zones']);
+});

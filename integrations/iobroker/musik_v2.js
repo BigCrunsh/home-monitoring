@@ -206,11 +206,17 @@ createState('javascript.0.music_playing', 0, { type: 'number', role: 'value', de
 createState(MUSIC_ZONES_ID, '{}', { type: 'string', role: 'json', desc: 'Musiklicht: was je Zone spielt' });
 createState(LIGHT_OFF_ID, '[]', { type: 'string', role: 'json', desc: 'Musiklicht: ausgeschaltete Zonen' });
 createState(AUDIOBOOK_ARTISTS_ID, '[]', { type: 'string', role: 'json', desc: 'Musiklicht: Hörspiel-Künstler (kein Musiklicht)' });
+// publish runs on every 4 s poll; most polls change nothing, so only a value that differs from the
+// stored one is written (compared with the store, so a lost write is repaired on the next poll)
+function writeIfChanged(id, value) {
+    var stored = existsState(id) ? getState(id) : null;
+    if (stored && stored.val === value) return;
+    setState(id, value, true);
+}
 function publish() {
-    setState('musik_grid', build(), true);
-    setState('javascript.0.music_playing', playingRooms(), true);
-    var music = JSON.stringify(zonesMusic());
-    if (JSON.stringify(jsonState(MUSIC_ZONES_ID, null)) !== music) setState(MUSIC_ZONES_ID, music, true);
+    writeIfChanged('javascript.0.musik_grid', build());
+    writeIfChanged('javascript.0.music_playing', playingRooms());
+    writeIfChanged(MUSIC_ZONES_ID, JSON.stringify(zonesMusic()));
 }
 createState('javascript.0.musik_grid', '', { type: 'string', role: 'html', desc: 'Musik (Sonos) grid' });
 createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (jishi)' });
@@ -314,7 +320,8 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     var HOLD = 3500;                        // ms to protect an optimistic value from a stale poll
     if (v === 'group:alle' || v === 'group:wohnen' || v === 'group:einzeln') {
         // optimistic membership so the cards update instantly, then fire the staggered joins/leaves
-        var d = 0; ROOMS.forEach(function (r) { if (r !== COORD) d += 500; });
+        var STAGGER = 500, others = ROOMS.filter(function (r) { return r !== COORD; });
+        var d = others.length * STAGGER;
         var groupHold = Date.now() + d + HOLD;
         ROOMS.forEach(function (r) {
             var zz = zof(r);
@@ -323,12 +330,10 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
             zz.holdUntil = groupHold;       // hold membership through the staggered calls + settle
         });
         publish();
-        var dd2 = 0;
-        ROOMS.forEach(function (r) {
-            if (r === COORD) return;
+        others.forEach(function (r, i) {
             var join = (v === 'group:alle') || (v === 'group:wohnen' && WOHNEN.indexOf(r) >= 0);
             var path = join ? '/' + r + '/join/' + COORD : '/' + r + '/leave';
-            (function (p, ddd) { setTimeout(function () { jget(p); }, ddd); })(path, dd2); dd2 += 500;
+            setTimeout(function () { jget(path); }, i * STAGGER);
         });
         setTimeout(refresh, d + HOLD + 300); // reconcile just after the hold expires
         return;
