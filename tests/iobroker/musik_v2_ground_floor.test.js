@@ -61,7 +61,8 @@ test('zones: music in the kitchen plays in the ground-floor zone, with what play
     const z = zones(loadMusik({}), [group(['Küche'], track())]);
     assert.equal(z.eg.playing, true);
     assert.equal(z.eg.artist, 'Artist');
-    assert.equal(z.eg.album, 'Album');
+    assert.equal(z.eg.title, 'Song');
+    assert.equal(z.eg.album, undefined, 'nothing reads the album, so it is not published');
     assert.equal(z.eg.art, 'http://cover/1.jpg');
     assert.equal(z.eg.nextArt, 'http://cover/2.jpg');
     assert.equal(z.eg.vol, 25);

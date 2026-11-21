@@ -72,6 +72,7 @@ var TV = { 'Fernsehzimmer': true };
 // music light (music_light.js): zones (label, Sonos rooms, lamps) are configured privately on the Pi in
 // LIGHT_ZONES_ID; LIGHT_OFF_ID lists the keys of zones switched off, so a zone is on unless switched off
 var LIGHT_ZONES_ID = 'javascript.0.music_light_zones';
+var MUSIC_ZONES_ID = 'javascript.0.music_zones';
 var LIGHT_OFF_ID = 'javascript.0.music_light_off';
 var AUDIOBOOK_ARTISTS_ID = 'javascript.0.music_light_audiobook_artists';
 var MAX_LIGHT_PILLS = 4;   // the header has room for four, each with its fixed overlay slot
@@ -202,16 +203,14 @@ function build() {
 // playing rooms, for the Übersicht status bar's "Musik" chip
 function playingRooms() { return ROOMS.filter(function (r) { return ZONES[r] && ZONES[r].play; }).length; }
 createState('javascript.0.music_playing', 0, { type: 'number', role: 'value', desc: 'Übersicht: Anzahl spielender Räume' });
-createState('javascript.0.music_zones', '{}', { type: 'string', role: 'json', desc: 'Musiklicht: was je Zone spielt' });
+createState(MUSIC_ZONES_ID, '{}', { type: 'string', role: 'json', desc: 'Musiklicht: was je Zone spielt' });
 createState(LIGHT_OFF_ID, '[]', { type: 'string', role: 'json', desc: 'Musiklicht: ausgeschaltete Zonen' });
 createState(AUDIOBOOK_ARTISTS_ID, '[]', { type: 'string', role: 'json', desc: 'Musiklicht: Hörspiel-Künstler (kein Musiklicht)' });
 function publish() {
     setState('musik_grid', build(), true);
     setState('javascript.0.music_playing', playingRooms(), true);
     var music = JSON.stringify(zonesMusic());
-    if (jsonState('javascript.0.music_zones', null) === null || JSON.stringify(jsonState('javascript.0.music_zones', {})) !== music) {
-        setState('javascript.0.music_zones', music, true);
-    }
+    if (JSON.stringify(jsonState(MUSIC_ZONES_ID, null)) !== music) setState(MUSIC_ZONES_ID, music, true);
 }
 createState('javascript.0.musik_grid', '', { type: 'string', role: 'html', desc: 'Musik (Sonos) grid' });
 createState('javascript.0.musik_cmd', '', { type: 'string', role: 'text', desc: 'Musik command (jishi)' });
@@ -264,7 +263,7 @@ function zoneMusic(rooms, artists) {
     })[0];
     if (!room) return { playing: false };
     var z = ZONES[room];
-    return { playing: true, artist: z.artist, title: z.title, album: z.album, uri: z.uri, art: z.art, nextArt: z.nextArt, vol: z.vol };
+    return { playing: true, artist: z.artist, title: z.title, art: z.art, nextArt: z.nextArt, vol: z.vol };
 }
 function zonesMusic() {
     var artists = jsonState(AUDIOBOOK_ARTISTS_ID, []), out = {};
@@ -305,8 +304,8 @@ on({ id: 'javascript.0.musik_cmd', change: 'any' }, function (obj) {
     if (v.indexOf('light:toggle:') === 0) {
         var zone = lightZones()[parseInt(v.slice('light:toggle:'.length), 10)];
         if (!zone) return;                          // an overlay slot without a zone
-        var off = lightOff().filter(function (k) { return k !== zone.key; });
-        if (off.length === lightOff().length) off.push(zone.key);
+        var off = lightOff();
+        off = off.indexOf(zone.key) >= 0 ? off.filter(function (k) { return k !== zone.key; }) : off.concat([zone.key]);
         setState(LIGHT_OFF_ID, JSON.stringify(off), true);
         publish();
         return;

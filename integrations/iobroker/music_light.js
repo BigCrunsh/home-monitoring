@@ -6,7 +6,8 @@
 //
 // The zones are configured privately on the Pi in ZONES_ID (label, Sonos rooms, lamps); the repo only
 // holds the ground floor as a default. Only colour lamps take part (owner, 2026-11-21).
-// Stage 1 scene: warm and dimmed. Later stages derive it from genre, cover colours and tempo.
+// The scene starts warm and dimmed, then drifts through the cover's colours at the track's tempo, with
+// the genre and the volume setting the brightness.
 //
 // The hue adapter takes a JSON command per lamp: bri 0-254 (>0 switches on), ct in Kelvin, xy as
 // "x,y", on:false switches off, transitiontime in tenths of a second.
@@ -164,13 +165,14 @@ var GENRES = [
     { words: ['techno', 'electro', 'dance', 'house', 'edm', 'trance', 'disco', 'drum and bass', 'dubstep', 'hip hop', 'rap', 'rock', 'metal', 'punk'], bri: 1.25, pace: 10 },
     { words: ['kids', 'kinder', 'children'], bri: 1.15, pace: 12 }
 ];
-var NEUTRAL = { bri: 1, pace: 15 }, SPOKEN = { spoken: true, bri: 1, pace: 15 };
+var NEUTRAL = { bri: 1, pace: 15 };
+function lowerTags(tags) { return (tags || []).map(function (t) { return String(t).toLowerCase(); }); }
+function hasWord(tag, words) { return words.some(function (w) { return tag.indexOf(w) >= 0; }); }
+function isSpokenWord(tags) { return lowerTags(tags).some(function (t) { return hasWord(t, SPOKEN_WORDS); }); }
 function genreCharacter(tags) {
-    var lower = (tags || []).map(function (t) { return String(t).toLowerCase(); });
-    var has = function (tag, words) { return words.some(function (w) { return tag.indexOf(w) >= 0; }); };
-    if (lower.some(function (t) { return has(t, SPOKEN_WORDS); })) return SPOKEN;
+    var lower = lowerTags(tags);
     for (var t = 0; t < lower.length; t++) {
-        for (var g = 0; g < GENRES.length; g++) if (has(lower[t], GENRES[g].words)) return GENRES[g];
+        for (var g = 0; g < GENRES.length; g++) if (hasWord(lower[t], GENRES[g].words)) return GENRES[g];
     }
     return NEUTRAL;
 }
@@ -180,7 +182,7 @@ function firstArtist(name) { return String(name || '').split(/\s*(?:,|&|\bfeat\.
 var MIN_STEP_S = 4, MAX_STEP_S = 25;
 function paceSeconds(bpm, character) {
     if (bpm > 0) return Math.max(MIN_STEP_S, Math.min(MAX_STEP_S, Math.round(1200 / bpm)));
-    return (character || NEUTRAL).pace;
+    return character.pace;
 }
 // quiet music dims the light: 0 % volume = 0.7, 50 % = 1, 100 % = 1.3
 function volumeFactor(vol) { return typeof vol === 'number' ? 0.7 + 0.6 * Math.max(0, Math.min(100, vol)) / 100 : 1; }
@@ -229,23 +231,24 @@ function startLookups(music) {
 function trackInfo(music) { return trackCache[firstArtist(music.artist) + '|' + music.title]; }
 function isSpoken(music) {
     var info = trackInfo(music);
-    return !!(info && genreCharacter(info.tags).spoken);
+    return !!(info && isSpokenWord(info.tags));
 }
 
-// zone key → {cycle: [{xy, bri, base}…], pace, inputs, pos, wait, sent: {lamp: "xy@bri"}}
+// zone key → {cycle: [{xy, bri, base}…], pace, inputs, pos, wait}
 var cycling = {};
 function followMusic(zone, music) {
-    var c = cycling[zone.key] || (cycling[zone.key] = { pos: 0, wait: 0, sent: {} });
-    var info = trackInfo(music), known = !!(info && info.tags.length);
-    var character = known ? genreCharacter(info.tags) : NEUTRAL;
+    var c = cycling[zone.key] || (cycling[zone.key] = { pos: 0, wait: 0 });
+    var info = trackInfo(music);
+    var character = genreCharacter(info && info.tags);
     var palette = paletteCache[music.art] || [];
     var briBase = SCENE.bri * character.bri * volumeFactor(music.vol);
-    var inputs = [music.art, palette.length, character.bri, Math.round(briBase)].join('|');
+    var inputs = [music.art, palette.length, Math.round(briBase)].join('|');
     if (c.inputs !== inputs) { c.inputs = inputs; c.cycle = weightedCycle(palette, CYCLE_SLOTS, briBase); }
-    c.pace = paceSeconds(info ? info.bpm : 0, known ? character : null);
+    c.pace = paceSeconds(info ? info.bpm : 0, character);
 }
 // called every second; each zone steps at its own pace
 function stepColours() {
+    if (!Object.keys(cycling).length) return;
     var snapshots = json(SNAPSHOT_ID, {});
     zones().forEach(function (zone) {
         var c = cycling[zone.key];
@@ -254,11 +257,9 @@ function stepColours() {
         c.wait = c.pace - 1;
         c.pos++;
         // all lamps of a zone show the same shade at the same time (owner, 2026-11-21)
-        var shade = c.cycle[c.pos % c.cycle.length], key = shade.xy + '@' + shade.bri;
+        var shade = c.cycle[c.pos % c.cycle.length];
         var fade = Math.round(c.pace * 10 * 0.6);
         zoneLamps(zone, snapshots[zone.key]).forEach(function (id) {
-            if (c.sent[id] === key) return;
-            c.sent[id] = key;
             command(id, { bri: shade.bri, xy: shade.xy, transitiontime: fade });
         });
     });

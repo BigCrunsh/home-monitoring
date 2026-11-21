@@ -109,14 +109,20 @@ test('character: film music is calm, kids music is bright', () => {
 
 test('character: unknown or missing genres are neutral', () => {
     const ctx = load();
+    assert.equal(ctx.genreCharacter(undefined).bri, 1);
     assert.equal(ctx.genreCharacter(['polka-fusion']).bri, 1);
     assert.equal(ctx.genreCharacter([]).bri, 1);
 });
 
+test('spoken word: an album with only music genres is not spoken word', () => {
+    assert.equal(load().isSpokenWord(['Kids', 'Pop']), false);
+    assert.equal(load().isSpokenWord(undefined), false);
+});
+
 test('character: audiobooks mean no music light, even when listed after another genre', () => {
-    assert.equal(load().genreCharacter(['Hörbücher']).spoken, true);
-    assert.equal(load().genreCharacter(['Kids', 'Hörbücher']).spoken, true);
-    assert.equal(load().genreCharacter(['spoken word']).spoken, true);
+    assert.equal(load().isSpokenWord(['Hörbücher']), true);
+    assert.equal(load().isSpokenWord(['Kids', 'Hörbücher']), true);
+    assert.equal(load().isSpokenWord(['spoken word']), true);
 });
 
 test('artist: only the first of several artists is looked up', () => {
@@ -136,7 +142,7 @@ test('tempo: the pace follows the beats per minute within 4 to 25 s', () => {
 test('tempo: without a tempo the genre pace applies, without both 15 s', () => {
     const ctx = load();
     assert.equal(ctx.paceSeconds(0, ctx.genreCharacter(['techno'])), ctx.genreCharacter(['techno']).pace);
-    assert.equal(ctx.paceSeconds(0, null), 15);
+    assert.equal(ctx.paceSeconds(0, ctx.genreCharacter([])), 15);
 });
 
 test('volume: quiet music is dimmer than loud music', () => {
