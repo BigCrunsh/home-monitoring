@@ -90,14 +90,38 @@ test('colour: pure red becomes the Hue colour point of red', () => {
 
 test('weighting: a colour covering three quarters takes three quarters of the cycle', () => {
     const ctx = load({});
-    const seq = ctx.weightedCycle([{ xy: 'r', share: 0.75 }, { xy: 'b', share: 0.25 }], 8);
-    assert.equal(seq.filter((c) => c === 'r').length, 6);
-    assert.equal(seq.filter((c) => c === 'b').length, 2);
+    const seq = ctx.weightedCycle([{ rgb: RED, share: 0.75 }, { rgb: BLUE, share: 0.25 }], 8);
+    assert.equal(seq.filter((s) => s.base === 0).length, 6);
+    assert.equal(seq.filter((s) => s.base === 1).length, 2);
 });
 
 test('weighting: a tiny share still gets one slot', () => {
-    const seq = load({}).weightedCycle([{ xy: 'r', share: 0.97 }, { xy: 'b', share: 0.03 }], 8);
-    assert.ok(seq.includes('b'));
+    const seq = load({}).weightedCycle([{ rgb: RED, share: 0.97 }, { rgb: BLUE, share: 0.03 }], 8);
+    assert.ok(seq.some((s) => s.base === 1));
+});
+
+// owner, 2026-11-21: "es sieht nicht so aus dass sich das Blau ändert" — a cover's two nearly identical
+// blues made the lamps sit still. Near-identical colours merge, and every colour drifts through related
+// shades (neighbouring hues, a little brighter or darker) while it is held.
+test('palette: nearly identical colours merge into one with their shares added', () => {
+    const p = load({}).coverPalette(image([[[115, 197, 255], 200], [[115, 175, 255], 200], [[255, 163, 115], 40]]));
+    assert.equal(p.length, 2);
+    assert.ok(Math.abs(p[0].share - 400 / 440) < 0.02);
+});
+
+test('spectrum: a single-colour cover still moves through related shades', () => {
+    const seq = load({}).weightedCycle([{ rgb: BLUE, share: 1 }], 12);
+    assert.ok(new Set(seq.map((s) => s.xy)).size >= 3, 'at least three shades');
+    assert.ok(new Set(seq.map((s) => s.bri)).size >= 2, 'brightness varies too');
+});
+
+test('spectrum: the shades stay close to the cover colour', () => {
+    const ctx = load({});
+    const base = ctx.rgbToXy(ctx.coverPalette(image([[BLUE, 10]]))[0].rgb).split(',').map(Number);
+    ctx.weightedCycle([{ rgb: ctx.coverPalette(image([[BLUE, 10]]))[0].rgb, share: 1 }], 12).forEach((s) => {
+        const [x, y] = s.xy.split(',').map(Number);
+        assert.ok(Math.hypot(x - base[0], y - base[1]) < 0.12, 'shade drifted too far: ' + s.xy);
+    });
 });
 
 test('cycling: the lamps take the cover colours, offset from each other', () => {
@@ -107,17 +131,19 @@ test('cycling: the lamps take the cover colours, offset from each other', () => 
     ctx.tick(1);
     const xy = xyOf(ctx.commands);
     assert.ok(xy.length >= 2, 'at least two lamps changed colour');
-    assert.ok(new Set(xy.map(([, c]) => c)).size === 2, 'red and blue are both in the room');
+    const reds = new Set(ctx.weightedCycle(ctx.coverPalette(covers['https://img/redblue.jpg']), 12).filter((s) => s.base === 0).map((s) => s.xy));
+    assert.ok(xy.some(([, c]) => reds.has(c)) && xy.some(([, c]) => !reds.has(c)), 'red and blue are both in the room');
     ctx.commands.filter(([, c]) => c.xy).forEach(([, c]) => assert.ok(c.transitiontime >= 50, 'slow drift'));
 });
 
-test('cycling: a lamp whose colour stays the same gets no new command', () => {
+test('cycling: a lamp whose shade stays the same gets no new command', () => {
     const ctx = load({});
     ctx.change(MUSIC, playing('https://img/blue.jpg'));
     ctx.tick(1);
-    ctx.commands.length = 0;
-    ctx.tick(3);
-    assert.deepEqual(xyOf(ctx.commands), []);
+    const sentBefore = xyOf(ctx.commands).length;
+    ctx.tick(1);
+    const perTick = xyOf(ctx.commands).length - sentBefore;
+    assert.ok(perTick <= 3, 'at most one command per lamp and step');
 });
 
 test('cycling: a missing cover keeps the warm scene, no colours', () => {
@@ -140,9 +166,9 @@ test('cycling: a new track with a new cover switches to its colours', () => {
     ctx.tick(1);
     ctx.change(MUSIC, playing('https://img/blue.jpg'));
     ctx.commands.length = 0;
-    ctx.tick(1);
-    const blue = ctx.rgbToXy(ctx.coverPalette(covers['https://img/blue.jpg'])[0].rgb);
-    assert.ok(xyOf(ctx.commands).every(([, c]) => c === blue));
+    ctx.tick(2);
+    const blues = new Set(ctx.weightedCycle(ctx.coverPalette(covers['https://img/blue.jpg']), 12).map((s) => s.xy));
+    assert.ok(xyOf(ctx.commands).length > 0 && xyOf(ctx.commands).every(([, c]) => blues.has(c)));
 });
 
 test('cycling: the same cover is downloaded only once', () => {

@@ -70,11 +70,24 @@ function coverPalette(img) {
         bin.n++; bin.r += r; bin.g += g; bin.b += b; total++;
     }
     if (!total) return [];
-    return Object.keys(bins).map(function (k) {
+    var colours = Object.keys(bins).map(function (k) {
         var bin = bins[k];
         return { rgb: saturated([bin.r / bin.n, bin.g / bin.n, bin.b / bin.n]), share: bin.n / total };
-    }).filter(function (c) { return c.share >= 0.04; })
-        .sort(function (a, c) { return c.share - a.share; }).slice(0, MAX_PALETTE);
+    }).sort(function (a, c) { return c.share - a.share; });
+    return mergeNear(colours).filter(function (c) { return c.share >= 0.04; }).slice(0, MAX_PALETTE);
+}
+// Colours the lamps cannot tell apart (two blues of one cover) merge into the larger one, so the cycle
+// only alternates between colours that look different (owner: the blue did not seem to change).
+var SAME_COLOUR_XY = 0.04;
+function mergeNear(colours) {
+    var kept = [];
+    colours.forEach(function (c) {
+        var xy = rgbToXy(c.rgb).split(',').map(Number);
+        var twin = kept.filter(function (k) { return Math.hypot(k.xy[0] - xy[0], k.xy[1] - xy[1]) < SAME_COLOUR_XY; })[0];
+        if (twin) twin.share += c.share;
+        else kept.push({ rgb: c.rgb, share: c.share, xy: xy });
+    });
+    return kept.map(function (k) { return { rgb: k.rgb, share: k.share }; });
 }
 function hueOf(r, g, b, max, min) {
     var d = max - min, h;
@@ -96,13 +109,27 @@ function rgbToXy(rgb) {
     var sum = X + Y + Z || 1;
     return (X / sum).toFixed(4) + ',' + (Y / sum).toFixed(4);
 }
-// the cycle: each colour repeated for its share of the slots (at least once), so it is held that long
+// The cycle: each colour holds slots in proportion to its share (at least one), and while it is held it
+// drifts through related shades, a neighbouring hue and a little brighter or darker, so even a
+// single-colour cover keeps moving. Entries: {xy, bri, base: index of the palette colour}.
+var SHADES = [{ hue: 0, bri: 1 }, { hue: 15, bri: 1.25 }, { hue: 0, bri: 0.85 }, { hue: -15, bri: 1.15 }];
 function weightedCycle(palette, slots) {
     var seq = [];
-    palette.forEach(function (c) {
-        for (var i = 0, n = Math.max(1, Math.round(c.share * slots)); i < n; i++) seq.push(c.xy);
+    palette.forEach(function (c, base) {
+        for (var i = 0, n = Math.max(1, Math.round(c.share * slots)); i < n; i++) {
+            var shade = SHADES[i % SHADES.length];
+            seq.push({ xy: rgbToXy(rotateHue(c.rgb, shade.hue)), bri: Math.round(SCENE.bri * shade.bri), base: base });
+        }
     });
     return seq;
+}
+function rotateHue(rgb, deg) {
+    if (!deg) return rgb;
+    var max = Math.max.apply(null, rgb), min = Math.min.apply(null, rgb);
+    if (max === min) return rgb;
+    var h = (hueOf(rgb[0], rgb[1], rgb[2], max, min) + deg + 360) % 360, s = (max - min) / max, v = max;
+    var f = function (n) { var k = (n + h / 60) % 6; return Math.round(v - v * s * Math.max(0, Math.min(k, 4 - k, 1))); };
+    return [f(5), f(3), f(1)];
 }
 
 function fetchBuffer(url, cb) {
@@ -120,15 +147,14 @@ function fetchBuffer(url, cb) {
     req.on('error', finish);
     req.on('timeout', function () { finish(new Error('timeout')); req.destroy(); });
 }
-var paletteCache = {};   // cover URL → palette (xy + share), [] when the cover has no colour
+var paletteCache = {};   // cover URL → palette (rgb + share), [] when the cover has no colour
 function coverColours(url, cb) {
     if (paletteCache[url]) { cb(paletteCache[url]); return; }
     fetchBuffer(url, function (err, buf) {
         var palette = [];
         if (!err) {
             try {
-                palette = coverPalette(require('jpeg-js').decode(buf, { useTArray: true, maxResolutionInMP: 4 }))
-                    .map(function (c) { return { xy: rgbToXy(c.rgb), share: c.share }; });
+                palette = coverPalette(require('jpeg-js').decode(buf, { useTArray: true, maxResolutionInMP: 4 }));
             } catch (e) { palette = []; }
         }
         if (!err) paletteCache[url] = palette;
@@ -136,7 +162,7 @@ function coverColours(url, cb) {
     });
 }
 
-// zone key → {art, cycle: [xy…], pos, sent: {lamp: xy}}
+// zone key → {art, cycle: [{xy, bri, base}…], pos, sent: {lamp: "xy@bri"}}
 var cycling = {};
 function followCover(zone, art) {
     var c = cycling[zone.key] || (cycling[zone.key] = { pos: 0, sent: {} });
@@ -156,10 +182,11 @@ function stepColours() {
         c.pos++;
         var lamps = zoneLamps(zone, snapshots[zone.key]);
         lamps.forEach(function (id, i) {
-            var xy = c.cycle[(c.pos + Math.round(i * c.cycle.length / lamps.length)) % c.cycle.length];
-            if (c.sent[id] === xy) return;
-            c.sent[id] = xy;
-            command(id, { bri: SCENE.bri, xy: xy, transitiontime: DRIFT });
+            var shade = c.cycle[(c.pos + Math.round(i * c.cycle.length / lamps.length)) % c.cycle.length];
+            var key = shade.xy + '@' + shade.bri;
+            if (c.sent[id] === key) return;
+            c.sent[id] = key;
+            command(id, { bri: shade.bri, xy: shade.xy, transitiontime: DRIFT });
         });
     });
 }
