@@ -8,11 +8,11 @@
 
 ## 1b. Zones and audiobooks (owner, 2026-11-21)
 
-- [ ] 1b.1 Tests, then a private zone config on the Pi (`javascript.0.music_light_zones`: label, Sonos rooms, lamps per zone; the repo holds only a neutral ground-floor default) and the artist list for audiobooks (`javascript.0.music_light_audiobook_artists`)
-- [ ] 1b.2 Tests, then `musik_v2.js` publishes music per zone (`javascript.0.music_zones`) with audiobook detection (episode/chapter/part naming, "Hörspiel"/"Hörbuch", artist list)
-- [ ] 1b.3 Tests, then `music_light.js` runs every zone independently (own snapshot, own switch)
-- [ ] 1b.4 Tests, then one pill per zone in the Musik band header (up to four, label from the config) with four overlay slots; render locally
-- [ ] 1b.5 Deploy, write the private zone config on the Pi, owner tries each zone
+- [x] 1b.1 Tests, then a private zone config on the Pi (`javascript.0.music_light_zones`: label, Sonos rooms, lamps per zone; the repo holds only a neutral ground-floor default) and the artist list for audiobooks (`javascript.0.music_light_audiobook_artists`)
+- [x] 1b.2 Tests, then `musik_v2.js` publishes music per zone (`javascript.0.music_zones`) with audiobook detection (episode/chapter/part naming, "Hörspiel"/"Hörbuch", artist list)
+- [x] 1b.3 Tests, then `music_light.js` runs every zone independently (own snapshot, own switch)
+- [x] 1b.4 Tests, then one pill per zone in the Musik band header (up to four, label from the config) with four overlay slots; render locally
+- [x] 1b.5 Deploy, write the private zone config on the Pi, owner tries each zone
 
 ## 2. Stage 2: genre
 
