@@ -180,10 +180,9 @@ function stepColours() {
         var c = cycling[zone.key];
         if (!c || !c.cycle || !c.cycle.length || !snapshots[zone.key]) return;
         c.pos++;
-        var lamps = zoneLamps(zone, snapshots[zone.key]);
-        lamps.forEach(function (id, i) {
-            var shade = c.cycle[(c.pos + Math.round(i * c.cycle.length / lamps.length)) % c.cycle.length];
-            var key = shade.xy + '@' + shade.bri;
+        // all lamps of a zone show the same shade at the same time (owner, 2026-11-21)
+        var shade = c.cycle[c.pos % c.cycle.length], key = shade.xy + '@' + shade.bri;
+        zoneLamps(zone, snapshots[zone.key]).forEach(function (id) {
             if (c.sent[id] === key) return;
             c.sent[id] = key;
             command(id, { bri: shade.bri, xy: shade.xy, transitiontime: DRIFT });

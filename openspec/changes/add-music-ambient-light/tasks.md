@@ -22,9 +22,9 @@
 
 ## 3. Stage 3: cover colours
 
-- [ ] 3.1 Add `jpeg-js` to the javascript adapter's additional modules (one adapter restart)
-- [ ] 3.2 Tests, then a cover palette: 4-6 dominant colours with their share of the cover (coarse histogram, skip near-black/white/grey, lift washed-out saturation), cached per cover URL
-- [ ] 3.3 Tests, then slow weighted cycling (owner idea, 2026-11-21): each colour lamp drifts through the palette with long transitions, each colour held in proportion to its share; kitchen and the two wall washers run offset, so the room shows several cover colours at once
+- [x] 3.1 Add `jpeg-js` to the javascript adapter's additional modules (one adapter restart)
+- [x] 3.2 Tests, then a cover palette: 4-6 dominant colours with their share of the cover (coarse histogram, skip near-black/white/grey, lift washed-out saturation), cached per cover URL
+- [x] 3.3 Tests, then slow weighted cycling (owner idea, 2026-11-21): the zone's colour lamps drift together through the palette with long transitions, each colour held in proportion to its share and drifting through related shades; all lamps show the same colour at once (owner)
 
 ## 4. Stage 4: tempo
 

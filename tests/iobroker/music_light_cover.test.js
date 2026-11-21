@@ -2,7 +2,7 @@
 // its colour lamps drift through the colours of the album cover. The palette holds up to five colours,
 // each with its share of the cover (near-black, white and grey areas such as background and text do not
 // count, washed-out colours get more saturation); each colour is held in proportion to its share (owner
-// idea, 2026-11-21), and the zone's lamps run offset so the room shows several cover colours at once.
+// idea, 2026-11-21), and all lamps of a zone show the same colour at the same time (owner, 2026-11-21).
 // Without a usable cover the warm scene stays.
 'use strict';
 const test = require('node:test');
@@ -115,6 +115,24 @@ test('spectrum: a single-colour cover still moves through related shades', () =>
     assert.ok(new Set(seq.map((s) => s.bri)).size >= 2, 'brightness varies too');
 });
 
+// owner: "Don't make it specific to this album" — the rules hold for any cover colour on the wheel
+test('spectrum: every hue of the colour wheel moves visibly and stays close to its cover colour', () => {
+    const ctx = load({});
+    for (let hue = 0; hue < 360; hue += 30) {
+        const k = (n) => (n + hue / 60) % 6;
+        const rgb = [5, 3, 1].map((n) => Math.round(220 - 220 * 0.8 * Math.max(0, Math.min(k(n), 4 - k(n), 1))));
+        const palette = ctx.coverPalette(image([[rgb, 50]]));
+        assert.equal(palette.length, 1, 'hue ' + hue + ' gives one colour');
+        const base = ctx.rgbToXy(palette[0].rgb).split(',').map(Number);
+        const seq = ctx.weightedCycle(palette, 12);
+        assert.ok(new Set(seq.map((s) => s.xy + '@' + s.bri)).size >= 3, 'hue ' + hue + ' does not move');
+        seq.forEach((s) => {
+            const [x, y] = s.xy.split(',').map(Number);
+            assert.ok(Math.hypot(x - base[0], y - base[1]) < 0.15, 'hue ' + hue + ' drifted too far: ' + s.xy);
+        });
+    }
+});
+
 test('spectrum: the shades stay close to the cover colour', () => {
     const ctx = load({});
     const base = ctx.rgbToXy(ctx.coverPalette(image([[BLUE, 10]]))[0].rgb).split(',').map(Number);
@@ -124,16 +142,26 @@ test('spectrum: the shades stay close to the cover colour', () => {
     });
 });
 
-test('cycling: the lamps take the cover colours, offset from each other', () => {
+// owner, 2026-11-21: all lamps of a zone show the same colour at the same time (an earlier offset
+// between the lamps made the room look patchy)
+test('cycling: all lamps of the zone take the same cover colour at the same time', () => {
     const ctx = load({});
     ctx.change(MUSIC, playing('https://img/redblue.jpg'));
     ctx.commands.length = 0;
     ctx.tick(1);
     const xy = xyOf(ctx.commands);
-    assert.ok(xy.length >= 2, 'at least two lamps changed colour');
-    const reds = new Set(ctx.weightedCycle(ctx.coverPalette(covers['https://img/redblue.jpg']), 12).filter((s) => s.base === 0).map((s) => s.xy));
-    assert.ok(xy.some(([, c]) => reds.has(c)) && xy.some(([, c]) => !reds.has(c)), 'red and blue are both in the room');
+    assert.equal(xy.length, 3, 'every lamp changed colour');
+    assert.equal(new Set(xy.map(([, c]) => c)).size, 1, 'one colour for all lamps');
     ctx.commands.filter(([, c]) => c.xy).forEach(([, c]) => assert.ok(c.transitiontime >= 50, 'slow drift'));
+});
+
+test('cycling: over the cycle the zone still shows every cover colour', () => {
+    const ctx = load({});
+    ctx.change(MUSIC, playing('https://img/redblue.jpg'));
+    ctx.tick(12);
+    const reds = new Set(ctx.weightedCycle(ctx.coverPalette(covers['https://img/redblue.jpg']), 12).filter((s) => s.base === 0).map((s) => s.xy));
+    const xy = xyOf(ctx.commands);
+    assert.ok(xy.some(([, c]) => reds.has(c)) && xy.some(([, c]) => !reds.has(c)), 'red and blue both appear over time');
 });
 
 test('cycling: a lamp whose shade stays the same gets no new command', () => {
