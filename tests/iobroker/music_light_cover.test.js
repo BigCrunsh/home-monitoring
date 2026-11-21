@@ -152,6 +152,18 @@ test('cycling: the same cover is downloaded only once', () => {
     assert.equal(ctx.fetched.filter((u) => u === 'https://img/redblue.jpg').length, 1);
 });
 
+// a snapshot carried over from stage 1 still held the dining-table lamps, which had left the zone; the
+// colour cycle went through every lamp in the snapshot and recoloured the table (owner: "don't touch it")
+test('cycling: a lamp in the snapshot but no longer in the zone is never touched', () => {
+    const TABLE = 'hue.0.Table';
+    const old = { eg: { [L1]: { on: false }, [TABLE]: { on: true, bri: 200 } } };
+    const ctx = load({ 'javascript.0.music_light_snapshot': JSON.stringify(old), [MUSIC]: playing('https://img/redblue.jpg') });
+    ctx.change(MUSIC, playing('https://img/redblue.jpg'));
+    ctx.tick(4);
+    ctx.change(MUSIC, JSON.stringify({ eg: { playing: false } }));
+    assert.ok(ctx.commands.every(([id]) => id !== TABLE), 'the table got a command');
+});
+
 test('cycling: after the music stops no colour commands follow', () => {
     const ctx = load({});
     ctx.change(MUSIC, playing('https://img/redblue.jpg'));

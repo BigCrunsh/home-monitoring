@@ -154,7 +154,7 @@ function stepColours() {
         var c = cycling[zone.key];
         if (!c || !c.cycle || !c.cycle.length || !snapshots[zone.key]) return;
         c.pos++;
-        var lamps = Object.keys(snapshots[zone.key]);
+        var lamps = zoneLamps(zone, snapshots[zone.key]);
         lamps.forEach(function (id, i) {
             var xy = c.cycle[(c.pos + Math.round(i * c.cycle.length / lamps.length)) % c.cycle.length];
             if (c.sent[id] === xy) return;
@@ -172,15 +172,20 @@ function startScene(zone) {
     Object.keys(snapshot).forEach(function (id) { command(id, SCENE); });
     return snapshot;
 }
-function restore(snapshot) {
-    Object.keys(snapshot).forEach(function (id) { command(id, restoreCommand(snapshot[id])); });
+// Only lamps the zone still lists are ever commanded: a lamp that left the zone (the dining table,
+// 2026-11-21) is not touched again, even if an older snapshot still holds it.
+function zoneLamps(zone, snapshot) {
+    return Object.keys(snapshot).filter(function (id) { return (zone.lamps || []).indexOf(id) >= 0; });
+}
+function restore(zone, snapshot) {
+    zoneLamps(zone, snapshot).forEach(function (id) { command(id, restoreCommand(snapshot[id])); });
 }
 function evaluate() {
     var snapshots = json(SNAPSHOT_ID, {}), changed = false;
     zones().forEach(function (zone) {
         var want = !switchedOff(zone.key) && playing(zone.key);
         if (want && !snapshots[zone.key]) { snapshots[zone.key] = startScene(zone); changed = true; }
-        else if (!want && snapshots[zone.key]) { restore(snapshots[zone.key]); delete snapshots[zone.key]; changed = true; }
+        else if (!want && snapshots[zone.key]) { restore(zone, snapshots[zone.key]); delete snapshots[zone.key]; changed = true; }
         if (want) followCover(zone, coverArt(zone.key));
         else delete cycling[zone.key];
     });
