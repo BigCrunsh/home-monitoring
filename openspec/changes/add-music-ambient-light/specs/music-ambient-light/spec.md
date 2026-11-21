@@ -67,6 +67,35 @@ restores afterwards.
 - **WHEN** the script restarts while the music scene is active and the music then stops
 - **THEN** the lamps return to the state recorded before the music started
 
+### Requirement: Separate zones with their own switch
+The music light SHALL work per zone: the ground floor and each child's room, each with its own Sonos
+room(s), its own ambient lamps and its own switch pill in the Musik band header. Zones SHALL be
+independent: music in one zone changes only that zone's lamps, and each zone keeps its own snapshot.
+Which Sonos rooms and lamps form a child's zone, and its label, SHALL be configured privately on the
+Pi, not in the repository.
+
+#### Scenario: Music only in a child's room
+- **WHEN** only a child's Sonos room plays music and that zone's switch is on
+- **THEN** only that room's lamps change; the ground-floor lamps stay as they are
+
+#### Scenario: One zone switched off
+- **WHEN** music plays in two zones and one of them is switched off
+- **THEN** only the other zone shows the music scene
+
+### Requirement: No music light for audiobooks
+The system SHALL NOT treat audiobooks as music, in any zone. A track counts as an audiobook when its
+album or title names an episode, chapter or part ("Folge 12", "Kapitel", "Teil 3", "Episode"), says
+"Hörspiel" or "Hörbuch", or its artist is on a private list on the Pi; from stage 2 on also when the
+artist's genre is spoken word or audio drama.
+
+#### Scenario: Children's audiobook
+- **WHEN** a child's room plays a track from the album "Folge 4: …"
+- **THEN** the zone does not count as playing music and its lamps stay as they are
+
+#### Scenario: Audiobook starts during music
+- **WHEN** the music scene is active and the zone switches to an audiobook
+- **THEN** the lamps return to their state before the music
+
 ### Requirement: The scene follows the music
 From stage 2 on, the scene SHALL follow the music on every track change: the artist's genre sets
 brightness and character, the dominant colours of the album cover set the colours of the colour

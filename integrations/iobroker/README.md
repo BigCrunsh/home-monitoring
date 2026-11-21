@@ -71,6 +71,7 @@ design system, see `DESIGN_SYSTEM.md`):
 | `suncalc_phases.js` | Sun phase times (sunrise/sunset) |
 | `reset_lock_target_state.js` | Resets a lock's target state after actuation |
 | `kids_room_lights.js` | Kids' room wall buttons (Clara, Spielzimmer, Carlotta) switch their Hue lamps over HTTPS, since the Hue bridge blocks the CCU's HTTP-only Hue integration (2026-11-20); a press the lamp does not follow is reported in Diagnose |
+| `music_light.js` | Music light: while a zone's Sonos room plays music (not TV sound, not audiobooks) and its "Musiklicht" pill is on, the zone's ambient lamps follow the music; they return to their previous state when it stops (`openspec/changes/add-music-ambient-light`) |
 | `bungalow_watch.js` | Dead man's switch for the Bungalow Lübkowsee: Telegram alert when its Netatmo station goes silent (details below) |
 
 ## Scripts

@@ -1,10 +1,18 @@
 ## 1. Stage 1: walking skeleton
 
-- [ ] 1.1 Tests, then `musik_v2.js`: publish `javascript.0.music_ground_floor` (playing, artist, title, album, cover URL, URI, volume, next track's cover) for Wohnzimmer, Küche, Fernsehzimmer; TV input (`x-sonos-htastream:`), muted rooms and other floors do not count
-- [ ] 1.2 Tests, then `musik_v2.js`: "Musiklicht" pill in the Musik band header, `light:toggle` flips `javascript.0.music_light_enabled` (persisted, default on)
-- [ ] 1.3 Tests, then `music_light.js`: snapshot the ambient lamps on music start, set a fixed warm scene on the reachable ones, restore each lamp exactly on stop or toggle off, snapshot persisted across restarts
-- [ ] 1.4 Render the Musik band locally with the pill on and off; add the pill overlay to `vis/main/vis-views.json`
-- [ ] 1.5 Deploy (create `music_light.js` on the Pi disabled, then enable), `make deploy-vis`, README inventory entry; owner tries it on the wall
+- [x] 1.1 Tests, then `musik_v2.js`: publish `javascript.0.music_ground_floor` (playing, artist, title, album, cover URL, URI, volume, next track's cover) for Wohnzimmer, Küche, Fernsehzimmer; TV input (`x-sonos-htastream:`), muted rooms and other floors do not count
+- [x] 1.2 Tests, then `musik_v2.js`: "Musiklicht" pill in the Musik band header, `light:toggle` flips `javascript.0.music_light_enabled` (persisted, default on)
+- [x] 1.3 Tests, then `music_light.js`: snapshot the ambient lamps on music start, set a fixed warm scene on the reachable ones, restore each lamp exactly on stop or toggle off, snapshot persisted across restarts
+- [x] 1.4 Render the Musik band locally with the pill on and off; add the pill overlay to `vis/main/vis-views.json`
+- [x] 1.5 Deploy (create `music_light.js` on the Pi disabled, then enable), `make deploy-vis`, README inventory entry; owner tries it on the wall
+
+## 1b. Zones and audiobooks (owner, 2026-11-21)
+
+- [ ] 1b.1 Tests, then a private zone config on the Pi (`javascript.0.music_light_zones`: label, Sonos rooms, lamps per zone; the repo holds only a neutral ground-floor default) and the artist list for audiobooks (`javascript.0.music_light_audiobook_artists`)
+- [ ] 1b.2 Tests, then `musik_v2.js` publishes music per zone (`javascript.0.music_zones`) with audiobook detection (episode/chapter/part naming, "Hörspiel"/"Hörbuch", artist list)
+- [ ] 1b.3 Tests, then `music_light.js` runs every zone independently (own snapshot, own switch)
+- [ ] 1b.4 Tests, then one pill per zone in the Musik band header (up to four, label from the config) with four overlay slots; render locally
+- [ ] 1b.5 Deploy, write the private zone config on the Pi, owner tries each zone
 
 ## 2. Stage 2: genre
 
