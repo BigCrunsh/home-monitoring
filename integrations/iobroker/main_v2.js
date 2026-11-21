@@ -366,6 +366,9 @@ function buildKlima() {
 // family calendar already uses for that child; an event both share (the whole-school calendar is in both
 // feeds) gets 🏫
 var SCHOOL_CALENDARS = { 'Schule 1': '💜', 'Schule 2': '🩵' };
+// the feeds prefix every whole-school event with this; the 🏫 already says it
+var SCHOOL_PREFIX = 'Schulkalender: ';
+function schoolTitle(title) { return title.indexOf(SCHOOL_PREFIX) === 0 ? title.slice(SCHOOL_PREFIX.length) : title; }
 function schoolMark(hearts) {
     var kids = Object.keys(hearts);
     if (kids.length > 1) return '🏫 ';
@@ -381,7 +384,8 @@ function buildWoche() {
         var dt = e && e._date ? new Date(e._date) : null;
         if (!dt || isNaN(dt.getTime())) return;
         var k = dayKey(dt);
-        (byDay[k] = byDay[k] || []).push({ dt: dt, allDay: e._allDay === true, title: e.event || '', heart: SCHOOL_CALENDARS[e._calName] });
+        var heart = SCHOOL_CALENDARS[e._calName], title = e.event || '';
+        (byDay[k] = byDay[k] || []).push({ dt: dt, allDay: e._allDay === true, title: heart ? schoolTitle(title) : title, heart: heart });
     });
     var b = berlinNow();
     // Px-budget fit guard (the card height isn't measurable server-side): estimate each day's height

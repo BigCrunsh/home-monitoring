@@ -52,6 +52,21 @@ test('woche: the same title at different times stays two events, each with its h
     assert.deepEqual(titles(html), ['💜 Sport', '🩵 Sport']);
 });
 
+// the feeds prefix every whole-school event with "Schulkalender: ", which the 🏫 already says and which
+// costs a third of the card width
+test('woche: the "Schulkalender: " prefix is dropped from school events', () => {
+    const html = loadMain([ev('Schule 1', 'Schulkalender: Lichtermarkt'), ev('Schule 2', 'Schulkalender: Lichtermarkt')]).buildWoche();
+    assert.deepEqual(titles(html), ['🏫 Lichtermarkt']);
+});
+
+test('woche: "Schulkalender" inside a title is kept', () => {
+    assert.deepEqual(titles(loadMain([ev('Schule 1', 'Zum Schulkalender: X')]).buildWoche()), ['💜 Zum Schulkalender: X']);
+});
+
+test('woche: a family event starting with "Schulkalender: " is left as it is', () => {
+    assert.deepEqual(titles(loadMain([ev('Familie', 'Schulkalender: abholen')]).buildWoche()), ['Schulkalender: abholen']);
+});
+
 test('woche: family calendar events stay unmarked', () => {
     assert.deepEqual(titles(loadMain([ev('Familie', 'Zahnarzt')]).buildWoche()), ['Zahnarzt']);
 });
