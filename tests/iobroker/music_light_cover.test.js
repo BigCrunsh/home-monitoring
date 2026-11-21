@@ -54,12 +54,13 @@ function load(states) {
         on: (opts, fn) => handlers.push({ opts, fn }),
         setInterval: (fn) => ticks.push(fn),
         Buffer,
-        require: (m) => (m === 'jpeg-js' ? jpeg : net)
+        require: (m) => (m === 'jpeg-js' ? jpeg : net), encodeURIComponent
     };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'music_light.js'), 'utf8'), ctx);
     ctx.change = (id, val) => { st[id] = val; handlers.filter((h) => h.opts.id === id).forEach((h) => h.fn({ id, state: { val } })); };
-    ctx.tick = (n) => { for (let i = 0; i < (n || 1); i++) ticks.forEach((fn) => fn()); };
+    // the timer ticks every second; without genre or tempo a zone steps every 15 s
+    ctx.tick = (n) => { for (let i = 0; i < (n || 1) * 15; i++) ticks.forEach((fn) => fn()); };
     Object.assign(ctx, { commands, fetched, st });
     return ctx;
 }

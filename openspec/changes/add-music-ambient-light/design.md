@@ -43,7 +43,7 @@
   `light:toggle` like the other pills (one overlay type, the existing alternating-value trick), and
   `musik_v2.js` flips `javascript.0.music_light_enabled`.
 - **Stages 2-4 compute a scene object** `{bri, colours[], whiteCt, pace}` from cached lookups
-  (MusicBrainz artist genres, cover via `jpeg-js` with a coarse colour histogram, Deezer track BPM);
+  (Deezer album genres and track BPM, cover via `jpeg-js` with a coarse colour histogram);
   the light script applies it with transitions and, for pace, re-applies rotated colours on a timer
   no faster than every 4 s (bridge rate limit: 3 colour lamps per step).
 

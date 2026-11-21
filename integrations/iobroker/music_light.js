@@ -35,8 +35,6 @@ function json(id, fallback) {
 }
 function zones() { var z = json(ZONES_ID, []); return Array.isArray(z) ? z : []; }
 function switchedOff(key) { var o = json(OFF_ID, []); return Array.isArray(o) && o.indexOf(key) >= 0; }
-function playing(key) { var m = json(MUSIC_ID, {}); return !!(m[key] && m[key].playing === true); }
-function coverArt(key) { var m = json(MUSIC_ID, {}); return m[key] && m[key].art; }
 function command(id, cmd) { setState(id + '.command', JSON.stringify(cmd)); }
 
 function lampState(id) {
@@ -51,8 +49,7 @@ function restoreCommand(s) {
 }
 
 // ===== cover colours (stage 3): the scene drifts through the album cover's palette =====
-var CYCLE_MS = 15000;          // one step per lamp; stage 4 derives it from the tempo
-var DRIFT = 80;                // transition per colour change, tenths of a second
+var TICK_MS = 1000;            // the cycle timer; each zone steps at its own pace (paceSeconds)
 var CYCLE_SLOTS = 12;          // a cycle holds each colour for its share of these slots
 var MAX_COVER_BYTES = 3000000;
 var MAX_PALETTE = 5;
@@ -113,12 +110,13 @@ function rgbToXy(rgb) {
 // drifts through related shades, a neighbouring hue and a little brighter or darker, so even a
 // single-colour cover keeps moving. Entries: {xy, bri, base: index of the palette colour}.
 var SHADES = [{ hue: 0, bri: 1 }, { hue: 15, bri: 1.25 }, { hue: 0, bri: 0.85 }, { hue: -15, bri: 1.15 }];
-function weightedCycle(palette, slots) {
+function weightedCycle(palette, slots, briBase) {
+    var base = briBase || SCENE.bri;
     var seq = [];
-    palette.forEach(function (c, base) {
+    palette.forEach(function (c, index) {
         for (var i = 0, n = Math.max(1, Math.round(c.share * slots)); i < n; i++) {
             var shade = SHADES[i % SHADES.length];
-            seq.push({ xy: rgbToXy(rotateHue(c.rgb, shade.hue)), bri: Math.round(SCENE.bri * shade.bri), base: base });
+            seq.push({ xy: rgbToXy(rotateHue(c.rgb, shade.hue)), bri: Math.max(20, Math.min(230, Math.round(base * shade.bri))), base: index });
         }
     });
     return seq;
@@ -147,45 +145,121 @@ function fetchBuffer(url, cb) {
     req.on('error', finish);
     req.on('timeout', function () { finish(new Error('timeout')); req.destroy(); });
 }
-var paletteCache = {};   // cover URL → palette (rgb + share), [] when the cover has no colour
-function coverColours(url, cb) {
-    if (paletteCache[url]) { cb(paletteCache[url]); return; }
+function fetchJson(url, cb) {
     fetchBuffer(url, function (err, buf) {
-        var palette = [];
-        if (!err) {
-            try {
-                palette = coverPalette(require('jpeg-js').decode(buf, { useTArray: true, maxResolutionInMP: 4 }));
-            } catch (e) { palette = []; }
-        }
-        if (!err) paletteCache[url] = palette;
-        cb(palette);
+        if (err) { cb(null); return; }
+        try { cb(JSON.parse(buf.toString())); } catch (e) { cb(null); }
     });
 }
 
-// zone key → {art, cycle: [{xy, bri, base}…], pos, sent: {lamp: "xy@bri"}}
-var cycling = {};
-function followCover(zone, art) {
-    var c = cycling[zone.key] || (cycling[zone.key] = { pos: 0, sent: {} });
-    if (c.art === art) return;
-    c.art = art;
-    c.cycle = [];
-    if (!art) return;
-    coverColours(art, function (palette) {
-        if (c.art === art) c.cycle = weightedCycle(palette, CYCLE_SLOTS);
+// ===== genre (stage 2) and tempo (stage 4) =====
+// Both come from Deezer, looked up once per track: the album's genres set the character (brightness
+// factor, and the pace when the track has no tempo), the track's BPM sets the pace. MusicBrainz was the
+// first choice for genres but is unreachable over the Pi's IPv6 and throttles hard over IPv4 (2026-11-21).
+// An audiobook genre anywhere in the list means no music light; otherwise the first genre that matches
+// decides (Deezer lists the album's main genre first).
+var SPOKEN_WORDS = ['spoken word', 'audiobook', 'audio drama', 'hörspiel', 'hörb'];
+var GENRES = [
+    { words: ['classical', 'klassik', 'ambient', 'jazz', 'soundtrack', 'score', 'film', 'acoustic', 'folk', 'lullaby', 'new age', 'piano', 'chill'], bri: 0.8, pace: 20 },
+    { words: ['techno', 'electro', 'dance', 'house', 'edm', 'trance', 'disco', 'drum and bass', 'dubstep', 'hip hop', 'rap', 'rock', 'metal', 'punk'], bri: 1.25, pace: 10 },
+    { words: ['kids', 'kinder', 'children'], bri: 1.15, pace: 12 }
+];
+var NEUTRAL = { bri: 1, pace: 15 }, SPOKEN = { spoken: true, bri: 1, pace: 15 };
+function genreCharacter(tags) {
+    var lower = (tags || []).map(function (t) { return String(t).toLowerCase(); });
+    var has = function (tag, words) { return words.some(function (w) { return tag.indexOf(w) >= 0; }); };
+    if (lower.some(function (t) { return has(t, SPOKEN_WORDS); })) return SPOKEN;
+    for (var t = 0; t < lower.length; t++) {
+        for (var g = 0; g < GENRES.length; g++) if (has(lower[t], GENRES[g].words)) return GENRES[g];
+    }
+    return NEUTRAL;
+}
+// "A, B & C feat. D" → "A": the first named artist finds the track
+function firstArtist(name) { return String(name || '').split(/\s*(?:,|&|\bfeat\.?|\bft\.|\bx\b)\s*/i)[0].trim(); }
+// seconds per colour step: from the tempo (1200/BPM, 120 BPM = 10 s), else the genre's pace
+var MIN_STEP_S = 4, MAX_STEP_S = 25;
+function paceSeconds(bpm, character) {
+    if (bpm > 0) return Math.max(MIN_STEP_S, Math.min(MAX_STEP_S, Math.round(1200 / bpm)));
+    return (character || NEUTRAL).pace;
+}
+// quiet music dims the light: 0 % volume = 0.7, 50 % = 1, 100 % = 1.3
+function volumeFactor(vol) { return typeof vol === 'number' ? 0.7 + 0.6 * Math.max(0, Math.min(100, vol)) / 100 : 1; }
+
+// track → {bpm, tags}: Deezer search (artist + title), then the track (BPM) and its album (genres)
+function lookupTrack(artist, title, cb) {
+    fetchJson('https://api.deezer.com/search?q=' + encodeURIComponent(artist + ' ' + title) + '&limit=1', function (body) {
+        var hit = body && body.data && body.data[0];
+        if (!hit) { cb({ bpm: 0, tags: [] }); return; }
+        fetchJson('https://api.deezer.com/track/' + encodeURIComponent(hit.id), function (track) {
+            var bpm = (track && track.bpm) || 0;
+            if (!hit.album) { cb({ bpm: bpm, tags: [] }); return; }
+            fetchJson('https://api.deezer.com/album/' + encodeURIComponent(hit.album.id), function (album) {
+                var tags = ((album && album.genres && album.genres.data) || []).map(function (g) { return g.name; });
+                cb({ bpm: bpm, tags: tags });
+            });
+        });
     });
 }
+
+// Lookups run once per key; the answer lands in its cache and re-evaluates the zones. A failed lookup is
+// cached as "no data" too, so a dead service is not asked again on every poll.
+var paletteCache = {}, trackCache = {}, pending = {};
+function lookupOnce(cache, key, fetcher) {
+    if (!key || key in cache || pending[key]) return;
+    pending[key] = true;
+    fetcher(function (value) { cache[key] = value; delete pending[key]; evaluate(); });
+}
+function coverLookup(url) {
+    return function (done) {
+        fetchBuffer(url, function (err, buf) {
+            var palette = [];
+            if (!err) {
+                try { palette = coverPalette(require('jpeg-js').decode(buf, { useTArray: true, maxResolutionInMP: 4 })); } catch (e) { palette = []; }
+            }
+            done(palette);
+        });
+    };
+}
+function startLookups(music) {
+    var artist = firstArtist(music.artist);
+    lookupOnce(paletteCache, music.art, coverLookup(music.art));
+    lookupOnce(paletteCache, music.nextArt, coverLookup(music.nextArt));   // ready at the track switch
+    if (music.title) lookupOnce(trackCache, artist + '|' + music.title, function (done) { lookupTrack(artist, music.title, done); });
+}
+function trackInfo(music) { return trackCache[firstArtist(music.artist) + '|' + music.title]; }
+function isSpoken(music) {
+    var info = trackInfo(music);
+    return !!(info && genreCharacter(info.tags).spoken);
+}
+
+// zone key → {cycle: [{xy, bri, base}…], pace, inputs, pos, wait, sent: {lamp: "xy@bri"}}
+var cycling = {};
+function followMusic(zone, music) {
+    var c = cycling[zone.key] || (cycling[zone.key] = { pos: 0, wait: 0, sent: {} });
+    var info = trackInfo(music), known = !!(info && info.tags.length);
+    var character = known ? genreCharacter(info.tags) : NEUTRAL;
+    var palette = paletteCache[music.art] || [];
+    var briBase = SCENE.bri * character.bri * volumeFactor(music.vol);
+    var inputs = [music.art, palette.length, character.bri, Math.round(briBase)].join('|');
+    if (c.inputs !== inputs) { c.inputs = inputs; c.cycle = weightedCycle(palette, CYCLE_SLOTS, briBase); }
+    c.pace = paceSeconds(info ? info.bpm : 0, known ? character : null);
+}
+// called every second; each zone steps at its own pace
 function stepColours() {
     var snapshots = json(SNAPSHOT_ID, {});
     zones().forEach(function (zone) {
         var c = cycling[zone.key];
         if (!c || !c.cycle || !c.cycle.length || !snapshots[zone.key]) return;
+        if (c.wait > 0) { c.wait--; return; }
+        c.wait = c.pace - 1;
         c.pos++;
         // all lamps of a zone show the same shade at the same time (owner, 2026-11-21)
         var shade = c.cycle[c.pos % c.cycle.length], key = shade.xy + '@' + shade.bri;
+        var fade = Math.round(c.pace * 10 * 0.6);
         zoneLamps(zone, snapshots[zone.key]).forEach(function (id) {
             if (c.sent[id] === key) return;
             c.sent[id] = key;
-            command(id, { bri: shade.bri, xy: shade.xy, transitiontime: DRIFT });
+            command(id, { bri: shade.bri, xy: shade.xy, transitiontime: fade });
         });
     });
 }
@@ -207,12 +281,16 @@ function restore(zone, snapshot) {
     zoneLamps(zone, snapshot).forEach(function (id) { command(id, restoreCommand(snapshot[id])); });
 }
 function evaluate() {
+    var music = json(MUSIC_ID, {});
+    // lookups first: an answer that arrives at once re-evaluates before this run reads the snapshots
+    zones().forEach(function (zone) { if (music[zone.key] && music[zone.key].playing) startLookups(music[zone.key]); });
     var snapshots = json(SNAPSHOT_ID, {}), changed = false;
     zones().forEach(function (zone) {
-        var want = !switchedOff(zone.key) && playing(zone.key);
+        var m = music[zone.key] || {};
+        var want = !switchedOff(zone.key) && m.playing === true && !isSpoken(m);
         if (want && !snapshots[zone.key]) { snapshots[zone.key] = startScene(zone); changed = true; }
         else if (!want && snapshots[zone.key]) { restore(zone, snapshots[zone.key]); delete snapshots[zone.key]; changed = true; }
-        if (want) followCover(zone, coverArt(zone.key));
+        if (want) followMusic(zone, m);
         else delete cycling[zone.key];
     });
     if (changed) setState(SNAPSHOT_ID, JSON.stringify(snapshots), true);
@@ -223,6 +301,6 @@ createState(SNAPSHOT_ID, '{}', { type: 'string', role: 'json', desc: 'Musiklicht
 on({ id: MUSIC_ID, change: 'ne' }, evaluate);
 on({ id: OFF_ID, change: 'ne' }, evaluate);
 evaluate();
-setInterval(stepColours, CYCLE_MS);
+setInterval(stepColours, TICK_MS);
 
 console.log('[music_light] initialized');

@@ -18,7 +18,7 @@ plays, and ioBroker switches the Hue lamps over HTTPS.
 - A "Musiklicht" toggle pill in the Musik band of the Steuerung tab, with its native tap overlay.
 - The light matches the music in stages, each live and judged before the next:
   1. walking skeleton: toggle, detection, a fixed warm scene, immediate restore;
-  2. genre (artist genres from the MusicBrainz database, no key, cached per artist) sets brightness
+  2. genre (the album's genres from the Deezer public API, no key, cached per track) sets brightness
      and character;
   3. album cover colours (dominant colours, decoded with the new `jpeg-js` library in the javascript
      adapter, owner approved 2026-11-21) set the colours;
@@ -44,7 +44,6 @@ plays, and ioBroker switches the Hue lamps over HTTPS.
   `javascript.0.music_light_snapshot`.
 - Dependency (stage 3): `jpeg-js` as an additional module of the ioBroker javascript adapter; adding
   it restarts the adapter once (all scripts pause for about 30 s).
-- External lookups (stages 2 and 4): MusicBrainz and Deezer over HTTPS, at most one per new artist or
-  track, cached.
+- External lookups (stages 2 and 4): Deezer over HTTPS (search, track, album), once per track, cached.
 - Interplay: the Hue Sync Box drives the wall washers while the TV runs; excluding TV audio keeps the
   two from competing.

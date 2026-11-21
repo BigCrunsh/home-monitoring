@@ -44,7 +44,10 @@ function load(states) {
             st[id] = val;
         },
         createState: (id, def) => { if (!(id in st)) st[id] = def; },
-        on: (opts, fn) => handlers.push({ opts, fn }), setInterval() {}
+        on: (opts, fn) => handlers.push({ opts, fn }), setInterval() {},
+        // genre, tempo and cover lookups: every service unavailable, so the warm scene's fallback applies
+        Buffer, encodeURIComponent,
+        require: () => ({ get: (url, o, cb) => { cb({ statusCode: 503, on() { return this; }, resume() {} }); return { on() { return this; }, destroy() {} }; } })
     };
     vm.createContext(ctx);
     vm.runInContext(fs.readFileSync(path.join(IOB, 'music_light.js'), 'utf8'), ctx);

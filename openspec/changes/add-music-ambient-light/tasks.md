@@ -16,9 +16,9 @@
 
 ## 2. Stage 2: genre
 
-- [ ] 2.1 Tests, then MusicBrainz artist-genre lookup (timeout, cache per artist, fallback)
-- [ ] 2.2 Tests, then genre → brightness, character and dining-table white tone; volume scales the intensity (quiet = dim and calm); owner tunes the palette
-- [ ] 2.3 Tests, then prefetch genre (and later cover and tempo) of the next track so the scene changes right at the track switch
+- [x] 2.1 Tests, then the genre lookup (Deezer album genres per track: MusicBrainz is unreachable over the Pi's IPv6 and throttles hard over IPv4; timeout, cache, fallback)
+- [x] 2.2 Tests, then genre → brightness, character and dining-table white tone; volume scales the intensity (quiet = dim and calm); owner tunes the palette
+- [x] 2.3 Tests, then prefetch genre (and later cover and tempo) of the next track so the scene changes right at the track switch
 
 ## 3. Stage 3: cover colours
 
@@ -28,5 +28,5 @@
 
 ## 4. Stage 4: tempo
 
-- [ ] 4.1 Tests, then Deezer BPM lookup per track (timeout, cache, calm fallback)
-- [ ] 4.2 Tests, then pace: the cycle speed follows the BPM (calm: one pass in 2-4 min, fast: 30-60 s), never more than one command per lamp every 4 s
+- [x] 4.1 Tests, then Deezer BPM lookup per track (timeout, cache, calm fallback)
+- [x] 4.2 Tests, then pace: the cycle speed follows the BPM (calm: one pass in 2-4 min, fast: 30-60 s), never more than one command per lamp every 4 s
