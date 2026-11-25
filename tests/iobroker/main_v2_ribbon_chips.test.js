@@ -131,7 +131,7 @@ test('ribbon: the long "Türschloss" text chip is gone', () => {
     assert.doesNotMatch(loadMain({ [LOCK + '.1.LOCK_STATE']: 2 }).buildRibbon(), /Türschloss/);
 });
 
-// Water (owner, 2026-11-25): a second leak sensor watches the cellar floor beside the first one.
+// Water (owner, 2026-11-25): a second leak sensor watches the cellar floor, the first one the kitchen.
 // Both feed the one "Wasser" chip, which appears only when it demands attention: red while either
 // sensor is wet, grey while either is offline or its battery is low, red winning over grey.
 const WATER_OLD = 'hm-rpc.1.00189D899BEABF', WATER_NEW = 'hm-rpc.1.0044A409969C8A';
