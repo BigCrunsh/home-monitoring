@@ -130,3 +130,51 @@ test('ribbon: there is no separate lock chip any more', () => {
 test('ribbon: the long "Türschloss" text chip is gone', () => {
     assert.doesNotMatch(loadMain({ [LOCK + '.1.LOCK_STATE']: 2 }).buildRibbon(), /Türschloss/);
 });
+
+// Water (owner, 2026-11-25): a second leak sensor watches the cellar floor beside the first one.
+// Both feed the one "Wasser" chip, which appears only when it demands attention: red while either
+// sensor is wet, grey while either is offline or its battery is low, red winning over grey.
+const WATER_OLD = 'hm-rpc.1.00189D899BEABF', WATER_NEW = 'hm-rpc.1.0044A409969C8A';
+function wasserChips(html) {
+    return [...html.matchAll(/<div class="rind"[^>]*><span class="dot" style="background:([^"]+)"><\/span><span class="nm">Wasser<\/span>/g)]
+        .map((m) => m[1]);
+}
+
+test('ribbon: water on the floor at the new sensor shows a red Wasser chip', () => {
+    const html = loadMain({ [WATER_NEW + '.1.WATERLEVEL_DETECTED']: true }).buildRibbon();
+    assert.deepEqual(wasserChips(html), ['var(--red-ind)']);
+});
+
+test('ribbon: moisture at the new sensor alone already raises the alarm', () => {
+    const html = loadMain({ [WATER_NEW + '.1.MOISTURE_DETECTED']: true }).buildRibbon();
+    assert.deepEqual(wasserChips(html), ['var(--red-ind)']);
+});
+
+test('ribbon: an offline new sensor shows a grey Wasser chip, never silence', () => {
+    const html = loadMain({ [WATER_NEW + '.1.MOISTURE_DETECTED']: false, [WATER_NEW + '.0.UNREACH']: true }).buildRibbon();
+    assert.deepEqual(wasserChips(html), ['var(--muted)']);
+});
+
+test('ribbon: a low battery in the new sensor shows a grey Wasser chip', () => {
+    const html = loadMain({ [WATER_NEW + '.0.LOW_BAT']: true }).buildRibbon();
+    assert.deepEqual(wasserChips(html), ['var(--muted)']);
+});
+
+test('ribbon: one sensor wet while the other is offline shows a single red chip', () => {
+    const html = loadMain({ [WATER_OLD + '.1.WATERLEVEL_DETECTED']: true, [WATER_NEW + '.0.UNREACH']: true }).buildRibbon();
+    assert.deepEqual(wasserChips(html), ['var(--red-ind)']);
+});
+
+test('ribbon: both sensors dry and healthy show no Wasser chip', () => {
+    const html = loadMain({
+        [WATER_OLD + '.1.MOISTURE_DETECTED']: false, [WATER_OLD + '.0.LOW_BAT']: false, [WATER_OLD + '.0.UNREACH']: false,
+        [WATER_NEW + '.1.MOISTURE_DETECTED']: false, [WATER_NEW + '.0.LOW_BAT']: false, [WATER_NEW + '.0.UNREACH']: false
+    }).buildRibbon();
+    assert.deepEqual(wasserChips(html), []);
+});
+
+test('ribbon: the bar redraws when the new sensor reports water, goes offline or runs low', () => {
+    const oids = loadMain({}).RIBBON_OIDS;
+    ['.1.MOISTURE_DETECTED', '.1.WATERLEVEL_DETECTED', '.0.LOW_BAT', '.0.UNREACH']
+        .forEach((s) => assert.ok(oids.includes(WATER_NEW + s), 'not watched: ' + s));
+});

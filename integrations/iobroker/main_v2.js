@@ -630,7 +630,9 @@ function contactInd(name, oid, batOid, after) {
 // a dead safety sensor must not be silently green-by-absence. The Sirene is different (owner call
 // 2026-07-19): the house alarm's health is permanently interesting, so it holds a fixed 6th chip —
 // green = connected & quiet, red = firing, muted = offline. Routine health lives on Diagnose.
-var SMOKE = 'hm-rpc.1.000A5D89B45113', WATER = 'hm-rpc.1.00189D899BEABF', SIREN = 'hm-rpc.1.00245D898FEEF1';
+var SMOKE = 'hm-rpc.1.000A5D89B45113', SIREN = 'hm-rpc.1.00245D898FEEF1';
+// two leak sensors share the one Wasser chip: red while either is wet, else grey while either is unwell
+var WATERS = ['hm-rpc.1.00189D899BEABF', 'hm-rpc.1.0044A409969C8A'];
 function sTrue(id) { var s = getState(id); return !!(s && s.val === true); }
 // compact mode (>5 chips): tighter chip chrome + battery icon only when it is actually low,
 // so the extra alarm chips don't crush every name to one letter.
@@ -645,7 +647,9 @@ function buildRibbon() {
     }
     extra('Rauch', SMOKE, (sNum(SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS') || 0) > 0,   // 0=IDLE_OFF
         sTrue(SMOKE + '.1.ERROR_DEGRADED_CHAMBER'));
-    extra('Wasser', WATER, sTrue(WATER + '.1.MOISTURE_DETECTED') || sTrue(WATER + '.1.WATERLEVEL_DETECTED'), false);
+    var wet = WATERS.filter(function (d) { return sTrue(d + '.1.MOISTURE_DETECTED') || sTrue(d + '.1.WATERLEVEL_DETECTED'); });
+    var unwell = WATERS.filter(function (d) { return maint(d + '.0.LOW_BAT').low; });
+    extra('Wasser', wet[0] || unwell[0] || WATERS[0], wet.length > 0, false);
     // six permanent chips since the Sirene joined — always use the tight chrome
     // (battery icons only when low), otherwise names like Türschloss truncate
     _ribCompact = true;
@@ -688,8 +692,10 @@ var RIBBON_OIDS = ['javascript.0.lights_on', 'javascript.0.plugs_on', 'javascrip
     'hm-rpc.1.0007DD8996AFD3.0.LOW_BAT', 'hm-rpc.1.00155D89A38D55.0.LOW_BAT', 'hm-rpc.1.0023DD89A5152D.0.LOW_BAT', 'hm-rpc.1.0007DD89B41FD4.0.LOW_BAT', 'hm-rpc.1.002A226996B89C.0.LOW_BAT',
     'hm-rpc.1.0007DD8996AFD3.0.UNREACH', 'hm-rpc.1.00155D89A38D55.0.UNREACH', 'hm-rpc.1.0023DD89A5152D.0.UNREACH', 'hm-rpc.1.0007DD89B41FD4.0.UNREACH', 'hm-rpc.1.002A226996B89C.0.UNREACH',
     SMOKE + '.1.SMOKE_DETECTOR_ALARM_STATUS', SMOKE + '.1.ERROR_DEGRADED_CHAMBER', SMOKE + '.0.LOW_BAT', SMOKE + '.0.UNREACH',
-    WATER + '.1.MOISTURE_DETECTED', WATER + '.1.WATERLEVEL_DETECTED', WATER + '.0.LOW_BAT', WATER + '.0.UNREACH',
     SIREN + '.3.ACOUSTIC_ALARM_ACTIVE', SIREN + '.3.OPTICAL_ALARM_ACTIVE', SIREN + '.0.LOW_BAT', SIREN + '.0.UNREACH'];
+WATERS.forEach(function (d) {
+    RIBBON_OIDS.push(d + '.1.MOISTURE_DETECTED', d + '.1.WATERLEVEL_DETECTED', d + '.0.LOW_BAT', d + '.0.UNREACH');
+});
 
 // ===== assemble — COLUMN-SPLIT: four independent widgets (hero + 3 columns), each its own
 // <svg><foreignObject> sized to its vis box and carrying the shared CSS_BASE. The mid/right
